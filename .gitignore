@@ -24,17 +24,9 @@ build/
 worker-configuration.d.ts
 
 # iOS / Xcode
+# Build artifacts
 iOS/**/DerivedData/
 iOS/**/build/
-iOS/**/*.xcodeproj/xcuserdata/
-iOS/**/*.xcworkspace/xcuserdata/
-iOS/**/*.xcworkspace/xcshareddata/
-*.xcuserstate
-*.xcuserdatad
-*.xcworkspace
-*.xcodeproj
-!iOS/**/*.xcodeproj/project.pbxproj
-!iOS/**/*.xcodeproj/project.xcworkspace
 *.hmap
 *.ipa
 *.dSYM.zip
@@ -45,12 +37,23 @@ iOS/**/*.xcworkspace/xcshareddata/
 *.swiftmodule
 *.swiftdoc
 *.swiftc
+
+# User-specific Xcode files
+*.xcuserstate
+*.xcuserdatad
+iOS/**/*.xcodeproj/xcuserdata/
+iOS/**/*.xcworkspace/xcuserdata/
+iOS/**/*.xcworkspace/xcshareddata/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# CocoaPods
 Pods/
 *.podspec
 Podfile.lock
+
+# Swift Package Manager
 .swiftpm/
 .build/
-*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 
 # Testing
 coverage/
