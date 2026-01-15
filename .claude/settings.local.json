@@ -12,7 +12,21 @@
       "Bash(npx tsc --noEmit)",
       "Bash(npm test:*)",
       "Bash(npx wrangler:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(claude config set:*)",
+      "Bash(claude:*)",
+      "Bash(/Users/fredylievano-adaca/.local/bin/claude config:*)",
+      "Bash(/Users/fredylievano-adaca/.local/bin/claude --help)",
+      "Bash(node -e \"const {execSync} = require\\(''child_process''\\); console.log\\(execSync\\(''npx wrangler d1 migrations apply reef-db --local'', {encoding: ''utf8''}\\)\\);\")",
+      "Bash(./node_modules/.bin/wrangler:*)",
+      "Bash(npm run db:migrate:*)",
+      "Bash(npx vitest run)",
+      "Bash(npm run test:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(sips --help:*)",
+      "Bash(pkill:*)",
+      "Bash(pgrep:*)"
     ]
   }
 }

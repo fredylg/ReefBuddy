@@ -23,11 +23,13 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.3",
     "@cloudflare/workers-types": "^4.20260115.0",
+    "@types/bcryptjs": "^2.4.6",
     "typescript": "^5.9.3",
     "vitest": "3.2.x",
     "wrangler": "^4.59.1"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "zod": "^4.3.5"
   }
 }
