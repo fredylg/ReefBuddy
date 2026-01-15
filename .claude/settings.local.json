@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx wrangler --version)",
+      "Bash(npx vitest --version)",
+      "Bash(xcodebuild:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version)",
+      "Bash(brew install:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm test:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

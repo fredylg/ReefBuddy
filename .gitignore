@@ -1,0 +1,102 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+dist/
+build/
+*.js.map
+
+# Cloudflare Workers
+.wrangler/
+.wrangler.toml.local
+.dev.vars
+worker-configuration.d.ts
+
+# iOS / Xcode
+iOS/**/DerivedData/
+iOS/**/build/
+iOS/**/*.xcodeproj/xcuserdata/
+iOS/**/*.xcworkspace/xcuserdata/
+iOS/**/*.xcworkspace/xcshareddata/
+*.xcuserstate
+*.xcuserdatad
+*.xcworkspace
+*.xcodeproj
+!iOS/**/*.xcodeproj/project.pbxproj
+!iOS/**/*.xcodeproj/project.xcworkspace
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.app.dSYM
+*.app
+*.framework
+*.swiftmodule
+*.swiftdoc
+*.swiftc
+Pods/
+*.podspec
+Podfile.lock
+.swiftpm/
+.build/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.vitest/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+.cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3

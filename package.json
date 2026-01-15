@@ -1,0 +1,33 @@
+{
+  "name": "reefbuddy",
+  "version": "1.0.0",
+  "description": "High-contrast, New Brutalist iOS app for saltwater aquarium hobbyists",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "wrangler d1 migrations apply reef-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply reef-db --remote"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "aquarium",
+    "reef",
+    "water-chemistry"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.3",
+    "@cloudflare/workers-types": "^4.20260115.0",
+    "typescript": "^5.9.3",
+    "vitest": "3.2.x",
+    "wrangler": "^4.59.1"
+  },
+  "dependencies": {
+    "zod": "^4.3.5"
+  }
+}

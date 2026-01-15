@@ -1,0 +1,39 @@
+# ReefBuddy - Cloudflare Workers Configuration
+# Backend for saltwater aquarium water chemistry analysis
+
+name = "reefbuddy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# ES Modules format (required for modern Workers)
+# Reference: https://developers.cloudflare.com/workers/
+
+# D1 Database Binding
+# Create with: npx wrangler d1 create reef-db
+[[d1_databases]]
+binding = "DB"
+database_name = "reef-db"
+database_id = "5171dac0-7584-49a2-956b-971f2516e0cd"
+
+# KV Namespace Binding (for session tracking and Free Tier limits)
+# Create with: npx wrangler kv:namespace create REEF_KV
+[[kv_namespaces]]
+binding = "REEF_KV"
+id = "b971329ac04e4171a65cfb907da0b08f"
+
+# Environment Variables (secrets should be set via wrangler secret)
+[vars]
+ENVIRONMENT = "development"
+FREE_TIER_LIMIT = "3"
+CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
+
+# AI Gateway Configuration
+# Route all LLM calls through Cloudflare AI Gateway for caching
+[vars.AI_GATEWAY]
+gateway_id = "reefbuddy-ai-gateway"
+# Create gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
