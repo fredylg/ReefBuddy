@@ -87,6 +87,8 @@ A task is not complete until:
 - **Test Execution:** `npx vitest run` (Backend) | `xcodebuild test` (iOS)
 - **Deploy:** `npx wrangler deploy`
 - **Verify Xcode Project:** `./verify-xcode-project.sh` (Run before/after ANY iOS work)
+- **Setup Git Hooks:** `./setup-hooks.sh` (Enables pre-commit validation to prevent UUID collisions)
+- **Setup Git Hooks:** `./setup-hooks.sh` (Enables pre-commit validation)
 
 ## 8. iOS/Xcode Project Guidelines (CRITICAL)
 
@@ -101,6 +103,9 @@ If you think you need to recreate it, **YOU ARE WRONG**. Stop and ask the user i
 ```bash
 # Run this FIRST - if it fails, STOP and alert user
 test -f "iOS/ReefBuddy.xcodeproj/project.pbxproj" && echo "✅ Safe to proceed" || echo "❌ STOP!"
+
+# Optional: Enable automatic git validation (recommended)
+./setup-hooks.sh
 ```
 
 #### STEP 2: Do Your iOS Work
@@ -109,6 +114,14 @@ When @ui-brutalist creates or modifies Swift files, EDIT the existing `project.p
 2. **PBXFileReference entry** - for referencing the file
 3. **PBXGroup entry** - for organizing in the correct folder group
 4. **Add to PBXSourcesBuildPhase** - to include in the build
+
+**⚠️ CRITICAL: UUID Uniqueness Check**
+- **ALWAYS verify UUID uniqueness** before adding new entries to project.pbxproj
+- UUID collisions cause Xcode to crash immediately on project open
+- Check for duplicates: `grep "8A1B2C3D000000XX" iOS/ReefBuddy.xcodeproj/project.pbxproj | wc -l` (should be 1)
+- Use unique UUIDs following the pattern: `8A1B2C3D000000XX` where XX is a unique hex value
+- **Example collision that caused crash:** UUID `8A1B2C3D00000030` was used for both root PBXGroup AND AddLivestockView.swift → Xcode crash
+- **Fix:** Changed AddLivestockView.swift to use `8A1B2C3D00000031A` (unique)
 
 **NEVER use `rm -rf iOS/ReefBuddy.xcodeproj`**
 **NEVER recreate the directory**
@@ -134,6 +147,7 @@ Before marking any iOS task complete, @ui-brutalist MUST verify:
 - [ ] All new Swift files have PBXBuildFile entries in existing pbxproj
 - [ ] All new Swift files are in correct PBXGroup in existing pbxproj
 - [ ] All new Swift files are in PBXSourcesBuildPhase in existing pbxproj
+- [ ] **UUID uniqueness verified** - Check that all new UUIDs are unique: `grep "8A1B2C3D000000" iOS/ReefBuddy.xcodeproj/project.pbxproj | sort | uniq -d` (should return nothing)
 - [ ] Run post-flight check: `wc -l "iOS/ReefBuddy.xcodeproj/project.pbxproj"` (should be ~500+ lines)
 - [ ] Update the "Current iOS Source Files" list in this document
 - [ ] **NEVER ran `rm`, `mv`, or recreated the `.xcodeproj` directory**
@@ -152,7 +166,7 @@ git checkout HEAD -- iOS/ReefBuddy.xcodeproj/project.pbxproj
 ```
 
 ### Current iOS Source Files (update this list when adding files)
-**Total: 22 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
+**Total: 23 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
 ```
 iOS/ReefBuddy/Sources/
 ├── App/
@@ -163,7 +177,8 @@ iOS/ReefBuddy/Sources/
 │   └── BrutalistTheme.swift
 ├── Components/
 │   ├── BrutalistButton.swift
-│   └── BrutalistTextField.swift
+│   ├── BrutalistTextField.swift
+│   └── ShareSheet.swift
 ├── Models/
 │   ├── Tank.swift
 │   ├── Measurement.swift
@@ -192,3 +207,26 @@ open iOS/ReefBuddy.xcodeproj
 ```
 
 If it fails with "missing project.pbxproj", follow the fix steps above.
+
+### Common Issues & Solutions
+
+#### Xcode Crashes on Project Open
+**Symptom:** Xcode shows "The project is damaged and cannot be opened" with errors like "unrecognized selector sent to instance".
+
+**Common Causes:**
+1. **UUID Collision (CRITICAL):** Two or more entries share the same UUID
+   - **Check:** `grep "8A1B2C3D000000" iOS/ReefBuddy.xcodeproj/project.pbxproj | sort | uniq -d`
+   - **Fix:** Change the duplicate UUID to a unique value (e.g., increment the hex value)
+   - **Example:** UUID `8A1B2C3D00000031` was used for both PBXGroup and PBXBuildFile → crash with "unrecognized selector" error
+
+2. **Invalid iOS Deployment Target:** Using non-existent iOS version (e.g., iOS 18.0)
+   - **Check:** `grep "IPHONEOS_DEPLOYMENT_TARGET" iOS/ReefBuddy.xcodeproj/project.pbxproj`
+   - **Fix:** Use valid iOS version (e.g., 16.0, 17.0)
+
+3. **Corrupted User Data:** Corrupted xcuserdata folders
+   - **Fix:** `rm -rf iOS/ReefBuddy.xcodeproj/project.xcworkspace/xcuserdata iOS/ReefBuddy.xcodeproj/xcuserdata`
+
+4. **Workspace File Issue:** Invalid contents.xcworkspacedata
+   - **Check:** Should use `location = "self:"` not `location = "group:ReefBuddy.xcodeproj"`
+
+**Prevention:** Always verify UUID uniqueness before committing changes to project.pbxproj.

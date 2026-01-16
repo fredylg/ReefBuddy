@@ -236,6 +236,7 @@ enum Tab: CaseIterable {
 /// New Brutalist design: sharp corners, bold borders, high contrast.
 struct SettingsView: View {
 
+    @EnvironmentObject private var appState: AppState
     @State private var showingNotificationSettings = false
     @State private var showingSubscription = false
     @State private var showingExport = false
@@ -326,8 +327,8 @@ struct SettingsView: View {
             SubscriptionView()
         }
         .sheet(isPresented: $showingExport) {
-            if let tank = AppState().selectedTank {
-                ExportView(tank: tank)
+            if let tank = appState.selectedTank {
+                ExportView(tank: tank, measurements: appState.measurements)
             }
         }
     }

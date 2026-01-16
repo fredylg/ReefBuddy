@@ -151,7 +151,7 @@ final class AppState: ObservableObject {
     }
 
     /// Request AI analysis for a measurement
-    func requestAnalysis(for measurement: Measurement) async -> AnalysisResponse? {
+    func requestAnalysis(for measurement: Measurement, tank: Tank) async -> AnalysisResponse? {
         guard freeAnalysesRemaining > 0 else {
             errorMessage = "No free analyses remaining. Upgrade to Premium for unlimited access."
             return nil
@@ -161,7 +161,7 @@ final class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            let analysis = try await apiClient.analyzeParameters(measurement)
+            let analysis = try await apiClient.analyzeParameters(measurement, tankVolume: tank.volumeGallons)
             freeAnalysesRemaining -= 1
             isLoading = false
             return analysis

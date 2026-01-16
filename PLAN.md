@@ -33,10 +33,10 @@
 - `0004_livestock_tracking.sql` - Livestock tables
 - `0005_notification_settings.sql` - Push notification tables
 
-**iOS Swift Files (22/22 verified):**
+**iOS Swift Files (23/23 verified):**
 - App: ReefBuddyApp.swift, ContentView.swift, AppIconGenerator.swift
 - Theme: BrutalistTheme.swift
-- Components: BrutalistButton.swift, BrutalistTextField.swift
+- Components: BrutalistButton.swift, BrutalistTextField.swift, ShareSheet.swift
 - Models: Tank.swift, Measurement.swift, User.swift, Livestock.swift
 - Views: TankListView.swift, MeasurementEntryView.swift, AnalysisView.swift, HistoryView.swift, ChartView.swift, SubscriptionView.swift, ExportView.swift, NotificationSettingsView.swift, LivestockListView.swift, LivestockDetailView.swift, AddLivestockView.swift
 - Networking: APIClient.swift
@@ -700,6 +700,15 @@ stripe listen --forward-to localhost:8787/subscriptions/webhook
 1. **AppIcon PNG Missing:** FIXED - Generated brutalist "RB" icon (1024x1024) on aquamarine background
 2. **Migration Numbering Conflict:** FIXED - Renamed `0003_historical_features.sql` to `0006_historical_features.sql`
 3. **Missing API Tests:** FIXED - Added 80 comprehensive tests for Livestock and Notifications APIs
+4. **Xcode UUID Collision Crash:** FIXED (2026-01-17) - Multiple UUID collisions causing Xcode to crash:
+5. **Xcode Project Protection:** IMPLEMENTED (2026-01-17) - Added multiple layers of protection:
+   - **`.cursorrules`** - Cursor-specific project rules with UUID validation commands
+   - **`setup-hooks.sh`** - Script to enable git pre-commit validation
+   - **`.git/hooks/pre-commit`** - Automatic validation before commits
+   - **`README.md`** - Project documentation with setup instructions
+   - UUID `8A1B2C3D00000030` used for both root PBXGroup and AddLivestockView.swift → Fixed by changing AddLivestockView.swift to `8A1B2C3D00000031A`
+   - UUID `8A1B2C3D00000031` used for both ReefBuddy PBXGroup and ShareSheet PBXBuildFile → Fixed by changing ShareSheet to `8A1B2C3D00000033`/`8A1B2C3D00000034`
+   **Prevention:** Always verify UUID uniqueness before committing changes: `grep "8A1B2C3D000000XX" project.pbxproj | sort | uniq -d` (should return nothing)
 
 ### Low
 1. **iOS Simulator Testing:** Full UI testing requires Xcode installation. Currently only Command Line Tools are installed.

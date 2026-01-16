@@ -17,29 +17,39 @@ struct MeasurementEntryView: View {
     @State private var showingAnalysis = false
     @State private var analysisResult: AnalysisResponse?
     @State private var showingSaveConfirmation = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+    @State private var isAnalyzing = false
 
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: BrutalistTheme.Spacing.xl) {
-                // Tank Header
-                tankHeader
+        ZStack {
+            ScrollView {
+                VStack(spacing: BrutalistTheme.Spacing.xl) {
+                    // Tank Header
+                    tankHeader
 
-                // Parameter Sections
-                basicParametersSection
-                alkalinitySection
-                nutrientSection
+                    // Parameter Sections
+                    basicParametersSection
+                    alkalinitySection
+                    nutrientSection
 
-                // Notes
-                notesSection
+                    // Notes
+                    notesSection
 
-                // Action Buttons
-                actionButtons
+                    // Action Buttons
+                    actionButtons
+                }
+                .padding(BrutalistTheme.Spacing.lg)
             }
-            .padding(BrutalistTheme.Spacing.lg)
+            .background(BrutalistTheme.Colors.background)
+
+            // Loading Overlay
+            if isAnalyzing {
+                BrutalistLoadingView()
+            }
         }
-        .background(BrutalistTheme.Colors.background)
         .sheet(isPresented: $showingAnalysis) {
             if let analysis = analysisResult {
                 AnalysisResultSheet(analysis: analysis)
@@ -49,6 +59,11 @@ struct MeasurementEntryView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Your water parameters have been recorded.")
+        }
+        .alert("ANALYSIS ERROR", isPresented: $showingError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
     }
 
@@ -334,13 +349,29 @@ struct MeasurementEntryView: View {
     private func analyzeParameters() {
         let measurementModel = measurement.toMeasurement(tankId: tank.id)
 
+        isAnalyzing = true
+
         Task {
-            if let analysis = await appState.requestAnalysis(for: measurementModel) {
-                analysisResult = analysis
-                showingAnalysis = true
+            if let analysis = await appState.requestAnalysis(for: measurementModel, tank: tank) {
+                await MainActor.run {
+                    isAnalyzing = false
+                    analysisResult = analysis
+                    showingAnalysis = true
+                }
 
                 // Also save the measurement
                 await appState.submitMeasurement(measurementModel)
+            } else if let error = appState.errorMessage {
+                // Show error to user
+                await MainActor.run {
+                    isAnalyzing = false
+                    errorMessage = error
+                    showingError = true
+                }
+            } else {
+                await MainActor.run {
+                    isAnalyzing = false
+                }
             }
         }
     }
@@ -392,154 +423,542 @@ struct MeasurementDraft {
 
 // MARK: - Analysis Result Sheet
 
-/// Modal sheet displaying AI analysis results
+/// Modal sheet displaying AI analysis results with New Brutalist design
 struct AnalysisResultSheet: View {
     let analysis: AnalysisResponse
     @Environment(\.dismiss) private var dismiss
+    @State private var showingShareSheet = false
+    @State private var showingSavedConfirmation = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xl) {
-                    // Summary
-                    VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
-                        sectionHeader("SUMMARY")
+            ZStack {
+                // Background
+                BrutalistTheme.Colors.background
+                    .ignoresSafeArea()
 
-                        Text(analysis.summary)
-                            .font(BrutalistTheme.Typography.body)
-                            .foregroundColor(BrutalistTheme.Colors.text)
-                    }
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Hero Header
+                        heroHeader
 
-                    // Warnings
-                    if let warnings = analysis.warnings, !warnings.isEmpty {
-                        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
-                            sectionHeader("WARNINGS", color: BrutalistTheme.Colors.warning)
+                        VStack(spacing: BrutalistTheme.Spacing.xl) {
+                            // AI Analysis Card
+                            analysisCard
 
-                            ForEach(warnings, id: \.self) { warning in
-                                warningItem(warning)
+                            // Warnings Section
+                            if let warnings = analysis.warnings, !warnings.isEmpty {
+                                warningsSection(warnings)
                             }
-                        }
-                    }
 
-                    // Recommendations
-                    if !analysis.recommendations.isEmpty {
-                        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
-                            sectionHeader("RECOMMENDATIONS")
-
-                            ForEach(analysis.recommendations, id: \.self) { recommendation in
-                                recommendationItem(recommendation)
+                            // Recommendations Section
+                            if !analysis.recommendations.isEmpty {
+                                recommendationsSection
                             }
-                        }
-                    }
 
-                    // Dosing Advice
-                    if let dosing = analysis.dosingAdvice, !dosing.isEmpty {
-                        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
-                            sectionHeader("DOSING ADVICE")
-
-                            ForEach(dosing) { advice in
-                                dosingItem(advice)
+                            // Dosing Advice Section
+                            if let dosing = analysis.dosingAdvice, !dosing.isEmpty {
+                                dosingSection(dosing)
                             }
-                        }
-                    }
 
-                    // Disclaimer
-                    disclaimerView
+                            // Disclaimer
+                            disclaimerCard
+
+                            // Action Buttons
+                            actionButtons
+
+                            Spacer(minLength: BrutalistTheme.Spacing.xl)
+                        }
+                        .padding(.horizontal, BrutalistTheme.Spacing.lg)
+                        .padding(.top, BrutalistTheme.Spacing.lg)
+                    }
                 }
-                .padding(BrutalistTheme.Spacing.lg)
             }
-            .background(BrutalistTheme.Colors.background)
-            .navigationTitle("ANALYSIS")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("DONE") {
-                        dismiss()
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { dismiss() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .black))
+                            Text("CLOSE")
+                                .font(.system(size: 12, weight: .black))
+                        }
+                        .foregroundColor(BrutalistTheme.Colors.text)
                     }
-                    .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { showingShareSheet = true }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                    }
                 }
             }
         }
-    }
-
-    private func sectionHeader(_ title: String, color: Color = BrutalistTheme.Colors.text) -> some View {
-        Text(title)
-            .font(BrutalistTheme.Typography.headerSmall)
-            .foregroundColor(color)
-    }
-
-    private func warningItem(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: BrutalistTheme.Spacing.sm) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.warning)
-
-            Text(text)
-                .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+        .sheet(isPresented: $showingShareSheet) {
+            ShareSheet(items: [generateShareText()])
         }
-        .padding(BrutalistTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BrutalistTheme.Colors.warning.opacity(0.1))
-        .brutalistBorder(width: 2, color: BrutalistTheme.Colors.warning)
-    }
-
-    private func recommendationItem(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: BrutalistTheme.Spacing.sm) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.action)
-
-            Text(text)
-                .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+        .alert("ANALYSIS SAVED", isPresented: $showingSavedConfirmation) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your analysis has been saved to your measurement history.")
         }
-        .padding(BrutalistTheme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BrutalistTheme.Colors.action.opacity(0.1))
-        .brutalistBorder(width: 2, color: BrutalistTheme.Colors.action)
     }
 
-    private func dosingItem(_ advice: DosingRecommendation) -> some View {
-        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
-            Text(advice.product.uppercased())
-                .font(BrutalistTheme.Typography.bodyBold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+    // MARK: - Hero Header
 
+    private var heroHeader: some View {
+        VStack(spacing: 0) {
+            // Status Banner
             HStack {
-                Text(advice.amount)
-                    .font(BrutalistTheme.Typography.headerMedium)
-                    .foregroundColor(BrutalistTheme.Colors.action)
+                VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
+                    Text("AI ANALYSIS")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
 
-                Text(advice.frequency)
-                    .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    Text("COMPLETE")
+                        .font(.system(size: 32, weight: .black))
+                        .foregroundColor(BrutalistTheme.Colors.text)
+                }
+
+                Spacer()
+
+                // Status Badge
+                statusBadge
+            }
+            .padding(BrutalistTheme.Spacing.lg)
+            .background(BrutalistTheme.Colors.action)
+
+            // Timestamp Bar
+            HStack {
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 10, weight: .bold))
+
+                Text(formattedDate.uppercased())
+                    .font(.system(size: 10, weight: .bold))
+
+                Spacer()
+
+                Text("POWERED BY CLAUDE")
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .foregroundColor(BrutalistTheme.Colors.text)
+            .padding(.horizontal, BrutalistTheme.Spacing.lg)
+            .padding(.vertical, BrutalistTheme.Spacing.sm)
+            .background(BrutalistTheme.Colors.text.opacity(0.1))
+        }
+    }
+
+    private var statusBadge: some View {
+        let hasWarnings = (analysis.warnings?.isEmpty == false)
+
+        return VStack(spacing: 2) {
+            Image(systemName: hasWarnings ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                .font(.system(size: 24, weight: .bold))
+
+            Text(hasWarnings ? "REVIEW" : "GOOD")
+                .font(.system(size: 10, weight: .black))
+        }
+        .foregroundColor(BrutalistTheme.Colors.text)
+        .frame(width: 60, height: 60)
+        .background(hasWarnings ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.background)
+        .brutalistBorder(width: 3)
+    }
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy • h:mm a"
+        return formatter.string(from: Date())
+    }
+
+    // MARK: - Analysis Card
+
+    private var analysisCard: some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
+            // Section Header
+            HStack {
+                Rectangle()
+                    .fill(BrutalistTheme.Colors.text)
+                    .frame(width: 4, height: 20)
+
+                Text("SUMMARY")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.text)
             }
 
-            Text(advice.reason)
-                .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+            // Analysis Text
+            Text(analysis.summary)
+                .font(BrutalistTheme.Typography.body)
+                .foregroundColor(BrutalistTheme.Colors.text)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(BrutalistTheme.Spacing.md)
+        .padding(BrutalistTheme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BrutalistTheme.Colors.background)
         .brutalistCard()
     }
 
-    private var disclaimerView: some View {
-        HStack(spacing: BrutalistTheme.Spacing.sm) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12))
-                .foregroundColor(BrutalistTheme.Colors.warning)
+    // MARK: - Warnings Section
 
-            Text("This analysis is AI-generated and for reference only. Always verify with multiple tests and consult professionals for critical issues.")
-                .font(.system(size: 10))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+    private func warningsSection(_ warnings: [String]) -> some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
+            // Section Header
+            HStack {
+                Rectangle()
+                    .fill(BrutalistTheme.Colors.warning)
+                    .frame(width: 4, height: 20)
+
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.warning)
+
+                Text("WARNINGS")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.warning)
+
+                Spacer()
+
+                Text("\(warnings.count)")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(BrutalistTheme.Colors.warning)
+            }
+
+            // Warning Items
+            VStack(spacing: BrutalistTheme.Spacing.sm) {
+                ForEach(warnings, id: \.self) { warning in
+                    HStack(alignment: .top, spacing: BrutalistTheme.Spacing.md) {
+                        Text("!")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .frame(width: 24, height: 24)
+                            .background(BrutalistTheme.Colors.warning)
+
+                        Text(warning)
+                            .font(BrutalistTheme.Typography.body)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                    }
+                    .padding(BrutalistTheme.Spacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BrutalistTheme.Colors.warning.opacity(0.15))
+                    .brutalistBorder(width: 2, color: BrutalistTheme.Colors.warning)
+                }
+            }
+        }
+    }
+
+    // MARK: - Recommendations Section
+
+    private var recommendationsSection: some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
+            // Section Header
+            HStack {
+                Rectangle()
+                    .fill(BrutalistTheme.Colors.action)
+                    .frame(width: 4, height: 20)
+
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.text)
+
+                Text("RECOMMENDATIONS")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.text)
+            }
+
+            // Recommendation Items
+            VStack(spacing: BrutalistTheme.Spacing.sm) {
+                ForEach(Array(analysis.recommendations.enumerated()), id: \.offset) { index, recommendation in
+                    HStack(alignment: .top, spacing: BrutalistTheme.Spacing.md) {
+                        Text("\(index + 1)")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .frame(width: 28, height: 28)
+                            .background(BrutalistTheme.Colors.action)
+
+                        Text(recommendation)
+                            .font(BrutalistTheme.Typography.body)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                    }
+                    .padding(BrutalistTheme.Spacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BrutalistTheme.Colors.action.opacity(0.15))
+                    .brutalistBorder(width: 2, color: BrutalistTheme.Colors.action)
+                }
+            }
+        }
+    }
+
+    // MARK: - Dosing Section
+
+    private func dosingSection(_ dosing: [DosingRecommendation]) -> some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
+            // Section Header
+            HStack {
+                Rectangle()
+                    .fill(BrutalistTheme.Colors.text)
+                    .frame(width: 4, height: 20)
+
+                Image(systemName: "eyedropper.halffull")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.text)
+
+                Text("DOSING ADVICE")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.text)
+            }
+
+            // Dosing Items
+            VStack(spacing: BrutalistTheme.Spacing.md) {
+                ForEach(dosing) { advice in
+                    VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
+                        // Product Name
+                        Text(advice.product.uppercased())
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+
+                        // Amount & Frequency
+                        HStack(alignment: .firstTextBaseline, spacing: BrutalistTheme.Spacing.md) {
+                            Text(advice.amount)
+                                .font(.system(size: 28, weight: .black))
+                                .foregroundColor(BrutalistTheme.Colors.action)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("FREQUENCY")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+
+                                Text(advice.frequency.uppercased())
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(BrutalistTheme.Colors.text)
+                            }
+                        }
+
+                        // Reason
+                        Text(advice.reason)
+                            .font(BrutalistTheme.Typography.caption)
+                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                    }
+                    .padding(BrutalistTheme.Spacing.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(BrutalistTheme.Colors.background)
+                    .brutalistCard()
+                }
+            }
+        }
+    }
+
+    // MARK: - Disclaimer Card
+
+    private var disclaimerCard: some View {
+        HStack(alignment: .top, spacing: BrutalistTheme.Spacing.md) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("AI DISCLAIMER")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+
+                Text("This analysis is generated by AI and is for reference only. Always verify readings with multiple tests and consult a marine aquarium professional for critical issues.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                    .lineSpacing(2)
+            }
         }
         .padding(BrutalistTheme.Spacing.md)
-        .background(BrutalistTheme.Colors.warning.opacity(0.1))
-        .brutalistBorder(width: 2, color: BrutalistTheme.Colors.warning.opacity(0.5))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BrutalistTheme.Colors.text.opacity(0.05))
+        .brutalistBorder(width: 2, color: BrutalistTheme.Colors.text.opacity(0.2))
+    }
+
+    // MARK: - Action Buttons
+
+    private var actionButtons: some View {
+        VStack(spacing: BrutalistTheme.Spacing.md) {
+            // Save Analysis Button
+            Button(action: saveAnalysis) {
+                HStack(spacing: BrutalistTheme.Spacing.sm) {
+                    Image(systemName: "square.and.arrow.down.fill")
+                        .font(.system(size: 16, weight: .bold))
+
+                    Text("SAVE ANALYSIS")
+                        .font(.system(size: 14, weight: .black))
+                }
+                .foregroundColor(BrutalistTheme.Colors.text)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, BrutalistTheme.Spacing.md)
+                .background(BrutalistTheme.Colors.action)
+                .brutalistCard()
+            }
+
+            // Share Button
+            Button(action: { showingShareSheet = true }) {
+                HStack(spacing: BrutalistTheme.Spacing.sm) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .bold))
+
+                    Text("SHARE RESULTS")
+                        .font(.system(size: 14, weight: .black))
+                }
+                .foregroundColor(BrutalistTheme.Colors.text)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, BrutalistTheme.Spacing.md)
+                .background(BrutalistTheme.Colors.background)
+                .brutalistBorder()
+            }
+
+            // Done Button
+            Button(action: { dismiss() }) {
+                Text("DONE")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, BrutalistTheme.Spacing.md)
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func saveAnalysis() {
+        // For now, just show confirmation
+        // In production, this would save to local storage or sync to backend
+        showingSavedConfirmation = true
+    }
+
+    private func generateShareText() -> String {
+        var text = """
+        ═══════════════════════════════
+        REEFBUDDY AI ANALYSIS
+        \(formattedDate.uppercased())
+        ═══════════════════════════════
+
+        SUMMARY:
+        \(analysis.summary)
+
+        """
+
+        if let warnings = analysis.warnings, !warnings.isEmpty {
+            text += "\n⚠️ WARNINGS:\n"
+            warnings.forEach { text += "• \($0)\n" }
+        }
+
+        if !analysis.recommendations.isEmpty {
+            text += "\n💡 RECOMMENDATIONS:\n"
+            analysis.recommendations.enumerated().forEach { index, rec in
+                text += "\(index + 1). \(rec)\n"
+            }
+        }
+
+        if let dosing = analysis.dosingAdvice, !dosing.isEmpty {
+            text += "\n💧 DOSING ADVICE:\n"
+            dosing.forEach { advice in
+                text += "• \(advice.product): \(advice.amount) - \(advice.frequency)\n"
+            }
+        }
+
+        text += "\n───────────────────────────────\nGenerated by ReefBuddy 🐠"
+        return text
+    }
+}
+
+// MARK: - Brutalist Loading View
+
+/// Full-screen loading overlay with animated progress bar in brutalist style
+struct BrutalistLoadingView: View {
+    @State private var progress: CGFloat = 0
+    @State private var isAnimating = false
+    @State private var dotCount = 0
+
+    private let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ZStack {
+            // Semi-transparent background
+            BrutalistTheme.Colors.background
+                .opacity(0.95)
+                .ignoresSafeArea()
+
+            VStack(spacing: BrutalistTheme.Spacing.xl) {
+                // AI Icon
+                ZStack {
+                    Rectangle()
+                        .fill(BrutalistTheme.Colors.text)
+                        .frame(width: 80, height: 80)
+
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 40, weight: .black))
+                        .foregroundColor(BrutalistTheme.Colors.background)
+                }
+                .brutalistShadow()
+
+                // Loading Text
+                VStack(spacing: BrutalistTheme.Spacing.sm) {
+                    Text("ANALYZING")
+                        .font(.system(size: 28, weight: .black))
+                        .foregroundColor(BrutalistTheme.Colors.text)
+
+                    Text("PARAMETERS" + String(repeating: ".", count: dotCount))
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                        .frame(width: 160, alignment: .leading)
+                }
+
+                // Progress Bar Container
+                VStack(spacing: BrutalistTheme.Spacing.md) {
+                    // Progress Bar
+                    ZStack(alignment: .leading) {
+                        // Background Track
+                        Rectangle()
+                            .fill(BrutalistTheme.Colors.text.opacity(0.2))
+                            .frame(height: 12)
+
+                        // Animated Progress
+                        Rectangle()
+                            .fill(BrutalistTheme.Colors.action)
+                            .frame(width: progress * 240, height: 12)
+                    }
+                    .frame(width: 240, height: 12)
+                    .brutalistBorder(width: 3, color: BrutalistTheme.Colors.text)
+
+                    // Status Text
+                    Text("AI PROCESSING")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .tracking(2)
+                }
+
+                // Decorative Elements
+                HStack(spacing: BrutalistTheme.Spacing.sm) {
+                    ForEach(0..<3) { index in
+                        Rectangle()
+                            .fill(index <= Int(progress * 3) ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text.opacity(0.3))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+            }
+            .padding(BrutalistTheme.Spacing.xxl)
+        }
+        .onAppear {
+            startAnimation()
+        }
+        .onReceive(timer) { _ in
+            dotCount = (dotCount + 1) % 4
+        }
+    }
+
+    private func startAnimation() {
+        // Indeterminate progress animation
+        withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            progress = 1.0
+        }
     }
 }
 

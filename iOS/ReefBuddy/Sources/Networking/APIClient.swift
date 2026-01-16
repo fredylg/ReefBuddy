@@ -9,6 +9,9 @@ actor APIClient {
 
     // MARK: - Configuration
 
+    /// Production API URL (Cloudflare Worker)
+    private static let productionURL = "https://reefbuddy.fredylg.workers.dev"
+
     /// Base URL for the API (Cloudflare Worker)
     private let baseURL: URL
 
@@ -24,15 +27,15 @@ actor APIClient {
     // MARK: - Initialization
 
     init(baseURL: URL? = nil) {
-        // Use environment variable or default to localhost for development
+        // Priority: 1) Passed URL, 2) Environment variable, 3) Production URL
         if let baseURL = baseURL {
             self.baseURL = baseURL
         } else if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
                   let url = URL(string: envURL) {
             self.baseURL = url
         } else {
-            // Default to local development worker
-            self.baseURL = URL(string: "http://localhost:8787")!
+            // Default to production Cloudflare Worker
+            self.baseURL = URL(string: Self.productionURL)!
         }
 
         // Configure URL session
@@ -149,19 +152,31 @@ actor APIClient {
     // MARK: - AI Analysis Endpoint
 
     /// Request AI analysis of water parameters
-    /// This endpoint routes through Cloudflare AI Gateway to Claude-3.5-Sonnet
-    func analyzeParameters(_ measurement: Measurement) async throws -> AnalysisResponse {
-        let url = baseURL.appendingPathComponent("api/analyze")
+    /// This endpoint routes through Cloudflare AI Gateway to Claude
+    func analyzeParameters(_ measurement: Measurement, tankVolume: Double) async throws -> AnalysisResponse {
+        let url = baseURL.appendingPathComponent("analyze")
         var request = makeRequest(url: url, method: "POST")
 
-        let requestBody = CreateMeasurementRequest(from: measurement)
-        request.httpBody = try encoder.encode(requestBody)
+        // Use a plain JSON encoder for this endpoint (Worker expects camelCase, not snake_case)
+        let analysisEncoder = JSONEncoder()
+        analysisEncoder.dateEncodingStrategy = .iso8601
+
+        let requestBody = AnalysisRequest(measurement: measurement, tankVolume: tankVolume)
+        request.httpBody = try analysisEncoder.encode(requestBody)
 
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
 
-        let apiResponse = try decoder.decode(APIResponse<AnalysisResponse>.self, from: data)
-        return apiResponse.data
+        // Parse the Worker's response format (also uses camelCase)
+        let analysisDecoder = JSONDecoder()
+        analysisDecoder.dateDecodingStrategy = .iso8601
+        let apiResponse = try analysisDecoder.decode(AnalyzeAPIResponse.self, from: data)
+
+        if let analysis = apiResponse.analysis {
+            return analysis.toAnalysisResponse()
+        } else {
+            throw APIError.invalidResponse
+        }
     }
 
     // MARK: - User/Subscription Endpoints

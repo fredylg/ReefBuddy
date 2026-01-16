@@ -29,7 +29,7 @@ CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
 
 # Stripe Price ID for ReefBuddy Premium ($4.99/month)
 # Create this in Stripe Dashboard: https://dashboard.stripe.com/products
-STRIPE_PRICE_ID = "price_placeholder_replace_with_actual_id"
+STRIPE_PRICE_ID = "mock_price_id"  # Replace with real Stripe price ID when ready
 
 # AI Gateway Configuration
 # Route all LLM calls through Cloudflare AI Gateway for caching

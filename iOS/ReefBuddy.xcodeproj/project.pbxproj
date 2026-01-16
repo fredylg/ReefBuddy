@@ -13,6 +13,7 @@
 		8A1B2C3D00000004 /* BrutalistTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000014 /* BrutalistTheme.swift */; };
 		8A1B2C3D00000005 /* BrutalistButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000015 /* BrutalistButton.swift */; };
 		8A1B2C3D00000006 /* BrutalistTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000016 /* BrutalistTextField.swift */; };
+		8A1B2C3D0000003A /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003B /* ShareSheet.swift */; };
 		8A1B2C3D00000007 /* Tank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000017 /* Tank.swift */; };
 		8A1B2C3D00000008 /* Measurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000018 /* Measurement.swift */; };
 		8A1B2C3D00000009 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000019 /* User.swift */; };
@@ -29,7 +30,7 @@
 		8A1B2C3D00000029 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002A /* NotificationSettingsView.swift */; };
 		8A1B2C3D0000002B /* LivestockListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002C /* LivestockListView.swift */; };
 		8A1B2C3D0000002D /* LivestockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002E /* LivestockDetailView.swift */; };
-		8A1B2C3D0000002F /* AddLivestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000030 /* AddLivestockView.swift */; };
+		8A1B2C3D0000002F /* AddLivestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000031A /* AddLivestockView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		8A1B2C3D00000014 /* BrutalistTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistTheme.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000015 /* BrutalistButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistButton.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000016 /* BrutalistTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistTextField.swift; sourceTree = "<group>"; };
+		8A1B2C3D0000003B /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000017 /* Tank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tank.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000018 /* Measurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Measurement.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000019 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
@@ -56,7 +58,7 @@
 		8A1B2C3D0000002A /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000002C /* LivestockListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockListView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000002E /* LivestockDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockDetailView.swift; sourceTree = "<group>"; };
-		8A1B2C3D00000030 /* AddLivestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLivestockView.swift; sourceTree = "<group>"; };
+		8A1B2C3D00000031A /* AddLivestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLivestockView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +125,7 @@
 			children = (
 				8A1B2C3D00000015 /* BrutalistButton.swift */,
 				8A1B2C3D00000016 /* BrutalistTextField.swift */,
+				8A1B2C3D0000003B /* ShareSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -151,7 +154,7 @@
 				8A1B2C3D0000002A /* NotificationSettingsView.swift */,
 				8A1B2C3D0000002C /* LivestockListView.swift */,
 				8A1B2C3D0000002E /* LivestockDetailView.swift */,
-				8A1B2C3D00000030 /* AddLivestockView.swift */,
+				8A1B2C3D00000031A /* AddLivestockView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -255,6 +258,7 @@
 				8A1B2C3D00000004 /* BrutalistTheme.swift in Sources */,
 				8A1B2C3D00000005 /* BrutalistButton.swift in Sources */,
 				8A1B2C3D00000006 /* BrutalistTextField.swift in Sources */,
+				8A1B2C3D0000003A /* ShareSheet.swift in Sources */,
 				8A1B2C3D00000007 /* Tank.swift in Sources */,
 				8A1B2C3D00000008 /* Measurement.swift in Sources */,
 				8A1B2C3D00000009 /* User.swift in Sources */,
@@ -383,7 +387,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -440,7 +444,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;

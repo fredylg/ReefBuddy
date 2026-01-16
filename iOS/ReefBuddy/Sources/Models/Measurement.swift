@@ -300,6 +300,21 @@ struct AnalysisResponse: Codable {
     let recommendations: [String]
     let warnings: [String]?
     let dosingAdvice: [DosingRecommendation]?
+
+    /// Create from raw AI response (text only)
+    init(fromRawRecommendation text: String) {
+        self.summary = text
+        self.recommendations = []
+        self.warnings = nil
+        self.dosingAdvice = nil
+    }
+
+    init(summary: String, recommendations: [String], warnings: [String]?, dosingAdvice: [DosingRecommendation]?) {
+        self.summary = summary
+        self.recommendations = recommendations
+        self.warnings = warnings
+        self.dosingAdvice = dosingAdvice
+    }
 }
 
 /// A specific dosing recommendation from AI analysis
@@ -309,4 +324,91 @@ struct DosingRecommendation: Codable, Identifiable {
     let amount: String
     let frequency: String
     let reason: String
+}
+
+// MARK: - Analysis API Models
+
+/// Request body for AI analysis endpoint (matches Worker's AnalysisRequestSchema)
+struct AnalysisRequest: Codable {
+    let tankId: String
+    let parameters: WaterParameters
+    let tankVolume: Double
+
+    // Use explicit coding keys to ensure camelCase (Worker expects camelCase, not snake_case)
+    enum CodingKeys: String, CodingKey {
+        case tankId
+        case parameters
+        case tankVolume
+    }
+
+    struct WaterParameters: Codable {
+        let salinity: Double?
+        let temperature: Double?
+        let ph: Double?
+        let alkalinity: Double?
+        let calcium: Double?
+        let magnesium: Double?
+        let nitrate: Double?
+        let phosphate: Double?
+        let ammonia: Double?
+
+        // Worker expects lowercase 'ph', not 'pH'
+        enum CodingKeys: String, CodingKey {
+            case salinity, temperature, ph, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia
+        }
+    }
+
+    init(measurement: Measurement, tankVolume: Double) {
+        self.tankId = measurement.tankId.uuidString
+        self.tankVolume = tankVolume
+        self.parameters = WaterParameters(
+            salinity: measurement.salinity,
+            temperature: measurement.temperature,
+            ph: measurement.pH,
+            alkalinity: measurement.alkalinity,
+            calcium: measurement.calcium,
+            magnesium: measurement.magnesium,
+            nitrate: measurement.nitrate,
+            phosphate: measurement.phosphate,
+            ammonia: measurement.ammonia
+        )
+    }
+}
+
+/// Response wrapper from /analyze endpoint
+struct AnalyzeAPIResponse: Codable {
+    let success: Bool
+    let tankId: String?
+    let analysis: AnalysisContent?
+    let rateLimitRemaining: Int?
+
+    /// The analysis content - could be structured or just a recommendation string
+    struct AnalysisContent: Codable {
+        // Structured fields (if AI returns JSON)
+        let summary: String?
+        let recommendations: [String]?
+        let warnings: [String]?
+        let dosingAdvice: [DosingRecommendation]?
+        // Fallback field (if AI returns plain text)
+        let recommendation: String?
+        let status: String?
+        let message: String?
+
+        func toAnalysisResponse() -> AnalysisResponse {
+            if let summary = summary {
+                return AnalysisResponse(
+                    summary: summary,
+                    recommendations: recommendations ?? [],
+                    warnings: warnings,
+                    dosingAdvice: dosingAdvice
+                )
+            } else if let recommendation = recommendation {
+                return AnalysisResponse(fromRawRecommendation: recommendation)
+            } else if let message = message {
+                return AnalysisResponse(fromRawRecommendation: message)
+            } else {
+                return AnalysisResponse(fromRawRecommendation: "Analysis complete. Check your parameters.")
+            }
+        }
+    }
 }
