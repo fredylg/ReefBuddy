@@ -25,6 +25,11 @@
 		8A1B2C3D00000021 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000022 /* ChartView.swift */; };
 		8A1B2C3D00000023 /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000024 /* SubscriptionView.swift */; };
 		8A1B2C3D00000025 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000026 /* ExportView.swift */; };
+		8A1B2C3D00000027 /* Livestock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000028 /* Livestock.swift */; };
+		8A1B2C3D00000029 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002A /* NotificationSettingsView.swift */; };
+		8A1B2C3D0000002B /* LivestockListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002C /* LivestockListView.swift */; };
+		8A1B2C3D0000002D /* LivestockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002E /* LivestockDetailView.swift */; };
+		8A1B2C3D0000002F /* AddLivestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000030 /* AddLivestockView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +52,11 @@
 		8A1B2C3D00000022 /* ChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000024 /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000026 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
+		8A1B2C3D00000028 /* Livestock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Livestock.swift; sourceTree = "<group>"; };
+		8A1B2C3D0000002A /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
+		8A1B2C3D0000002C /* LivestockListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockListView.swift; sourceTree = "<group>"; };
+		8A1B2C3D0000002E /* LivestockDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockDetailView.swift; sourceTree = "<group>"; };
+		8A1B2C3D00000030 /* AddLivestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLivestockView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +133,7 @@
 				8A1B2C3D00000017 /* Tank.swift */,
 				8A1B2C3D00000018 /* Measurement.swift */,
 				8A1B2C3D00000019 /* User.swift */,
+				8A1B2C3D00000028 /* Livestock.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -137,6 +148,10 @@
 				8A1B2C3D00000022 /* ChartView.swift */,
 				8A1B2C3D00000024 /* SubscriptionView.swift */,
 				8A1B2C3D00000026 /* ExportView.swift */,
+				8A1B2C3D0000002A /* NotificationSettingsView.swift */,
+				8A1B2C3D0000002C /* LivestockListView.swift */,
+				8A1B2C3D0000002E /* LivestockDetailView.swift */,
+				8A1B2C3D00000030 /* AddLivestockView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -251,6 +266,11 @@
 				8A1B2C3D00000021 /* ChartView.swift in Sources */,
 				8A1B2C3D00000023 /* SubscriptionView.swift in Sources */,
 				8A1B2C3D00000025 /* ExportView.swift in Sources */,
+				8A1B2C3D00000027 /* Livestock.swift in Sources */,
+				8A1B2C3D00000029 /* NotificationSettingsView.swift in Sources */,
+				8A1B2C3D0000002B /* LivestockListView.swift in Sources */,
+				8A1B2C3D0000002D /* LivestockDetailView.swift in Sources */,
+				8A1B2C3D0000002F /* AddLivestockView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

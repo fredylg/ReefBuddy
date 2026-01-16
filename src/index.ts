@@ -20,6 +20,23 @@ import {
   getWeeklyAverages,
 } from './historical';
 import { exportMeasurementsToCSV, checkPremiumAccess } from './export';
+import {
+  RegisterTokenSchema,
+  UpdateSettingsSchema,
+  HistoryQuerySchema as NotificationHistoryQuerySchema,
+  getUserNotificationSettings,
+  initializeDefaultSettings,
+  upsertNotificationSetting,
+  getUserPushTokens,
+  registerPushToken,
+  unregisterPushToken,
+  getNotificationHistory,
+  markNotificationsRead,
+  processAlertsForMeasurement,
+  DEFAULT_THRESHOLDS,
+  type ParameterName,
+  type NotificationSetting,
+} from './notifications';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -185,6 +202,64 @@ const ExportQuerySchema = z.object({
   end: z.string().datetime().describe('End date in ISO 8601 format'),
 });
 
+// =============================================================================
+// LIVESTOCK SCHEMAS
+// =============================================================================
+
+/**
+ * Valid livestock categories from existing schema
+ */
+const LivestockCategoryEnum = z.enum(['SPS', 'LPS', 'Soft', 'Fish', 'Invertebrate']);
+
+/**
+ * Valid health status values
+ */
+const HealthStatusEnum = z.enum(['healthy', 'sick', 'deceased', 'quarantine']);
+
+/**
+ * Valid log types for livestock health tracking
+ */
+const LogTypeEnum = z.enum(['feeding', 'observation', 'treatment', 'death']);
+
+/**
+ * Schema for creating new livestock
+ */
+const LivestockCreateSchema = z.object({
+  name: z.string().min(1).max(255).describe('Display name for the livestock'),
+  species: z.string().max(255).optional().describe('Scientific or common species name'),
+  category: LivestockCategoryEnum.describe('Type of livestock: SPS, LPS, Soft, Fish, or Invertebrate'),
+  quantity: z.number().int().min(1).default(1).describe('Number of individuals'),
+  purchaseDate: z.string().datetime().optional().describe('Date of purchase in ISO 8601 format'),
+  purchasePrice: z.number().min(0).optional().describe('Purchase price'),
+  healthStatus: HealthStatusEnum.optional().default('healthy').describe('Current health status'),
+  notes: z.string().max(2000).optional().describe('Additional notes or observations'),
+  imageUrl: z.string().url().max(2048).optional().describe('URL to livestock image'),
+});
+
+/**
+ * Schema for updating livestock details
+ */
+const LivestockUpdateSchema = z.object({
+  name: z.string().min(1).max(255).optional().describe('Display name for the livestock'),
+  species: z.string().max(255).optional().describe('Scientific or common species name'),
+  category: LivestockCategoryEnum.optional().describe('Type of livestock'),
+  quantity: z.number().int().min(0).optional().describe('Number of individuals (0 for deceased)'),
+  purchaseDate: z.string().datetime().optional().describe('Date of purchase in ISO 8601 format'),
+  purchasePrice: z.number().min(0).optional().describe('Purchase price'),
+  healthStatus: HealthStatusEnum.optional().describe('Current health status'),
+  notes: z.string().max(2000).optional().describe('Additional notes or observations'),
+  imageUrl: z.string().url().max(2048).optional().describe('URL to livestock image'),
+});
+
+/**
+ * Schema for creating livestock health log entries
+ */
+const LivestockLogSchema = z.object({
+  logType: LogTypeEnum.describe('Type of log entry: feeding, observation, treatment, or death'),
+  description: z.string().max(2000).optional().describe('Details about the event'),
+  loggedAt: z.string().datetime().optional().describe('When the event occurred (defaults to now)'),
+});
+
 // Export schemas for external use
 export type WaterParameters = z.infer<typeof WaterParametersSchema>;
 export type AnalysisRequest = z.infer<typeof AnalysisRequestSchema>;
@@ -193,6 +268,9 @@ export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type CreateMeasurement = z.infer<typeof CreateMeasurementSchema>;
 export type SubscriptionCheckout = z.infer<typeof SubscriptionCheckoutSchema>;
 export type SubscriptionCancel = z.infer<typeof SubscriptionCancelSchema>;
+export type LivestockCreate = z.infer<typeof LivestockCreateSchema>;
+export type LivestockUpdate = z.infer<typeof LivestockUpdateSchema>;
+export type LivestockLog = z.infer<typeof LivestockLogSchema>;
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -715,9 +793,9 @@ async function handleCreateMeasurement(
     const data = validationResult.data;
 
     // Verify the tank belongs to the authenticated user
-    const tank = (await env.DB.prepare('SELECT id, user_id FROM tanks WHERE id = ?')
+    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ?')
       .bind(data.tankId)
-      .first()) as { id: string; user_id: string } | null;
+      .first()) as { id: string; user_id: string; name: string } | null;
 
     if (!tank) {
       return errorResponse('Not found', 'Tank not found', 404);
@@ -751,6 +829,39 @@ async function handleCreateMeasurement(
       )
       .run();
 
+    // Check for parameter alerts and send notifications
+    let alerts: Array<{
+      parameter: string;
+      value: number;
+      thresholdType: 'min' | 'max';
+      thresholdValue: number;
+      message: string;
+    }> = [];
+
+    try {
+      alerts = await processAlertsForMeasurement(
+        env.DB,
+        auth.userId,
+        {
+          id: measurementId,
+          tank_id: data.tankId,
+          ph: data.ph,
+          alkalinity: data.alkalinity,
+          calcium: data.calcium,
+          magnesium: data.magnesium,
+          ammonia: data.ammonia,
+          nitrate: data.nitrate,
+          phosphate: data.phosphate,
+          salinity: data.salinity,
+          temperature: data.temperature,
+        },
+        tank.name
+      );
+    } catch (alertError) {
+      // Log error but don't fail the measurement creation
+      console.error('Error processing alerts:', alertError);
+    }
+
     return jsonResponse(
       {
         success: true,
@@ -768,6 +879,7 @@ async function handleCreateMeasurement(
           temperature: data.temperature ?? null,
           ammonia: data.ammonia ?? null,
         },
+        alerts: alerts.length > 0 ? alerts : undefined,
       },
       201
     );
@@ -1426,6 +1538,844 @@ async function handleExportCSV(
 }
 
 // =============================================================================
+// NOTIFICATION HANDLERS
+// =============================================================================
+
+/**
+ * Handle registering a push token
+ * POST /notifications/token (authenticated)
+ */
+async function handleRegisterPushToken(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const body = await request.json();
+
+    const validationResult = RegisterTokenSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const { token, platform, deviceName } = validationResult.data;
+
+    const pushToken = await registerPushToken(env.DB, auth.userId, token, platform, deviceName);
+
+    return jsonResponse(
+      {
+        success: true,
+        token: {
+          id: pushToken.id,
+          platform: pushToken.platform,
+          device_name: pushToken.device_name,
+          created_at: pushToken.created_at,
+        },
+      },
+      201
+    );
+  } catch (error) {
+    console.error('Register push token error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle unregistering a push token
+ * DELETE /notifications/token (authenticated)
+ */
+async function handleUnregisterPushToken(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const body = await request.json();
+
+    const tokenSchema = z.object({ token: z.string().min(1) });
+    const validationResult = tokenSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const { token } = validationResult.data;
+
+    // Verify the token belongs to this user before deleting
+    const userTokens = await getUserPushTokens(env.DB, auth.userId);
+    const ownsToken = userTokens.some((t) => t.token === token);
+
+    if (!ownsToken) {
+      return errorResponse('Not found', 'Push token not found or does not belong to this user', 404);
+    }
+
+    const deleted = await unregisterPushToken(env.DB, token);
+
+    if (!deleted) {
+      return errorResponse('Not found', 'Push token not found', 404);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: 'Push token unregistered successfully',
+    });
+  } catch (error) {
+    console.error('Unregister push token error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle getting notification settings
+ * GET /notifications/settings (authenticated)
+ */
+async function handleGetNotificationSettings(
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    let settings = await getUserNotificationSettings(env.DB, auth.userId);
+
+    // If no settings exist, initialize with defaults
+    if (settings.length === 0) {
+      settings = await initializeDefaultSettings(env.DB, auth.userId);
+    }
+
+    // Transform settings to a more user-friendly format
+    const settingsMap: Record<string, {
+      minThreshold: number | null;
+      maxThreshold: number | null;
+      enabled: boolean;
+      defaultMin: number | null;
+      defaultMax: number | null;
+    }> = {};
+
+    for (const setting of settings) {
+      const defaults = DEFAULT_THRESHOLDS[setting.parameter];
+      settingsMap[setting.parameter] = {
+        minThreshold: setting.min_threshold,
+        maxThreshold: setting.max_threshold,
+        enabled: setting.enabled,
+        defaultMin: defaults?.min ?? null,
+        defaultMax: defaults?.max ?? null,
+      };
+    }
+
+    return jsonResponse({
+      success: true,
+      settings: settingsMap,
+    });
+  } catch (error) {
+    console.error('Get notification settings error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle updating notification settings
+ * PUT /notifications/settings (authenticated)
+ */
+async function handleUpdateNotificationSettings(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const body = await request.json();
+
+    const validationResult = UpdateSettingsSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const { settings } = validationResult.data;
+
+    // Update each setting
+    const updatedSettings: NotificationSetting[] = [];
+    for (const setting of settings) {
+      // Get existing setting or defaults
+      const existingSettings = await getUserNotificationSettings(env.DB, auth.userId);
+      const existing = existingSettings.find((s) => s.parameter === setting.parameter);
+      const defaults = DEFAULT_THRESHOLDS[setting.parameter as ParameterName];
+
+      const minThreshold = setting.minThreshold !== undefined
+        ? setting.minThreshold
+        : (existing?.min_threshold ?? defaults?.min ?? null);
+
+      const maxThreshold = setting.maxThreshold !== undefined
+        ? setting.maxThreshold
+        : (existing?.max_threshold ?? defaults?.max ?? null);
+
+      const enabled = setting.enabled !== undefined
+        ? setting.enabled
+        : (existing?.enabled ?? true);
+
+      const updated = await upsertNotificationSetting(
+        env.DB,
+        auth.userId,
+        setting.parameter as ParameterName,
+        minThreshold,
+        maxThreshold,
+        enabled
+      );
+
+      updatedSettings.push(updated);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: `Updated ${updatedSettings.length} notification setting(s)`,
+      settings: updatedSettings.map((s) => ({
+        parameter: s.parameter,
+        minThreshold: s.min_threshold,
+        maxThreshold: s.max_threshold,
+        enabled: s.enabled,
+      })),
+    });
+  } catch (error) {
+    console.error('Update notification settings error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle getting notification history
+ * GET /notifications/history (authenticated)
+ */
+async function handleGetNotificationHistory(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const queryParams = {
+      limit: url.searchParams.get('limit') || '50',
+      offset: url.searchParams.get('offset') || '0',
+      type: url.searchParams.get('type') || undefined,
+      unreadOnly: url.searchParams.get('unreadOnly') || 'false',
+    };
+
+    const validationResult = NotificationHistoryQuerySchema.safeParse(queryParams);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const { limit, offset, type, unreadOnly } = validationResult.data;
+
+    const { notifications, total } = await getNotificationHistory(
+      env.DB,
+      auth.userId,
+      limit,
+      offset,
+      type,
+      unreadOnly
+    );
+
+    return jsonResponse({
+      success: true,
+      total,
+      limit,
+      offset,
+      notifications: notifications.map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        parameter: n.parameter,
+        value: n.value,
+        thresholdType: n.threshold_type,
+        thresholdValue: n.threshold_value,
+        sentAt: n.sent_at,
+        readAt: n.read_at,
+      })),
+    });
+  } catch (error) {
+    console.error('Get notification history error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle marking notifications as read
+ * POST /notifications/read (authenticated)
+ */
+async function handleMarkNotificationsRead(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const body = await request.json();
+
+    const markReadSchema = z.object({
+      notificationIds: z.array(z.string().uuid()).optional(),
+    });
+
+    const validationResult = markReadSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const { notificationIds } = validationResult.data;
+
+    const markedCount = await markNotificationsRead(env.DB, auth.userId, notificationIds);
+
+    return jsonResponse({
+      success: true,
+      message: notificationIds
+        ? `Marked ${markedCount} notification(s) as read`
+        : `Marked all (${markedCount}) notifications as read`,
+      markedCount,
+    });
+  } catch (error) {
+    console.error('Mark notifications read error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+// =============================================================================
+// LIVESTOCK HANDLERS
+// =============================================================================
+
+/**
+ * Livestock record from database
+ */
+interface LivestockRecord {
+  id: string;
+  tank_id: string;
+  name: string;
+  species: string | null;
+  category: string | null;
+  quantity: number;
+  purchase_date: string | null;
+  purchase_price: number | null;
+  health_status: string | null;
+  notes: string | null;
+  image_url: string | null;
+  added_at: string;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+/**
+ * Livestock log record from database
+ */
+interface LivestockLogRecord {
+  id: string;
+  livestock_id: string;
+  log_type: string;
+  description: string | null;
+  logged_at: string;
+  created_at: string;
+}
+
+/**
+ * Verify livestock ownership helper
+ * Returns livestock if found, belongs to user's tank, and not deleted, or error response
+ */
+async function verifyLivestockOwnership(
+  env: Env,
+  livestockId: string,
+  userId: string
+): Promise<LivestockRecord | Response> {
+  const livestock = (await env.DB.prepare(
+    `SELECT l.* FROM livestock l
+     JOIN tanks t ON l.tank_id = t.id
+     WHERE l.id = ? AND t.user_id = ? AND l.deleted_at IS NULL AND t.deleted_at IS NULL`
+  )
+    .bind(livestockId, userId)
+    .first()) as LivestockRecord | null;
+
+  if (!livestock) {
+    return errorResponse('Not found', 'Livestock not found or you do not have access', 404);
+  }
+
+  return livestock;
+}
+
+/**
+ * Handle creating new livestock
+ * POST /tanks/:tankId/livestock (authenticated)
+ */
+async function handleCreateLivestock(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext,
+  tankId: string
+): Promise<Response> {
+  try {
+    // Verify tank ownership
+    const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
+    if (tankResult instanceof Response) {
+      return tankResult;
+    }
+
+    const body = await request.json();
+
+    const validationResult = LivestockCreateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const data = validationResult.data;
+
+    // Create livestock
+    const livestockId = generateUUID();
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(
+      `INSERT INTO livestock (id, tank_id, name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        livestockId,
+        tankId,
+        data.name,
+        data.species ?? null,
+        data.category,
+        data.quantity,
+        data.purchaseDate ?? null,
+        data.purchasePrice ?? null,
+        data.healthStatus ?? 'healthy',
+        data.notes ?? null,
+        data.imageUrl ?? null,
+        now,
+        now
+      )
+      .run();
+
+    return jsonResponse(
+      {
+        success: true,
+        livestock: {
+          id: livestockId,
+          tank_id: tankId,
+          name: data.name,
+          species: data.species ?? null,
+          category: data.category,
+          quantity: data.quantity,
+          purchase_date: data.purchaseDate ?? null,
+          purchase_price: data.purchasePrice ?? null,
+          health_status: data.healthStatus ?? 'healthy',
+          notes: data.notes ?? null,
+          image_url: data.imageUrl ?? null,
+          added_at: now,
+          created_at: now,
+        },
+      },
+      201
+    );
+  } catch (error) {
+    console.error('Create livestock error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle listing tank livestock
+ * GET /tanks/:tankId/livestock (authenticated)
+ */
+async function handleListLivestock(
+  env: Env,
+  auth: AuthenticatedContext,
+  tankId: string
+): Promise<Response> {
+  try {
+    // Verify tank ownership
+    const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
+    if (tankResult instanceof Response) {
+      return tankResult;
+    }
+
+    // Get all non-deleted livestock for this tank
+    const result = await env.DB.prepare(
+      `SELECT * FROM livestock WHERE tank_id = ? AND deleted_at IS NULL ORDER BY added_at DESC`
+    )
+      .bind(tankId)
+      .all();
+
+    const livestock = result.results as LivestockRecord[];
+
+    return jsonResponse({
+      success: true,
+      tank_id: tankId,
+      tank_name: tankResult.name,
+      count: livestock.length,
+      livestock: livestock.map((item) => ({
+        id: item.id,
+        tank_id: item.tank_id,
+        name: item.name,
+        species: item.species,
+        category: item.category,
+        quantity: item.quantity,
+        purchase_date: item.purchase_date,
+        purchase_price: item.purchase_price,
+        health_status: item.health_status,
+        notes: item.notes,
+        image_url: item.image_url,
+        added_at: item.added_at,
+        created_at: item.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error('List livestock error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle updating livestock details
+ * PUT /livestock/:id (authenticated)
+ */
+async function handleUpdateLivestock(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext,
+  livestockId: string
+): Promise<Response> {
+  try {
+    // Verify livestock ownership
+    const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
+    if (livestockResult instanceof Response) {
+      return livestockResult;
+    }
+
+    const body = await request.json();
+
+    const validationResult = LivestockUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const data = validationResult.data;
+
+    // Build dynamic update query
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (data.name !== undefined) {
+      updates.push('name = ?');
+      values.push(data.name);
+    }
+    if (data.species !== undefined) {
+      updates.push('species = ?');
+      values.push(data.species);
+    }
+    if (data.category !== undefined) {
+      updates.push('category = ?');
+      values.push(data.category);
+    }
+    if (data.quantity !== undefined) {
+      updates.push('quantity = ?');
+      values.push(data.quantity);
+    }
+    if (data.purchaseDate !== undefined) {
+      updates.push('purchase_date = ?');
+      values.push(data.purchaseDate);
+    }
+    if (data.purchasePrice !== undefined) {
+      updates.push('purchase_price = ?');
+      values.push(data.purchasePrice);
+    }
+    if (data.healthStatus !== undefined) {
+      updates.push('health_status = ?');
+      values.push(data.healthStatus);
+    }
+    if (data.notes !== undefined) {
+      updates.push('notes = ?');
+      values.push(data.notes);
+    }
+    if (data.imageUrl !== undefined) {
+      updates.push('image_url = ?');
+      values.push(data.imageUrl);
+    }
+
+    if (updates.length === 0) {
+      return jsonResponse(
+        {
+          error: 'Bad request',
+          message: 'No fields to update',
+        },
+        400
+      );
+    }
+
+    values.push(livestockId);
+
+    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE id = ?`)
+      .bind(...values)
+      .run();
+
+    // Fetch updated record
+    const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE id = ?')
+      .bind(livestockId)
+      .first()) as LivestockRecord;
+
+    return jsonResponse({
+      success: true,
+      livestock: {
+        id: updated.id,
+        tank_id: updated.tank_id,
+        name: updated.name,
+        species: updated.species,
+        category: updated.category,
+        quantity: updated.quantity,
+        purchase_date: updated.purchase_date,
+        purchase_price: updated.purchase_price,
+        health_status: updated.health_status,
+        notes: updated.notes,
+        image_url: updated.image_url,
+        added_at: updated.added_at,
+        created_at: updated.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Update livestock error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle soft-deleting livestock
+ * DELETE /livestock/:id (authenticated)
+ */
+async function handleDeleteLivestock(
+  env: Env,
+  auth: AuthenticatedContext,
+  livestockId: string
+): Promise<Response> {
+  try {
+    // Verify livestock ownership
+    const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
+    if (livestockResult instanceof Response) {
+      return livestockResult;
+    }
+
+    // Soft delete the livestock
+    const now = new Date().toISOString();
+    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE id = ?')
+      .bind(now, livestockId)
+      .run();
+
+    return jsonResponse({
+      success: true,
+      message: 'Livestock deleted successfully',
+      livestock_id: livestockId,
+      deleted_at: now,
+    });
+  } catch (error) {
+    console.error('Delete livestock error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle creating a livestock log entry
+ * POST /livestock/:id/logs (authenticated)
+ */
+async function handleCreateLivestockLog(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext,
+  livestockId: string
+): Promise<Response> {
+  try {
+    // Verify livestock ownership
+    const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
+    if (livestockResult instanceof Response) {
+      return livestockResult;
+    }
+
+    const body = await request.json();
+
+    const validationResult = LivestockLogSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const data = validationResult.data;
+
+    // Create log entry
+    const logId = generateUUID();
+    const loggedAt = data.loggedAt || new Date().toISOString();
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(
+      `INSERT INTO livestock_logs (id, livestock_id, log_type, description, logged_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+      .bind(logId, livestockId, data.logType, data.description ?? null, loggedAt, now)
+      .run();
+
+    // If log type is 'death', update livestock health_status to 'deceased'
+    if (data.logType === 'death') {
+      await env.DB.prepare('UPDATE livestock SET health_status = ? WHERE id = ?')
+        .bind('deceased', livestockId)
+        .run();
+    }
+
+    return jsonResponse(
+      {
+        success: true,
+        log: {
+          id: logId,
+          livestock_id: livestockId,
+          log_type: data.logType,
+          description: data.description ?? null,
+          logged_at: loggedAt,
+          created_at: now,
+        },
+      },
+      201
+    );
+  } catch (error) {
+    console.error('Create livestock log error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle getting livestock logs
+ * GET /livestock/:id/logs (authenticated)
+ */
+async function handleGetLivestockLogs(
+  env: Env,
+  auth: AuthenticatedContext,
+  livestockId: string
+): Promise<Response> {
+  try {
+    // Verify livestock ownership
+    const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
+    if (livestockResult instanceof Response) {
+      return livestockResult;
+    }
+
+    // Get all logs for this livestock
+    const result = await env.DB.prepare(
+      `SELECT * FROM livestock_logs WHERE livestock_id = ? ORDER BY logged_at DESC`
+    )
+      .bind(livestockId)
+      .all();
+
+    const logs = result.results as LivestockLogRecord[];
+
+    return jsonResponse({
+      success: true,
+      livestock_id: livestockId,
+      livestock_name: livestockResult.name,
+      count: logs.length,
+      logs: logs.map((log) => ({
+        id: log.id,
+        livestock_id: log.livestock_id,
+        log_type: log.log_type,
+        description: log.description,
+        logged_at: log.logged_at,
+        created_at: log.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error('Get livestock logs error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+// =============================================================================
 // MAIN WORKER EXPORT (ES MODULES FORMAT)
 // =============================================================================
 
@@ -1438,7 +2388,7 @@ export default {
     // CORS headers for all responses
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
@@ -1472,6 +2422,18 @@ export default {
             'GET /tanks/:tankId/trends': 'Get parameter trends over time (requires auth)',
             'GET /tanks/:tankId/averages': 'Get daily/weekly averages (requires auth)',
             'GET /tanks/:tankId/export': 'Export measurements to CSV (premium only)',
+            'POST /tanks/:tankId/livestock': 'Add new livestock to tank (requires auth)',
+            'GET /tanks/:tankId/livestock': 'List tank livestock (requires auth)',
+            'PUT /livestock/:id': 'Update livestock details (requires auth)',
+            'DELETE /livestock/:id': 'Soft delete livestock (requires auth)',
+            'POST /livestock/:id/logs': 'Add health log entry (requires auth)',
+            'GET /livestock/:id/logs': 'Get livestock health logs (requires auth)',
+            'POST /notifications/token': 'Register push notification token (requires auth)',
+            'DELETE /notifications/token': 'Unregister push notification token (requires auth)',
+            'GET /notifications/settings': 'Get alert notification settings (requires auth)',
+            'PUT /notifications/settings': 'Update alert notification settings (requires auth)',
+            'GET /notifications/history': 'Get notification history (requires auth)',
+            'POST /notifications/read': 'Mark notifications as read (requires auth)',
           },
         });
         break;
@@ -1596,6 +2558,152 @@ export default {
           response = authResult;
         } else {
           response = await handleExportCSV(request, env, authResult, tankId);
+        }
+        break;
+      }
+
+      // Livestock endpoints (requires authentication)
+      // Pattern: POST /tanks/:tankId/livestock - Create livestock
+      case pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/) !== null && method === 'POST': {
+        const match = pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/);
+        const tankId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleCreateLivestock(request, env, authResult, tankId);
+        }
+        break;
+      }
+
+      // Pattern: GET /tanks/:tankId/livestock - List livestock
+      case pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/);
+        const tankId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleListLivestock(env, authResult, tankId);
+        }
+        break;
+      }
+
+      // Pattern: PUT /livestock/:id - Update livestock
+      case pathname.match(/^\/livestock\/([a-f0-9-]+)$/) !== null && method === 'PUT': {
+        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)$/);
+        const livestockId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleUpdateLivestock(request, env, authResult, livestockId);
+        }
+        break;
+      }
+
+      // Pattern: DELETE /livestock/:id - Delete livestock
+      case pathname.match(/^\/livestock\/([a-f0-9-]+)$/) !== null && method === 'DELETE': {
+        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)$/);
+        const livestockId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleDeleteLivestock(env, authResult, livestockId);
+        }
+        break;
+      }
+
+      // Pattern: POST /livestock/:id/logs - Create livestock log
+      case pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/) !== null && method === 'POST': {
+        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/);
+        const livestockId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleCreateLivestockLog(request, env, authResult, livestockId);
+        }
+        break;
+      }
+
+      // Pattern: GET /livestock/:id/logs - Get livestock logs
+      case pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/);
+        const livestockId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleGetLivestockLogs(env, authResult, livestockId);
+        }
+        break;
+      }
+
+      // Notification endpoints (requires authentication)
+      // POST /notifications/token - Register push token
+      case pathname === '/notifications/token' && method === 'POST': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleRegisterPushToken(request, env, authResult);
+        }
+        break;
+      }
+
+      // DELETE /notifications/token - Unregister push token
+      case pathname === '/notifications/token' && method === 'DELETE': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleUnregisterPushToken(request, env, authResult);
+        }
+        break;
+      }
+
+      // GET /notifications/settings - Get notification settings
+      case pathname === '/notifications/settings' && method === 'GET': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleGetNotificationSettings(env, authResult);
+        }
+        break;
+      }
+
+      // PUT /notifications/settings - Update notification settings
+      case pathname === '/notifications/settings' && method === 'PUT': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleUpdateNotificationSettings(request, env, authResult);
+        }
+        break;
+      }
+
+      // GET /notifications/history - Get notification history
+      case pathname === '/notifications/history' && method === 'GET': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleGetNotificationHistory(request, env, authResult);
+        }
+        break;
+      }
+
+      // POST /notifications/read - Mark notifications as read
+      case pathname === '/notifications/read' && method === 'POST': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleMarkNotificationsRead(request, env, authResult);
         }
         break;
       }

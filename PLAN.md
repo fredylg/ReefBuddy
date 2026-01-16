@@ -1,5 +1,63 @@
 # ReefBuddy Development Plan
 
+---
+
+## QA Summary Report (@tester-agent)
+
+**Date:** 2026-01-17
+**Status:** Comprehensive QA Review Completed
+
+### Test Results
+
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| api.test.ts | 43 passed | PASS |
+| db.test.ts | 20 passed | PASS |
+| ai-gateway.test.ts | 30 passed | PASS |
+| **TOTAL** | **93 passed** | **ALL PASS** |
+
+### File Inventory
+
+**Backend Source Files (5/5 verified):**
+- `src/index.ts` - Main worker (81KB)
+- `src/stripe.ts` - Stripe integration (15KB)
+- `src/historical.ts` - Historical trends (10KB)
+- `src/export.ts` - CSV export (5KB)
+- `src/notifications.ts` - Push notifications (22KB)
+
+**Migrations (6/6 verified):**
+- `0001_initial_schema.sql` - Users, tanks, measurements
+- `0002_schema_updates.sql` - Ammonia, category, soft delete
+- `0003_add_stripe_subscription.sql` - Stripe columns
+- `0003_historical_features.sql` - Historical data (duplicate numbering)
+- `0004_livestock_tracking.sql` - Livestock tables
+- `0005_notification_settings.sql` - Push notification tables
+
+**iOS Swift Files (22/22 verified):**
+- App: ReefBuddyApp.swift, ContentView.swift, AppIconGenerator.swift
+- Theme: BrutalistTheme.swift
+- Components: BrutalistButton.swift, BrutalistTextField.swift
+- Models: Tank.swift, Measurement.swift, User.swift, Livestock.swift
+- Views: TankListView.swift, MeasurementEntryView.swift, AnalysisView.swift, HistoryView.swift, ChartView.swift, SubscriptionView.swift, ExportView.swift, NotificationSettingsView.swift, LivestockListView.swift, LivestockDetailView.swift, AddLivestockView.swift
+- Networking: APIClient.swift
+
+**Xcode Project:**
+- `project.pbxproj` exists and includes all 22 Swift files
+- Project opened successfully via `open` command
+- Xcode build verification requires full Xcode installation
+
+### Issues Found
+
+1. **Missing AppIcon PNG:** `AppIcon-1024.png` is referenced in `AppIcon.appiconset/Contents.json` but the PNG file does not exist in the directory.
+
+2. **Migration Numbering Conflict:** Two migrations have the same number (0003):
+   - `0003_add_stripe_subscription.sql`
+   - `0003_historical_features.sql`
+
+3. **Xcode Build Verification:** Cannot run `xcodebuild` - only Command Line Tools installed, not full Xcode.
+
+---
+
 ## Phase 1: Core Backend Infrastructure
 
 ### Database & Migrations
@@ -219,9 +277,9 @@ npx wrangler d1 migrations apply reef-db --local
 - [x] APIClient.swift - Backend API client with all endpoints
 
 ### Assets
-- [!] AccentColor.colorset - Electric Aquamarine (#00FFD1)
-- [!] AppIcon.appiconset - Brutalist "RB" icon on aquamarine background
-- [!] AppIconGenerator.swift - SwiftUI preview for icon generation
+- [x] AccentColor.colorset - Electric Aquamarine (#00FFD1)
+- [!] AppIcon.appiconset - Contents.json exists but AppIcon-1024.png is MISSING
+- [x] AppIconGenerator.swift - SwiftUI preview for icon generation
 
 ---
 
@@ -276,52 +334,52 @@ iOS/ReefBuddy.xcodeproj/project.pbxproj
 Per CLAUDE.md New Brutalist Manifesto, verify:
 
 1. **Colors:**
-   - [ ] Background is pure white (#FFFFFF)
-   - [ ] Text/Accents are pure black (#000000)
-   - [ ] Action color is Electric Aquamarine (#00FFD1)
-   - [ ] Warning color is Safety Orange (#FF3D00)
+   - [x] Background is pure white (#FFFFFF)
+   - [x] Text/Accents are pure black (#000000)
+   - [x] Action color is Electric Aquamarine (#00FFD1)
+   - [x] Warning color is Safety Orange (#FF3D00)
 
 2. **Borders & Corners:**
-   - [ ] All borders are 3pt or 4pt solid black
-   - [ ] All corners are 0px radius (sharp corners)
-   - [ ] No rounded elements
+   - [x] All borders are 3pt or 4pt solid black
+   - [x] All corners are 0px radius (sharp corners)
+   - [x] No rounded elements
 
 3. **Shadows:**
-   - [ ] Hard offset shadows at 5pt x 5pt
-   - [ ] No blur, no gradients
-   - [ ] Pure black shadow color
+   - [x] Hard offset shadows at 5pt x 5pt
+   - [x] No blur, no gradients
+   - [x] Pure black shadow color
 
 4. **Typography:**
-   - [ ] Bold, oversized headers
-   - [ ] Grotesque sans-serif fonts (SF Pro)
+   - [x] Bold, oversized headers
+   - [x] Grotesque sans-serif fonts (SF Pro)
 
 ### Functional Testing Checklist
 
 **Tank List View:**
-- [ ] Displays sample tanks in DEBUG mode
-- [ ] Tank cards show name, type, volume, age
-- [ ] Selected tank has "ACTIVE" badge
-- [ ] Add tank sheet opens correctly
-- [ ] Delete confirmation alert works
+- [!] Displays sample tanks in DEBUG mode (requires simulator testing)
+- [!] Tank cards show name, type, volume, age (requires simulator testing)
+- [!] Selected tank has "ACTIVE" badge (requires simulator testing)
+- [!] Add tank sheet opens correctly (requires simulator testing)
+- [!] Delete confirmation alert works (requires simulator testing)
 
 **Measurement Entry View:**
-- [ ] All parameter fields accept numeric input
-- [ ] Target ranges display correctly
-- [ ] Border color changes based on value status
-- [ ] "Analyze Parameters" button works
-- [ ] "Save Without Analysis" button works
+- [!] All parameter fields accept numeric input (requires simulator testing)
+- [!] Target ranges display correctly (requires simulator testing)
+- [!] Border color changes based on value status (requires simulator testing)
+- [!] "Analyze Parameters" button works (requires simulator testing)
+- [!] "Save Without Analysis" button works (requires simulator testing)
 
 **Analysis View:**
-- [ ] Displays parameter grid with status
-- [ ] Shows warnings section when present
-- [ ] Shows recommendations section
-- [ ] Shows dosing advice cards
-- [ ] Share functionality works
+- [!] Displays parameter grid with status (requires simulator testing)
+- [!] Shows warnings section when present (requires simulator testing)
+- [!] Shows recommendations section (requires simulator testing)
+- [!] Shows dosing advice cards (requires simulator testing)
+- [!] Share functionality works (requires simulator testing)
 
 **Navigation:**
-- [ ] Tab bar shows 4 tabs (Tanks, Measure, History, Settings)
-- [ ] Tab switching works correctly
-- [ ] Header shows "REEFBUDDY" and free tier badge
+- [!] Tab bar shows 4 tabs (Tanks, Measure, History, Settings) (requires simulator testing)
+- [!] Tab switching works correctly (requires simulator testing)
+- [!] Header shows "REEFBUDDY" and free tier badge (requires simulator testing)
 
 ### Test Commands
 ```bash
@@ -341,10 +399,10 @@ xcodebuild test -project iOS/ReefBuddy.xcodeproj -scheme ReefBuddy -destination 
 - [x] Indexes for subscription lookups
 
 ### Subscription API
-- [!] `POST /subscriptions/create` - Create Stripe checkout session (requires auth)
-- [!] `POST /subscriptions/webhook` - Handle Stripe webhook events
-- [!] `GET /subscriptions/status` - Get current subscription status (requires auth)
-- [!] `POST /subscriptions/cancel` - Cancel subscription (requires auth)
+- [x] `POST /subscriptions/create` - Create Stripe checkout session (requires auth)
+- [x] `POST /subscriptions/webhook` - Handle Stripe webhook events
+- [x] `GET /subscriptions/status` - Get current subscription status (requires auth)
+- [x] `POST /subscriptions/cancel` - Cancel subscription (requires auth)
 
 ### Stripe Integration
 - [x] `src/stripe.ts` - Stripe API client using fetch (Workers compatible)
@@ -365,7 +423,7 @@ xcodebuild test -project iOS/ReefBuddy.xcodeproj -scheme ReefBuddy -destination 
 
 ## Handoff to @tester-agent (Subscription System)
 
-**Status:** Phase 2.5 Subscription System is ready for QA testing.
+**Status:** Phase 2.5 Subscription System is implemented and verified in code.
 
 ### Files Created/Modified for Review
 
@@ -557,8 +615,127 @@ stripe listen --forward-to localhost:8787/subscriptions/webhook
 
 ---
 
-## Phase 3: Advanced Features (Pending)
-- [ ] Livestock tracking
-- [ ] Historical trends and charts
-- [ ] Push notifications for parameter alerts
-- [x] Premium subscription features
+## Phase 3: Advanced Features
+
+### Livestock Tracking
+
+#### Database & Migrations
+- [x] Migration 0004: Livestock tracking enhancements
+  - purchase_date, purchase_price, health_status, notes, image_url columns
+  - livestock_logs table for health events
+  - Indexes for health status queries
+
+#### iOS Views
+- [x] Livestock.swift - Livestock model with category and health status enums
+- [x] LivestockListView.swift - List of livestock with category filtering
+- [x] LivestockDetailView.swift - Detailed view with health timeline
+- [x] AddLivestockView.swift - Form for adding new livestock
+
+#### Backend API (Pending Verification)
+- [!] `GET /tanks/:tankId/livestock` - List livestock for a tank
+- [!] `POST /tanks/:tankId/livestock` - Add new livestock
+- [!] `PUT /livestock/:id` - Update livestock
+- [!] `DELETE /livestock/:id` - Delete livestock (soft delete)
+- [!] `POST /livestock/:id/logs` - Add health log entry
+- [!] `GET /livestock/:id/logs` - Get health log history
+
+### Historical Trends and Charts
+
+#### Database & Migrations
+- [x] Migration 0003_historical_features.sql - Aggregation views (Note: duplicate numbering with stripe migration)
+
+#### Backend API
+- [x] `src/historical.ts` - Historical data functions
+- [x] `getMeasurementHistory()` - Paginated measurement history
+- [x] `getAllParameterTrends()` - Trend data for all parameters
+- [x] `getDailyAverages()` - Daily average calculations
+- [x] `getWeeklyAverages()` - Weekly average calculations
+
+#### iOS Views
+- [x] HistoryView.swift - Historical measurement list
+- [x] ChartView.swift - Parameter trend charts
+
+### Push Notifications
+
+#### Database & Migrations
+- [x] Migration 0005: Notification settings, push tokens, history tables
+  - notification_settings table for user thresholds
+  - push_tokens table for device registration
+  - notification_history table for sent alerts
+
+#### Backend API
+- [x] `src/notifications.ts` - Push notification module (22KB)
+- [x] Parameter threshold configuration
+- [x] Push token registration/unregistration
+- [x] Notification history tracking
+- [x] Alert processing for measurements
+
+#### iOS Views
+- [x] NotificationSettingsView.swift - Threshold configuration UI
+  - Parameter toggle switches
+  - Min/max threshold sliders
+  - Test notification button
+  - Notification history display
+
+### CSV Export
+
+#### Backend
+- [x] `src/export.ts` - CSV export functions
+- [x] `exportMeasurementsToCSV()` - Generate CSV from measurements
+- [x] `checkPremiumAccess()` - Premium tier verification
+
+#### iOS Views
+- [x] ExportView.swift - Export interface
+
+### Subscription UI
+
+#### iOS Views
+- [x] SubscriptionView.swift - Premium subscription purchase flow
+
+---
+
+## Known Issues & Action Items
+
+### Critical
+1. **AppIcon PNG Missing:** The file `iOS/ReefBuddy/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` does not exist but is referenced in Contents.json. @ui-brutalist needs to generate and add the icon.
+
+### Medium
+2. **Migration Numbering Conflict:** Two migrations have the same number (0003):
+   - `0003_add_stripe_subscription.sql`
+   - `0003_historical_features.sql`
+
+   @data-steward should rename one to avoid confusion (e.g., rename historical to 0003a or 0003b).
+
+### Low
+3. **iOS Simulator Testing:** Full UI testing requires Xcode installation. Currently only Command Line Tools are installed.
+
+---
+
+## Next Steps
+
+1. **@ui-brutalist:** Generate and add AppIcon-1024.png to AppIcon.appiconset
+2. **@data-steward:** Fix migration numbering conflict
+3. **@tester-agent:** Add tests for:
+   - Livestock API endpoints
+   - Push notification endpoints
+   - CSV export endpoint
+4. **All:** Conduct end-to-end testing once Xcode is available
+
+---
+
+## Test Coverage Summary
+
+| Module | Unit Tests | Integration Tests | E2E Tests |
+|--------|------------|-------------------|-----------|
+| Auth API | 93 tests pass | Needs manual testing | Pending |
+| Measurements API | Included above | Needs manual testing | Pending |
+| Analysis API | Included above | Needs manual testing | Pending |
+| Subscriptions | Code verified | Needs Stripe test mode | Pending |
+| Livestock | Code exists | Needs tests | Pending |
+| Notifications | Code exists | Needs tests | Pending |
+| Export | Code exists | Needs tests | Pending |
+| iOS UI | - | Requires Xcode | Pending |
+
+---
+
+*Last Updated: 2026-01-17 by @tester-agent*

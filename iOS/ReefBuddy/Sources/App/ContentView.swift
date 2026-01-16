@@ -97,6 +97,13 @@ struct ContentView: View {
                 noTankSelectedView
             }
 
+        case .livestock:
+            if appState.selectedTank != nil {
+                LivestockListView()
+            } else {
+                noTankSelectedView
+            }
+
         case .history:
             if let tank = appState.selectedTank {
                 HistoryView(tank: tank)
@@ -173,6 +180,7 @@ struct ContentView: View {
 enum Tab: CaseIterable {
     case tanks
     case measure
+    case livestock
     case history
     case settings
 
@@ -182,6 +190,8 @@ enum Tab: CaseIterable {
             return "TANKS"
         case .measure:
             return "MEASURE"
+        case .livestock:
+            return "LIVESTOCK"
         case .history:
             return "HISTORY"
         case .settings:
@@ -195,6 +205,8 @@ enum Tab: CaseIterable {
             return "Manage your aquariums"
         case .measure:
             return "Log water parameters"
+        case .livestock:
+            return "Track your corals & fish"
         case .history:
             return "Track your progress"
         case .settings:
@@ -208,6 +220,8 @@ enum Tab: CaseIterable {
             return "drop.fill"
         case .measure:
             return "pencil.and.list.clipboard"
+        case .livestock:
+            return "fish.fill"
         case .history:
             return "chart.line.uptrend.xyaxis"
         case .settings:
@@ -216,26 +230,178 @@ enum Tab: CaseIterable {
     }
 }
 
-// MARK: - Placeholder Views
+// MARK: - Settings View
 
-/// Placeholder for settings - to be implemented
+/// Settings view with notification configuration and app preferences.
+/// New Brutalist design: sharp corners, bold borders, high contrast.
 struct SettingsView: View {
-    var body: some View {
-        VStack(spacing: BrutalistTheme.Spacing.lg) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 60, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
 
-            Text("SETTINGS")
-                .font(BrutalistTheme.Typography.headerMedium)
+    @State private var showingNotificationSettings = false
+    @State private var showingSubscription = false
+    @State private var showingExport = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: BrutalistTheme.Spacing.md) {
+                // Notifications Section
+                settingsSection(title: "ALERTS", icon: "bell.fill") {
+                    settingsRow(
+                        icon: "bell.badge.fill",
+                        title: "Notification Settings",
+                        subtitle: "Configure parameter alerts"
+                    ) {
+                        showingNotificationSettings = true
+                    }
+                }
+
+                // Account Section
+                settingsSection(title: "ACCOUNT", icon: "person.fill") {
+                    settingsRow(
+                        icon: "crown.fill",
+                        title: "Subscription",
+                        subtitle: "Manage your plan"
+                    ) {
+                        showingSubscription = true
+                    }
+                }
+
+                // Data Section
+                settingsSection(title: "DATA", icon: "externaldrive.fill") {
+                    settingsRow(
+                        icon: "square.and.arrow.up.fill",
+                        title: "Export Data",
+                        subtitle: "Export your measurements"
+                    ) {
+                        showingExport = true
+                    }
+                }
+
+                // About Section
+                settingsSection(title: "ABOUT", icon: "info.circle.fill") {
+                    VStack(spacing: 0) {
+                        aboutRow(label: "Version", value: "1.0.0")
+                        Rectangle()
+                            .fill(BrutalistTheme.Colors.text.opacity(0.1))
+                            .frame(height: 1)
+                        aboutRow(label: "Build", value: "2026.01")
+                    }
+                }
+
+                // App info
+                VStack(spacing: BrutalistTheme.Spacing.sm) {
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(BrutalistTheme.Colors.action)
+
+                    Text("REEFBUDDY")
+                        .font(BrutalistTheme.Typography.headerSmall)
+                        .foregroundColor(BrutalistTheme.Colors.text)
+
+                    Text("Water chemistry for serious reefers")
+                        .font(BrutalistTheme.Typography.caption)
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                }
+                .padding(.vertical, BrutalistTheme.Spacing.xl)
+            }
+            .padding(BrutalistTheme.Spacing.lg)
+        }
+        .background(BrutalistTheme.Colors.background)
+        .sheet(isPresented: $showingNotificationSettings) {
+            NavigationStack {
+                NotificationSettingsView()
+                    .navigationTitle("NOTIFICATIONS")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Done") {
+                                showingNotificationSettings = false
+                            }
+                            .font(BrutalistTheme.Typography.button)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $showingSubscription) {
+            SubscriptionView()
+        }
+        .sheet(isPresented: $showingExport) {
+            if let tank = AppState().selectedTank {
+                ExportView(tank: tank)
+            }
+        }
+    }
+
+    // MARK: - Section Builder
+
+    private func settingsSection<Content: View>(
+        title: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .bold))
+                Text(title)
+                    .font(BrutalistTheme.Typography.caption)
+                    .fontWeight(.bold)
+            }
+            .foregroundColor(BrutalistTheme.Colors.text)
+
+            content()
+                .background(BrutalistTheme.Colors.cardBackground)
+                .brutalistCard()
+        }
+    }
+
+    private func settingsRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: BrutalistTheme.Spacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(BrutalistTheme.Typography.bodyBold)
+                        .foregroundColor(BrutalistTheme.Colors.text)
+
+                    Text(subtitle)
+                        .font(BrutalistTheme.Typography.caption)
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+            }
+            .padding(BrutalistTheme.Spacing.md)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func aboutRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(BrutalistTheme.Typography.body)
                 .foregroundColor(BrutalistTheme.Colors.text)
 
-            Text("App preferences and account")
+            Spacer()
+
+            Text(value)
                 .font(BrutalistTheme.Typography.body)
                 .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(BrutalistTheme.Colors.background)
+        .padding(BrutalistTheme.Spacing.md)
     }
 }
 

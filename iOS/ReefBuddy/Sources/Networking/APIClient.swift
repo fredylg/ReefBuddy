@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // MARK: - API Client
 
@@ -281,7 +282,3 @@ enum APIError: LocalizedError {
         }
     }
 }
-
-// MARK: - UIKit Import for Device ID
-
-import UIKit

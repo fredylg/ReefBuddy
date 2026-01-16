@@ -38,6 +38,12 @@ final class AppState: ObservableObject {
     /// Measurements for the selected tank
     @Published var measurements: [Measurement] = []
 
+    /// Livestock for the selected tank
+    @Published var livestock: [Livestock] = []
+
+    /// Health logs for livestock
+    @Published var livestockLogs: [LivestockLog] = []
+
     /// Loading state
     @Published var isLoading: Bool = false
 
@@ -166,6 +172,84 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Livestock Operations
+
+    /// Fetch livestock for a specific tank
+    func fetchLivestock(for tank: Tank) async {
+        isLoading = true
+        errorMessage = nil
+
+        // For now, filter from local data - in production would fetch from API
+        livestock = livestock.filter { $0.tankId == tank.id }
+
+        isLoading = false
+    }
+
+    /// Add new livestock
+    func addLivestock(_ newLivestock: Livestock) async {
+        isLoading = true
+        errorMessage = nil
+
+        // In production, this would call the API
+        // For now, add to local array
+        livestock.append(newLivestock)
+
+        isLoading = false
+    }
+
+    /// Update existing livestock
+    func updateLivestock(_ updatedLivestock: Livestock) async {
+        isLoading = true
+        errorMessage = nil
+
+        // Find and update the livestock
+        if let index = livestock.firstIndex(where: { $0.id == updatedLivestock.id }) {
+            var updated = updatedLivestock
+            updated.updatedAt = Date()
+            livestock[index] = updated
+        }
+
+        isLoading = false
+    }
+
+    /// Delete livestock
+    func deleteLivestock(_ livestockToDelete: Livestock) async {
+        isLoading = true
+        errorMessage = nil
+
+        // Remove from local array - in production would call API
+        livestock.removeAll { $0.id == livestockToDelete.id }
+        // Also remove related logs
+        livestockLogs.removeAll { $0.livestockId == livestockToDelete.id }
+
+        isLoading = false
+    }
+
+    /// Add a health log entry for livestock
+    func addLivestockLog(_ log: LivestockLog) async {
+        isLoading = true
+        errorMessage = nil
+
+        // Add the log
+        livestockLogs.insert(log, at: 0)
+
+        // Update livestock health status
+        if let index = livestock.firstIndex(where: { $0.id == log.livestockId }) {
+            var updated = livestock[index]
+            updated.healthStatus = log.healthStatus
+            updated.updatedAt = Date()
+            livestock[index] = updated
+        }
+
+        isLoading = false
+    }
+
+    /// Fetch health logs for specific livestock
+    func fetchLivestockLogs(for livestockItem: Livestock) -> [LivestockLog] {
+        return livestockLogs.filter { $0.livestockId == livestockItem.id }
+            .sorted { $0.loggedAt > $1.loggedAt }
+    }
+
     // MARK: - Sample Data (Debug)
 
     #if DEBUG
@@ -173,6 +257,8 @@ final class AppState: ObservableObject {
         tanks = Tank.samples
         selectedTank = tanks.first
         measurements = Measurement.samples
+        livestock = Livestock.samples
+        livestockLogs = LivestockLog.samples
     }
     #endif
 }
