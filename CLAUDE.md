@@ -85,12 +85,46 @@ A task is not complete until:
 - **Local Dev:** `npx wrangler dev`
 - **Database:** `npx wrangler d1 migrations apply reef-db --local`
 - **Test Execution:** `npx vitest run` (Backend) | `xcodebuild test` (iOS)
-- **Deploy:** `npx wrangler deploy`
+- **Deploy Backend:** `npx wrangler deploy`
+- **Deploy Website:** `npx wrangler pages deploy web --project-name reefbuddy-site`
 - **Verify Xcode Project:** `./verify-xcode-project.sh` (Run before/after ANY iOS work)
 - **Setup Git Hooks:** `./setup-hooks.sh` (Enables pre-commit validation to prevent UUID collisions)
-- **Setup Git Hooks:** `./setup-hooks.sh` (Enables pre-commit validation)
 
-## 8. iOS/Xcode Project Guidelines (CRITICAL)
+## 8. Promotional Website
+
+### Overview
+Single-page promotional website hosted on Cloudflare Pages at https://reefbuddy-site.pages.dev
+
+### File Structure
+```
+web/
+├── index.html    # Single-page promotional site
+├── style.css     # New Brutalist CSS design system
+└── README.md     # Website documentation
+```
+
+### Design System
+The website uses the same New Brutalist design as the iOS app:
+- **Colors:** `#FFFFFF` (white), `#000000` (black), `#00FFD1` (aquamarine), `#FF3D00` (orange)
+- **Borders:** 3-4pt solid black
+- **Corners:** 0px radius (sharp only)
+- **Shadows:** Hard offset 5px 5px, no blur
+- **Typography:** Space Grotesk (grotesque sans-serif)
+
+### Deployment
+```bash
+# Deploy to Cloudflare Pages
+npx wrangler pages deploy web --project-name reefbuddy-site
+```
+
+### Local Preview
+```bash
+open web/index.html
+# or
+npx serve web
+```
+
+## 9. iOS/Xcode Project Guidelines (CRITICAL)
 
 ### 🚨 ABSOLUTE RULE: NEVER DELETE OR RECREATE project.pbxproj 🚨
 **The file `iOS/ReefBuddy.xcodeproj/project.pbxproj` must NEVER be deleted, moved, or recreated under ANY circumstances.**

@@ -68,6 +68,7 @@ See [`PLAN.md`](PLAN.md) for detailed development roadmap and current status.
 - [`CLAUDE.md`](CLAUDE.md) - Development standards and agent roles
 - [`PLAN.md`](PLAN.md) - Project roadmap and QA status
 - [`iOS/README.md`](iOS/README.md) - iOS-specific setup and guidelines
+- [`web/`](web/) - Promotional website
 - [`migrations/`](migrations/) - Database schema changes
 
 ## 🎨 Design System
@@ -97,6 +98,7 @@ See [`PLAN.md`](PLAN.md) for detailed development roadmap and current status.
 
 ## 🚀 Deployment
 
+### Backend (Cloudflare Workers)
 ```bash
 # Deploy backend
 npx wrangler deploy
@@ -104,6 +106,14 @@ npx wrangler deploy
 # Apply production migrations
 npx wrangler d1 migrations apply reef-db --remote
 ```
+
+### Promotional Website (Cloudflare Pages)
+```bash
+# Deploy website
+npx wrangler pages deploy web --project-name reefbuddy-site
+```
+
+**Live URL:** https://reefbuddy-site.pages.dev
 
 ## 🤝 Contributing
 
