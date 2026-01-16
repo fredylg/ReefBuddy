@@ -1,5 +1,45 @@
 # ReefBuddy | Project Intelligence & Standards
 
+## ⚠️ CRITICAL - READ FIRST ⚠️
+
+### NEVER TOUCH THESE FILES (ALL AGENTS)
+The following files are **SACRED** and must NEVER be deleted, moved, or recreated:
+- **`iOS/ReefBuddy.xcodeproj/project.pbxproj`** - The Xcode project file
+- **DO NOT use `rm`, `mv`, or recreate the `.xcodeproj` directory**
+- **DO NOT suggest recreating the Xcode project**
+- **If you need to add Swift files, UPDATE the existing pbxproj, don't recreate it**
+
+### Before ANY iOS Work (ALL AGENTS)
+Run the verification script FIRST:
+```bash
+./verify-xcode-project.sh
+```
+
+Or the quick check:
+```bash
+test -f "iOS/ReefBuddy.xcodeproj/project.pbxproj" && echo "✅ Safe to proceed" || echo "❌ STOP - File missing!"
+```
+
+If the script fails or file is missing, **STOP IMMEDIATELY** and alert the user.
+
+### After ANY iOS Work (ALL AGENTS)
+Run the verification script LAST:
+```bash
+./verify-xcode-project.sh
+```
+
+Or the quick check:
+```bash
+test -f "iOS/ReefBuddy.xcodeproj/project.pbxproj" && wc -l "iOS/ReefBuddy.xcodeproj/project.pbxproj"
+```
+
+The file should have ~477+ lines. If missing or <100 lines, **STOP** and restore from git:
+```bash
+git checkout HEAD -- iOS/ReefBuddy.xcodeproj/project.pbxproj
+```
+
+---
+
 ## 1. Project Overview
 ReefBuddy is a high-contrast, New Brutalist iOS app for saltwater aquarium hobbyists. It uses Cloudflare Workers, D1, and AI to provide water chemistry analysis and dosing recommendations.
 
@@ -46,52 +86,70 @@ A task is not complete until:
 - **Database:** `npx wrangler d1 migrations apply reef-db --local`
 - **Test Execution:** `npx vitest run` (Backend) | `xcodebuild test` (iOS)
 - **Deploy:** `npx wrangler deploy`
+- **Verify Xcode Project:** `./verify-xcode-project.sh` (Run before/after ANY iOS work)
 
 ## 8. iOS/Xcode Project Guidelines (CRITICAL)
 
-### ⚠️ MANDATORY FOR @ui-brutalist ⚠️
-**Every time you create, rename, move, or delete a Swift file, you MUST update `project.pbxproj` in the SAME operation. This is NOT optional. A Swift file without a corresponding pbxproj entry will break the build.**
+### 🚨 ABSOLUTE RULE: NEVER DELETE OR RECREATE project.pbxproj 🚨
+**The file `iOS/ReefBuddy.xcodeproj/project.pbxproj` must NEVER be deleted, moved, or recreated under ANY circumstances.**
 
-### Xcode Project Structure
-The iOS app uses a manual Xcode project at `iOS/ReefBuddy.xcodeproj/`. The `project.pbxproj` file is critical and must be properly maintained.
+If you think you need to recreate it, **YOU ARE WRONG**. Stop and ask the user instead.
 
-### @ui-brutalist Checklist (EVERY iOS Task)
-Before marking any iOS task complete, @ui-brutalist MUST verify:
-- [ ] All new Swift files have PBXFileReference entries
-- [ ] All new Swift files have PBXBuildFile entries
-- [ ] All new Swift files are in correct PBXGroup
-- [ ] All new Swift files are in PBXSourcesBuildPhase
-- [ ] Run: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l` and compare to pbxproj count
-- [ ] Update the "Current iOS Source Files" list in this document
+### ⚠️ MANDATORY FOR ALL AGENTS DOING iOS WORK ⚠️
 
-### REQUIRED: When Adding New Swift Files
-When @ui-brutalist creates or modifies Swift files, they MUST also update `iOS/ReefBuddy.xcodeproj/project.pbxproj` to include:
+#### STEP 1: Before Starting ANY iOS Work
+```bash
+# Run this FIRST - if it fails, STOP and alert user
+test -f "iOS/ReefBuddy.xcodeproj/project.pbxproj" && echo "✅ Safe to proceed" || echo "❌ STOP!"
+```
+
+#### STEP 2: Do Your iOS Work
+When @ui-brutalist creates or modifies Swift files, EDIT the existing `project.pbxproj` to add:
 1. **PBXBuildFile entry** - for compiling the source file
 2. **PBXFileReference entry** - for referencing the file
 3. **PBXGroup entry** - for organizing in the correct folder group
 4. **Add to PBXSourcesBuildPhase** - to include in the build
 
-### Fixing Missing project.pbxproj
-If the project.pbxproj file is missing or corrupted:
+**NEVER use `rm -rf iOS/ReefBuddy.xcodeproj`**
+**NEVER recreate the directory**
+**ONLY EDIT the existing file**
 
-1. **Delete and recreate the .xcodeproj directory:**
-   ```bash
-   rm -rf iOS/ReefBuddy.xcodeproj
-   mkdir -p iOS/ReefBuddy.xcodeproj
-   ```
+#### STEP 3: After Completing ANY iOS Work
+```bash
+# Verify the file still exists and is valid
+test -f "iOS/ReefBuddy.xcodeproj/project.pbxproj" && wc -l "iOS/ReefBuddy.xcodeproj/project.pbxproj"
+# Should show ~500+ lines
+```
 
-2. **Create a fresh project.pbxproj with all Swift files:**
-   - List all Swift files: `find iOS/ReefBuddy/Sources -name "*.swift"`
-   - Generate proper UUIDs (16-character hex) for each file
-   - Include all required sections: PBXBuildFile, PBXFileReference, PBXGroup, PBXNativeTarget, PBXProject, etc.
+If the file is missing or has <100 lines:
+```bash
+# Restore from git IMMEDIATELY
+git checkout HEAD -- iOS/ReefBuddy.xcodeproj/project.pbxproj
+```
 
-3. **Required project.pbxproj format:**
-   - Must start with `// !$*UTF8*$!`
-   - archiveVersion = 1
-   - objectVersion = 56
-   - Target iOS 18.0+ (`IPHONEOS_DEPLOYMENT_TARGET = 18.0`)
-   - iPhone only (`TARGETED_DEVICE_FAMILY = 1`)
-   - Bundle ID: `com.reefbuddy.app`
+### @ui-brutalist Mandatory Checklist (EVERY iOS Task)
+Before marking any iOS task complete, @ui-brutalist MUST verify:
+- [ ] Run pre-flight check: `test -f "iOS/ReefBuddy.xcodeproj/project.pbxproj"`
+- [ ] All new Swift files have PBXFileReference entries in existing pbxproj
+- [ ] All new Swift files have PBXBuildFile entries in existing pbxproj
+- [ ] All new Swift files are in correct PBXGroup in existing pbxproj
+- [ ] All new Swift files are in PBXSourcesBuildPhase in existing pbxproj
+- [ ] Run post-flight check: `wc -l "iOS/ReefBuddy.xcodeproj/project.pbxproj"` (should be ~500+ lines)
+- [ ] Update the "Current iOS Source Files" list in this document
+- [ ] **NEVER ran `rm`, `mv`, or recreated the `.xcodeproj` directory**
+
+### Xcode Project Structure
+The iOS app uses a manual Xcode project at `iOS/ReefBuddy.xcodeproj/`. The `project.pbxproj` file is critical and must be properly maintained BY EDITING IT, not recreating it.
+
+### Emergency Recovery ONLY (If File Is Missing)
+**ONLY if the file is truly missing and git restore fails:**
+```bash
+# Last resort - restore from git
+git checkout HEAD -- iOS/ReefBuddy.xcodeproj/project.pbxproj
+
+# If that fails, alert the user immediately
+# DO NOT attempt to recreate the file yourself
+```
 
 ### Current iOS Source Files (update this list when adding files)
 **Total: 22 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)

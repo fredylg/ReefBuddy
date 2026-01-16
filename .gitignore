@@ -24,9 +24,14 @@ dist/
 .DS_Store
 *.xcuserstate
 
-# Xcode user-specific files
+# Xcode user-specific files (BUT NEVER IGNORE project.pbxproj!)
 iOS/ReefBuddy.xcodeproj/xcuserdata/
 iOS/ReefBuddy.xcodeproj/project.xcworkspace/xcuserdata/
+
+# ⚠️ CRITICAL: project.pbxproj must ALWAYS be tracked
+# DO NOT add: iOS/ReefBuddy.xcodeproj/project.pbxproj
+# DO NOT add: *.pbxproj
+# These files are essential and must be in version control
 
 # Logs
 *.log
