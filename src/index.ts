@@ -101,17 +101,18 @@ const BCRYPT_SALT_ROUNDS = 10;
 /**
  * Schema for water parameter readings submission
  * All values are in standard aquarium measurement units
+ * Validation is relaxed to allow any numeric values - AI will analyze and provide feedback
  */
 const WaterParametersSchema = z.object({
-  salinity: z.number().min(1.020).max(1.030).describe('Specific gravity (1.020-1.030)'),
-  temperature: z.number().min(72).max(84).describe('Temperature in Fahrenheit'),
-  ph: z.number().min(7.8).max(8.6).describe('pH level'),
-  alkalinity: z.number().min(6).max(12).describe('Alkalinity in dKH'),
-  calcium: z.number().min(350).max(500).describe('Calcium in ppm'),
-  magnesium: z.number().min(1200).max(1500).describe('Magnesium in ppm'),
-  nitrate: z.number().min(0).max(50).optional().describe('Nitrate in ppm'),
-  phosphate: z.number().min(0).max(0.5).optional().describe('Phosphate in ppm'),
-  ammonia: z.number().min(0).max(1).optional().describe('Ammonia in ppm'),
+  salinity: z.number().optional().describe('Specific gravity'),
+  temperature: z.number().optional().describe('Temperature in Fahrenheit'),
+  ph: z.number().optional().describe('pH level'),
+  alkalinity: z.number().optional().describe('Alkalinity in dKH'),
+  calcium: z.number().optional().describe('Calcium in ppm'),
+  magnesium: z.number().optional().describe('Magnesium in ppm'),
+  nitrate: z.number().optional().describe('Nitrate in ppm'),
+  phosphate: z.number().optional().describe('Phosphate in ppm'),
+  ammonia: z.number().optional().describe('Ammonia in ppm'),
 });
 
 /**
@@ -143,17 +144,37 @@ const LoginRequestSchema = z.object({
  * Schema for creating a measurement
  */
 const CreateMeasurementSchema = z.object({
-  tankId: z.string().uuid(),
-  ph: z.number().min(0).max(14).optional(),
-  alkalinity: z.number().min(0).optional(),
-  calcium: z.number().min(0).optional(),
-  magnesium: z.number().min(0).optional(),
-  nitrate: z.number().min(0).optional(),
-  phosphate: z.number().min(0).optional(),
-  salinity: z.number().min(0).optional(),
-  temperature: z.number().min(0).optional(),
-  ammonia: z.number().min(0).optional(),
-  measuredAt: z.string().datetime().optional(),
+  tank_id: z.string().uuid(),
+  ph: z.number().optional(),
+  alkalinity: z.number().optional(),
+  calcium: z.number().optional(),
+  magnesium: z.number().optional(),
+  nitrate: z.number().optional(),
+  phosphate: z.number().optional(),
+  salinity: z.number().optional(),
+  temperature: z.number().optional(),
+  ammonia: z.number().optional(),
+  nitrite: z.number().optional(),
+  measured_at: z.string().datetime().optional(),
+  notes: z.string().optional(),
+});
+
+/**
+ * Schema for creating a tank (iOS sends snake_case)
+ */
+const TankCreateSchema = z.object({
+  name: z.string().min(1).max(255).describe('Tank name'),
+  volume_gallons: z.number().positive().describe('Tank volume in gallons'),
+  tank_type: z.string().max(50).optional().describe('Type of tank (reef, fish-only, etc.)'),
+});
+
+/**
+ * Schema for updating a tank (iOS sends snake_case)
+ */
+const TankUpdateSchema = z.object({
+  name: z.string().min(1).max(255).optional().describe('Tank name'),
+  volume_gallons: z.number().positive().optional().describe('Tank volume in gallons'),
+  tank_type: z.string().max(50).optional().describe('Type of tank'),
 });
 
 /**
@@ -764,6 +785,288 @@ async function handleLogout(request: Request, env: Env): Promise<Response> {
 }
 
 // =============================================================================
+// TANK HANDLERS
+// =============================================================================
+
+/**
+ * Tank record from database
+ */
+interface TankRecord {
+  id: string;
+  user_id: string;
+  name: string;
+  volume_gallons: number;
+  tank_type: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+/**
+ * Handle listing all tanks for the authenticated user
+ * GET /api/tanks (authenticated)
+ */
+async function handleListTanks(env: Env, auth: AuthenticatedContext): Promise<Response> {
+  try {
+    const result = await env.DB.prepare(
+      'SELECT * FROM tanks WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+    )
+      .bind(auth.userId)
+      .all();
+
+    const tanks = result.results as TankRecord[];
+
+    return jsonResponse({
+      success: true,
+      data: tanks.map((tank) => ({
+        id: tank.id,
+        user_id: tank.user_id,
+        name: tank.name,
+        volume_gallons: tank.volume_gallons,
+        tank_type: tank.tank_type,
+        created_at: tank.created_at,
+        updated_at: tank.updated_at,
+      })),
+    });
+  } catch (error) {
+    console.error('List tanks error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle getting a single tank
+ * GET /api/tanks/:id (authenticated)
+ */
+async function handleGetTank(
+  env: Env,
+  auth: AuthenticatedContext,
+  tankId: string
+): Promise<Response> {
+  try {
+    const tank = (await env.DB.prepare(
+      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+    )
+      .bind(tankId, auth.userId)
+      .first()) as TankRecord | null;
+
+    if (!tank) {
+      return errorResponse('Not found', 'Tank not found', 404);
+    }
+
+    return jsonResponse({
+      success: true,
+      data: {
+        id: tank.id,
+        user_id: tank.user_id,
+        name: tank.name,
+        volume_gallons: tank.volume_gallons,
+        tank_type: tank.tank_type,
+        created_at: tank.created_at,
+        updated_at: tank.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('Get tank error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle creating a new tank
+ * POST /api/tanks (authenticated)
+ */
+async function handleCreateTank(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const body = await request.json();
+
+    const validationResult = TankCreateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const data = validationResult.data;
+
+    const tankId = generateUUID();
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(
+      `INSERT INTO tanks (id, user_id, name, volume_gallons, tank_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(tankId, auth.userId, data.name, data.volume_gallons, data.tank_type ?? null, now, now)
+      .run();
+
+    return jsonResponse(
+      {
+        success: true,
+        data: {
+          id: tankId,
+          user_id: auth.userId,
+          name: data.name,
+          volume_gallons: data.volume_gallons,
+          tank_type: data.tank_type ?? null,
+          created_at: now,
+          updated_at: now,
+        },
+      },
+      201
+    );
+  } catch (error) {
+    console.error('Create tank error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle updating a tank
+ * PUT /api/tanks/:id (authenticated)
+ */
+async function handleUpdateTank(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext,
+  tankId: string
+): Promise<Response> {
+  try {
+    // Verify tank exists and belongs to user
+    const existingTank = (await env.DB.prepare(
+      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+    )
+      .bind(tankId, auth.userId)
+      .first()) as TankRecord | null;
+
+    if (!existingTank) {
+      return errorResponse('Not found', 'Tank not found', 404);
+    }
+
+    const body = await request.json();
+
+    const validationResult = TankUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        {
+          error: 'Validation failed',
+          details: validationResult.error.flatten(),
+        },
+        400
+      );
+    }
+
+    const data = validationResult.data;
+
+    // Build dynamic update query
+    const updates: string[] = ['updated_at = ?'];
+    const values: (string | number | null)[] = [new Date().toISOString()];
+
+    if (data.name !== undefined) {
+      updates.push('name = ?');
+      values.push(data.name);
+    }
+    if (data.volume_gallons !== undefined) {
+      updates.push('volume_gallons = ?');
+      values.push(data.volume_gallons);
+    }
+    if (data.tank_type !== undefined) {
+      updates.push('tank_type = ?');
+      values.push(data.tank_type);
+    }
+
+    values.push(tankId);
+
+    await env.DB.prepare(`UPDATE tanks SET ${updates.join(', ')} WHERE id = ?`)
+      .bind(...values)
+      .run();
+
+    // Fetch updated record
+    const updated = (await env.DB.prepare('SELECT * FROM tanks WHERE id = ?')
+      .bind(tankId)
+      .first()) as TankRecord;
+
+    return jsonResponse({
+      success: true,
+      data: {
+        id: updated.id,
+        user_id: updated.user_id,
+        name: updated.name,
+        volume_gallons: updated.volume_gallons,
+        tank_type: updated.tank_type,
+        created_at: updated.created_at,
+        updated_at: updated.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('Update tank error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * Handle deleting a tank (soft delete)
+ * DELETE /api/tanks/:id (authenticated)
+ */
+async function handleDeleteTank(
+  env: Env,
+  auth: AuthenticatedContext,
+  tankId: string
+): Promise<Response> {
+  try {
+    // Verify tank exists and belongs to user
+    const existingTank = (await env.DB.prepare(
+      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+    )
+      .bind(tankId, auth.userId)
+      .first()) as TankRecord | null;
+
+    if (!existingTank) {
+      return errorResponse('Not found', 'Tank not found', 404);
+    }
+
+    // Soft delete the tank
+    const now = new Date().toISOString();
+    await env.DB.prepare('UPDATE tanks SET deleted_at = ? WHERE id = ?').bind(now, tankId).run();
+
+    return jsonResponse({
+      success: true,
+      message: 'Tank deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete tank error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+// =============================================================================
 // MEASUREMENT HANDLERS
 // =============================================================================
 
@@ -793,8 +1096,8 @@ async function handleCreateMeasurement(
     const data = validationResult.data;
 
     // Verify the tank belongs to the authenticated user
-    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ?')
-      .bind(data.tankId)
+    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL')
+      .bind(data.tank_id)
       .first()) as { id: string; user_id: string; name: string } | null;
 
     if (!tank) {
@@ -807,15 +1110,15 @@ async function handleCreateMeasurement(
 
     // Create measurement
     const measurementId = generateUUID();
-    const measuredAt = data.measuredAt || new Date().toISOString();
+    const measuredAt = data.measured_at || new Date().toISOString();
 
     await env.DB.prepare(
-      `INSERT INTO measurements (id, tank_id, measured_at, ph, alkalinity, calcium, magnesium, nitrate, phosphate, salinity, temperature, ammonia)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO measurements (id, tank_id, measured_at, ph, alkalinity, calcium, magnesium, nitrate, phosphate, salinity, temperature, ammonia, nitrite, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         measurementId,
-        data.tankId,
+        data.tank_id,
         measuredAt,
         data.ph ?? null,
         data.alkalinity ?? null,
@@ -825,7 +1128,9 @@ async function handleCreateMeasurement(
         data.phosphate ?? null,
         data.salinity ?? null,
         data.temperature ?? null,
-        data.ammonia ?? null
+        data.ammonia ?? null,
+        data.nitrite ?? null,
+        data.notes ?? null
       )
       .run();
 
@@ -844,7 +1149,7 @@ async function handleCreateMeasurement(
         auth.userId,
         {
           id: measurementId,
-          tank_id: data.tankId,
+          tank_id: data.tank_id,
           ph: data.ph,
           alkalinity: data.alkalinity,
           calcium: data.calcium,
@@ -865,9 +1170,9 @@ async function handleCreateMeasurement(
     return jsonResponse(
       {
         success: true,
-        measurement: {
+        data: {
           id: measurementId,
-          tank_id: data.tankId,
+          tank_id: data.tank_id,
           measured_at: measuredAt,
           ph: data.ph ?? null,
           alkalinity: data.alkalinity ?? null,
@@ -878,6 +1183,8 @@ async function handleCreateMeasurement(
           salinity: data.salinity ?? null,
           temperature: data.temperature ?? null,
           ammonia: data.ammonia ?? null,
+          nitrite: data.nitrite ?? null,
+          notes: data.notes ?? null,
         },
         alerts: alerts.length > 0 ? alerts : undefined,
       },
@@ -931,20 +1238,34 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       );
     }
 
+    // Build parameter list dynamically based on what was provided
+    const paramLines: string[] = [];
+    if (parameters.salinity !== undefined) paramLines.push(`- Salinity: ${parameters.salinity}`);
+    if (parameters.temperature !== undefined) paramLines.push(`- Temperature: ${parameters.temperature}°F`);
+    if (parameters.ph !== undefined) paramLines.push(`- pH: ${parameters.ph}`);
+    if (parameters.alkalinity !== undefined) paramLines.push(`- Alkalinity: ${parameters.alkalinity} dKH`);
+    if (parameters.calcium !== undefined) paramLines.push(`- Calcium: ${parameters.calcium} ppm`);
+    if (parameters.magnesium !== undefined) paramLines.push(`- Magnesium: ${parameters.magnesium} ppm`);
+    if (parameters.nitrate !== undefined) paramLines.push(`- Nitrate: ${parameters.nitrate} ppm`);
+    if (parameters.phosphate !== undefined) paramLines.push(`- Phosphate: ${parameters.phosphate} ppm`);
+    if (parameters.ammonia !== undefined) paramLines.push(`- Ammonia: ${parameters.ammonia} ppm`);
+
+    if (paramLines.length === 0) {
+      return jsonResponse(
+        {
+          error: 'No parameters provided',
+          message: 'Please provide at least one water parameter to analyze.',
+        },
+        400
+      );
+    }
+
     const prompt = `Analyze these saltwater aquarium water parameters and provide dosing recommendations:
 Tank Volume: ${tankVolume} gallons
 Parameters:
-- Salinity: ${parameters.salinity}
-- Temperature: ${parameters.temperature}F
-- pH: ${parameters.ph}
-- Alkalinity: ${parameters.alkalinity} dKH
-- Calcium: ${parameters.calcium} ppm
-- Magnesium: ${parameters.magnesium} ppm
-${parameters.nitrate !== undefined ? `- Nitrate: ${parameters.nitrate} ppm` : ''}
-${parameters.phosphate !== undefined ? `- Phosphate: ${parameters.phosphate} ppm` : ''}
-${parameters.ammonia !== undefined ? `- Ammonia: ${parameters.ammonia} ppm` : ''}
+${paramLines.join('\n')}
 
-Provide specific dosing recommendations to bring parameters to optimal reef levels.`;
+Provide specific dosing recommendations to bring parameters to optimal reef levels. If any values are outside typical reef tank ranges, highlight this as a warning.`;
 
     const aiResponse = await callAIGateway(env, prompt);
 
@@ -2412,6 +2733,11 @@ export default {
             'POST /auth/signup': 'Create a new user account',
             'POST /auth/login': 'Login and get session token',
             'POST /auth/logout': 'Logout and invalidate session (requires auth)',
+            'GET /api/tanks': 'List all tanks (requires auth)',
+            'POST /api/tanks': 'Create a new tank (requires auth)',
+            'GET /api/tanks/:id': 'Get a specific tank (requires auth)',
+            'PUT /api/tanks/:id': 'Update a tank (requires auth)',
+            'DELETE /api/tanks/:id': 'Delete a tank (requires auth)',
             'POST /measurements': 'Record water measurements (requires auth)',
             'POST /analyze': 'Analyze water parameters and get dosing recommendations',
             'POST /subscriptions/create': 'Create Stripe checkout session (requires auth)',
@@ -2455,6 +2781,68 @@ export default {
       // Auth endpoints (requires authentication)
       case pathname === '/auth/logout' && method === 'POST': {
         response = await handleLogout(request, env);
+        break;
+      }
+
+      // Tank CRUD endpoints (requires authentication)
+      // GET /api/tanks - List all tanks
+      case pathname === '/api/tanks' && method === 'GET': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleListTanks(env, authResult);
+        }
+        break;
+      }
+
+      // POST /api/tanks - Create a new tank
+      case pathname === '/api/tanks' && method === 'POST': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleCreateTank(request, env, authResult);
+        }
+        break;
+      }
+
+      // GET /api/tanks/:id - Get a specific tank
+      case pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/);
+        const tankId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleGetTank(env, authResult, tankId);
+        }
+        break;
+      }
+
+      // PUT /api/tanks/:id - Update a tank
+      case pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/) !== null && method === 'PUT': {
+        const match = pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/);
+        const tankId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleUpdateTank(request, env, authResult, tankId);
+        }
+        break;
+      }
+
+      // DELETE /api/tanks/:id - Delete a tank
+      case pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/) !== null && method === 'DELETE': {
+        const match = pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/);
+        const tankId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleDeleteTank(env, authResult, tankId);
+        }
         break;
       }
 

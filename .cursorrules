@@ -1,0 +1,130 @@
+# Cursor Rules for ReefBuddy Project
+# These rules help maintain the integrity of the Xcode project and prevent crashes
+
+## 🚨 CRITICAL: Xcode Project Management
+### NEVER DELETE OR RECREATE project.pbxproj
+- The file `iOS/ReefBuddy.xcodeproj/project.pbxproj` is **SACRED**
+- **NEVER** run `rm`, `mv`, or recreate the `.xcodeproj` directory
+- **ONLY EDIT** the existing file when adding/removing Swift files
+
+### Before ANY iOS Work
+Run the verification script:
+```bash
+./verify-xcode-project.sh
+```
+
+### UUID Collision Prevention (CRITICAL)
+**UUID collisions cause Xcode to crash with "unrecognized selector" errors**
+
+#### Always verify UUID uniqueness before adding new entries:
+```bash
+# Check for duplicates (should return nothing)
+grep "8A1B2C3D000000" iOS/ReefBuddy.xcodeproj/project.pbxproj | sort | uniq -d
+
+# Check specific UUID usage (should be 1)
+grep "8A1B2C3D000000XX" iOS/ReefBuddy.xcodeproj/project.pbxproj | wc -l
+```
+
+#### When adding new files to project.pbxproj:
+1. **PBXBuildFile entry** - for compiling the source file
+2. **PBXFileReference entry** - for referencing the file (use unique UUID)
+3. **PBXGroup entry** - for organizing in the correct folder group
+4. **Add to PBXSourcesBuildPhase** - to include in the build
+
+#### UUID Pattern:
+- Use pattern: `8A1B2C3D000000XX` where XX is unique hex value
+- **RESERVED UUIDs (DO NOT USE for new files):**
+  - `8A1B2C3D00000030` - Root PBXGroup
+  - `8A1B2C3D00000031` - ReefBuddy PBXGroup
+  - `8A1B2C3D00000032` - Sources PBXGroup
+  - `8A1B2C3D00000033` - App PBXGroup
+  - `8A1B2C3D00000034` - Theme PBXGroup
+  - `8A1B2C3D00000035` - Components PBXGroup
+  - `8A1B2C3D00000036` - Models PBXGroup
+  - `8A1B2C3D00000037` - Views PBXGroup
+  - `8A1B2C3D00000038` - Networking PBXGroup
+  - `8A1B2C3D00000039` - Resources PBXGroup
+  - `8A1B2C3D00000040` - Products PBXGroup
+- **SAFE UUIDs for new files:** Use `8A1B2C3D0000003A` and above (3A, 3B, 3C, etc.) or `8A1B2C3D00000041` and above
+- **NEVER reuse UUIDs** - each object must have a unique identifier
+
+### After ANY iOS Work
+Run verification again:
+```bash
+./verify-xcode-project.sh
+```
+
+## 🛠️ Development Commands
+
+### Backend Development
+```bash
+# Local development server
+npx wrangler dev
+
+# Database migrations
+npx wrangler d1 migrations apply reef-db --local
+
+# Test execution
+npx vitest run
+```
+
+### iOS Development
+```bash
+# Verify project integrity
+./verify-xcode-project.sh
+
+# Build (requires full Xcode installation)
+xcodebuild -project iOS/ReefBuddy.xcodeproj -scheme ReefBuddy -destination 'platform=iOS Simulator,name=iPhone 15' build
+```
+
+## 📋 Project Structure
+- **Backend:** Cloudflare Workers, D1, TypeScript, AI Gateway
+- **iOS:** SwiftUI, New Brutalist design, manual Xcode project
+- **Database:** SQLite via Cloudflare D1 with migrations
+- **Auth:** Session-based with KV storage
+
+## 🎨 Design System
+- **Colors:** Pure white background (#FFFFFF), pure black text (#000000), Electric Aquamarine (#00FFD1), Safety Orange (#FF3D00)
+- **Borders:** 3pt solid black, sharp 0px radius corners
+- **Shadows:** Hard offset 5pt x 5pt black shadows (no blur)
+- **Typography:** Bold, oversized headers, Grotesque sans-serif fonts
+
+## ⚠️ Known Issues & Fixes
+
+### Xcode Crashes on Project Open
+**Error:** "The project is damaged and cannot be opened"
+**Cause:** UUID collisions in project.pbxproj
+**Fix:** Check UUID uniqueness with the commands above
+
+### Invalid iOS Deployment Target
+**Error:** Project won't build
+**Check:** `grep "IPHONEOS_DEPLOYMENT_TARGET" iOS/ReefBuddy.xcodeproj/project.pbxproj`
+**Valid values:** 16.0, 17.0 (not 18.0+)
+
+### Corrupted User Data
+**Fix:** `rm -rf iOS/ReefBuddy.xcodeproj/project.xcworkspace/xcuserdata iOS/ReefBuddy.xcodeproj/xcuserdata`
+
+## 📚 Documentation
+- `PLAN.md` - Project status and roadmap
+- `CLAUDE.md` - Development standards and agent roles
+- `iOS/README.md` - iOS-specific instructions
+- `migrations/` - Database schema changes
+- `tests/` - Backend test suite
+
+## 🔒 Security Notes
+- Use `wrangler secret put` for sensitive configuration
+- Never commit API keys or secrets to git
+- Validate all user inputs with Zod schemas
+- Rate limiting enforced via KV storage
+
+## 🚀 Deployment
+```bash
+# Deploy backend
+npx wrangler deploy
+
+# Apply production migrations
+npx wrangler d1 migrations apply reef-db --remote
+```
+
+---
+*This file is automatically loaded by Cursor and provides project-specific guidance and rules.*

@@ -20,6 +20,7 @@ struct MeasurementEntryView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var isAnalyzing = false
+    @State private var temperatureUnit: TemperatureUnit = .celsius
 
     // MARK: - Body
 
@@ -103,15 +104,10 @@ struct MeasurementEntryView: View {
     private var basicParametersSection: some View {
         parameterSection(title: "BASIC PARAMETERS") {
             VStack(spacing: BrutalistTheme.Spacing.md) {
-                HStack(spacing: BrutalistTheme.Spacing.md) {
-                    parameterField(
-                        label: "TEMPERATURE",
-                        value: $measurement.temperature,
-                        unit: "°F",
-                        range: ParameterRange.temperature.range,
-                        placeholder: "78.0"
-                    )
+                // Temperature with unit toggle
+                temperatureFieldWithToggle
 
+                HStack(spacing: BrutalistTheme.Spacing.md) {
                     parameterField(
                         label: "SALINITY",
                         value: $measurement.salinity,
@@ -119,17 +115,88 @@ struct MeasurementEntryView: View {
                         range: ParameterRange.salinity.range,
                         placeholder: "1.025"
                     )
-                }
 
-                parameterField(
-                    label: "pH",
-                    value: $measurement.pH,
-                    unit: "",
-                    range: ParameterRange.pH.range,
-                    placeholder: "8.2"
-                )
+                    parameterField(
+                        label: "pH",
+                        value: $measurement.pH,
+                        unit: "",
+                        range: ParameterRange.pH.range,
+                        placeholder: "8.2"
+                    )
+                }
             }
         }
+    }
+
+    // MARK: - Temperature Field with Unit Toggle
+
+    private var temperatureFieldWithToggle: some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
+            // Label row with unit toggle
+            HStack {
+                Text("TEMPERATURE")
+                    .font(BrutalistTheme.Typography.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+
+                Spacer()
+
+                // Unit Toggle
+                temperatureUnitToggle
+            }
+
+            HStack(spacing: BrutalistTheme.Spacing.sm) {
+                TextField(temperatureUnit.placeholder, text: $measurement.temperature)
+                    .font(BrutalistTheme.Typography.body)
+                    .keyboardType(.decimalPad)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+
+                Text(temperatureUnit.symbol)
+                    .font(BrutalistTheme.Typography.bodyBold)
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+            }
+            .padding(BrutalistTheme.Spacing.md)
+            .background(BrutalistTheme.Colors.background)
+            .brutalistCard(
+                borderColor: borderColor(for: measurement.temperature)
+            )
+
+            // Target range suggestion
+            Text("Target: \(temperatureUnit.targetRange)")
+                .font(.system(size: 10))
+                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+        }
+    }
+
+    private var temperatureUnitToggle: some View {
+        HStack(spacing: 0) {
+            // Celsius button
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    temperatureUnit = .celsius
+                }
+            } label: {
+                Text("°C")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundColor(temperatureUnit == .celsius ? BrutalistTheme.Colors.background : BrutalistTheme.Colors.text)
+                    .frame(width: 36, height: 28)
+                    .background(temperatureUnit == .celsius ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.background)
+            }
+
+            // Fahrenheit button
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    temperatureUnit = .fahrenheit
+                }
+            } label: {
+                Text("°F")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundColor(temperatureUnit == .fahrenheit ? BrutalistTheme.Colors.background : BrutalistTheme.Colors.text)
+                    .frame(width: 36, height: 28)
+                    .background(temperatureUnit == .fahrenheit ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.background)
+            }
+        }
+        .brutalistBorder(width: 2, color: BrutalistTheme.Colors.text)
     }
 
     // MARK: - Alkalinity Section
@@ -296,30 +363,26 @@ struct MeasurementEntryView: View {
             .padding(BrutalistTheme.Spacing.md)
             .background(BrutalistTheme.Colors.background)
             .brutalistCard(
-                borderColor: borderColor(for: value.wrappedValue, range: range)
+                borderColor: borderColor(for: value.wrappedValue)
             )
 
-            // Range indicator
+            // Target range suggestion (informational only, no validation)
             Text("Target: \(formatRange(range))")
                 .font(.system(size: 10))
-                .foregroundColor(statusColor(for: value.wrappedValue, range: range))
+                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
         }
     }
 
-    private func borderColor(for value: String, range: ClosedRange<Double>) -> Color {
-        guard let numValue = Double(value) else { return BrutalistTheme.Colors.text }
-        if range.contains(numValue) {
-            return BrutalistTheme.Colors.action
-        } else {
-            return BrutalistTheme.Colors.warning
+    private func borderColor(for value: String) -> Color {
+        // Only validate that it's a valid number (or empty)
+        if value.isEmpty {
+            return BrutalistTheme.Colors.text
         }
-    }
-
-    private func statusColor(for value: String, range: ClosedRange<Double>) -> Color {
-        guard let numValue = Double(value) else { return BrutalistTheme.Colors.text.opacity(0.5) }
-        if range.contains(numValue) {
+        // Check if it's a valid number
+        if Double(value) != nil {
             return BrutalistTheme.Colors.action
         } else {
+            // Invalid number format
             return BrutalistTheme.Colors.warning
         }
     }
@@ -347,7 +410,7 @@ struct MeasurementEntryView: View {
     // MARK: - Actions
 
     private func analyzeParameters() {
-        let measurementModel = measurement.toMeasurement(tankId: tank.id)
+        let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
 
         isAnalyzing = true
 
@@ -377,12 +440,51 @@ struct MeasurementEntryView: View {
     }
 
     private func saveParameters() {
-        let measurementModel = measurement.toMeasurement(tankId: tank.id)
+        let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
 
         Task {
             await appState.submitMeasurement(measurementModel)
             showingSaveConfirmation = true
             measurement = MeasurementDraft() // Reset form
+        }
+    }
+}
+
+// MARK: - Temperature Unit
+
+/// Temperature unit selection for user input
+enum TemperatureUnit {
+    case celsius
+    case fahrenheit
+
+    var symbol: String {
+        switch self {
+        case .celsius: return "°C"
+        case .fahrenheit: return "°F"
+        }
+    }
+
+    var placeholder: String {
+        switch self {
+        case .celsius: return "25.5"
+        case .fahrenheit: return "78.0"
+        }
+    }
+
+    var targetRange: String {
+        switch self {
+        case .celsius: return "24.5 - 26.5"
+        case .fahrenheit: return "76.0 - 80.0"
+        }
+    }
+
+    /// Convert temperature to Fahrenheit (API standard)
+    func toFahrenheit(_ value: Double) -> Double {
+        switch self {
+        case .celsius:
+            return (value * 9/5) + 32
+        case .fahrenheit:
+            return value
         }
     }
 }
@@ -403,10 +505,16 @@ struct MeasurementDraft {
     var nitrite: String = ""
     var notes: String = ""
 
-    func toMeasurement(tankId: UUID) -> Measurement {
-        Measurement(
+    func toMeasurement(tankId: UUID, temperatureUnit: TemperatureUnit = .celsius) -> Measurement {
+        // Convert temperature to Fahrenheit if entered in Celsius
+        let tempInFahrenheit: Double? = {
+            guard let temp = Double(temperature) else { return nil }
+            return temperatureUnit.toFahrenheit(temp)
+        }()
+
+        return Measurement(
             tankId: tankId,
-            temperature: Double(temperature),
+            temperature: tempInFahrenheit,
             salinity: Double(salinity),
             pH: Double(pH),
             alkalinity: Double(alkalinity),
@@ -989,4 +1097,8 @@ struct BrutalistLoadingView: View {
             )
         ]
     ))
+}
+
+#Preview("Loading View") {
+    BrutalistLoadingView()
 }
