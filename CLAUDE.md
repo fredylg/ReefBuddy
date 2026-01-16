@@ -4,7 +4,7 @@
 ReefBuddy is a high-contrast, New Brutalist iOS app for saltwater aquarium hobbyists. It uses Cloudflare Workers, D1, and AI to provide water chemistry analysis and dosing recommendations.
 
 ## 2. The Team & Roles
-- **@ui-brutalist**: Lead Designer/Frontend. Owns `.swift` files and asset catalogs.
+- **@ui-brutalist**: Lead Designer/Frontend. Owns `.swift` files, asset catalogs, AND `project.pbxproj`. **CRITICAL: Must update Xcode project whenever adding/removing Swift files.**
 - **@edge-engineer**: Backend Architect. Owns `src/index.ts`, `wrangler.toml`, and AI integration.
 - **@data-steward**: Database Admin. Owns `migrations/`, SQL schemas, and data integrity.
 - **@tester-agent**: Quality Assurance. Owns `tests/`, automation scripts, and verification.
@@ -49,10 +49,22 @@ A task is not complete until:
 
 ## 8. iOS/Xcode Project Guidelines (CRITICAL)
 
+### ⚠️ MANDATORY FOR @ui-brutalist ⚠️
+**Every time you create, rename, move, or delete a Swift file, you MUST update `project.pbxproj` in the SAME operation. This is NOT optional. A Swift file without a corresponding pbxproj entry will break the build.**
+
 ### Xcode Project Structure
 The iOS app uses a manual Xcode project at `iOS/ReefBuddy.xcodeproj/`. The `project.pbxproj` file is critical and must be properly maintained.
 
-### IMPORTANT: When Adding New Swift Files
+### @ui-brutalist Checklist (EVERY iOS Task)
+Before marking any iOS task complete, @ui-brutalist MUST verify:
+- [ ] All new Swift files have PBXFileReference entries
+- [ ] All new Swift files have PBXBuildFile entries
+- [ ] All new Swift files are in correct PBXGroup
+- [ ] All new Swift files are in PBXSourcesBuildPhase
+- [ ] Run: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l` and compare to pbxproj count
+- [ ] Update the "Current iOS Source Files" list in this document
+
+### REQUIRED: When Adding New Swift Files
 When @ui-brutalist creates or modifies Swift files, they MUST also update `iOS/ReefBuddy.xcodeproj/project.pbxproj` to include:
 1. **PBXBuildFile entry** - for compiling the source file
 2. **PBXFileReference entry** - for referencing the file
@@ -82,6 +94,7 @@ If the project.pbxproj file is missing or corrupted:
    - Bundle ID: `com.reefbuddy.app`
 
 ### Current iOS Source Files (update this list when adding files)
+**Total: 22 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
 ```
 iOS/ReefBuddy/Sources/
 ├── App/
@@ -96,7 +109,8 @@ iOS/ReefBuddy/Sources/
 ├── Models/
 │   ├── Tank.swift
 │   ├── Measurement.swift
-│   └── User.swift
+│   ├── User.swift
+│   └── Livestock.swift          # Phase 3
 ├── Views/
 │   ├── TankListView.swift
 │   ├── MeasurementEntryView.swift
@@ -104,7 +118,11 @@ iOS/ReefBuddy/Sources/
 │   ├── HistoryView.swift
 │   ├── ChartView.swift
 │   ├── SubscriptionView.swift
-│   └── ExportView.swift
+│   ├── ExportView.swift
+│   ├── LivestockListView.swift       # Phase 3
+│   ├── LivestockDetailView.swift     # Phase 3
+│   ├── AddLivestockView.swift        # Phase 3
+│   └── NotificationSettingsView.swift # Phase 3
 └── Networking/
     └── APIClient.swift
 ```
