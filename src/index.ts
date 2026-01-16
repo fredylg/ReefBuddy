@@ -311,18 +311,40 @@ async function getUserSubscriptionTier(
   env: Env,
   userId: string
 ): Promise<{ tier: string; isPremium: boolean; user: UserRecord | null }> {
-  const user = (await env.DB.prepare(
-    'SELECT id, email, subscription_tier, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?'
-  )
-    .bind(userId)
-    .first()) as UserRecord | null;
+  try {
+    // Try full query with stripe columns first
+    const user = (await env.DB.prepare(
+      'SELECT id, email, subscription_tier, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?'
+    )
+      .bind(userId)
+      .first()) as UserRecord | null;
 
-  if (!user) {
-    return { tier: 'free', isPremium: false, user: null };
+    if (!user) {
+      return { tier: 'free', isPremium: false, user: null };
+    }
+
+    const isPremium = user.subscription_tier === 'premium';
+    return { tier: user.subscription_tier, isPremium, user };
+  } catch {
+    // Fall back to basic query if stripe columns don't exist
+    try {
+      const user = (await env.DB.prepare(
+        'SELECT id, email, subscription_tier FROM users WHERE id = ?'
+      )
+        .bind(userId)
+        .first()) as UserRecord | null;
+
+      if (!user) {
+        return { tier: 'free', isPremium: false, user: null };
+      }
+
+      const isPremium = user.subscription_tier === 'premium';
+      return { tier: user.subscription_tier, isPremium, user };
+    } catch {
+      // No user table or other error - default to free tier
+      return { tier: 'free', isPremium: false, user: null };
+    }
   }
-
-  const isPremium = user.subscription_tier === 'premium';
-  return { tier: user.subscription_tier, isPremium, user };
 }
 
 /**
