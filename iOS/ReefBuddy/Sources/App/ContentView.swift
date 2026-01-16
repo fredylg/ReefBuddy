@@ -9,6 +9,7 @@ struct ContentView: View {
     // MARK: - State
 
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var storeManager: StoreManager
     @State private var selectedTab: Tab = .tanks
 
     // MARK: - Body
@@ -67,12 +68,13 @@ struct ContentView: View {
     }
 
     private var freeTierBadge: some View {
-        VStack(spacing: 2) {
-            Text("\(appState.freeAnalysesRemaining)")
+        let totalCredits = (storeManager.creditBalance?.freeRemaining ?? 3) + (storeManager.creditBalance?.paidCredits ?? 0)
+        return VStack(spacing: 2) {
+            Text("\(totalCredits)")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(appState.freeAnalysesRemaining > 0 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning)
+                .foregroundColor(totalCredits > 0 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning)
 
-            Text("FREE LEFT")
+            Text("CREDITS")
                 .font(.system(size: 8, weight: .bold))
                 .foregroundColor(BrutalistTheme.Colors.text)
         }
@@ -324,7 +326,7 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $showingSubscription) {
-            SubscriptionView()
+            PurchaseCreditsView()
         }
         .sheet(isPresented: $showingExport) {
             if let tank = appState.selectedTank {

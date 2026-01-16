@@ -8,18 +8,12 @@
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import {
-  createCheckoutSession,
-  handleWebhook,
-  cancelSubscription,
-  type StripeEnv,
-} from './stripe';
-import {
   getMeasurementHistory,
   getAllParameterTrends,
   getDailyAverages,
   getWeeklyAverages,
 } from './historical';
-import { exportMeasurementsToCSV, checkPremiumAccess } from './export';
+import { exportMeasurementsToCSV } from './export';
 import {
   RegisterTokenSchema,
   UpdateSettingsSchema,
@@ -45,25 +39,20 @@ import {
 /**
  * Environment bindings for the Worker
  */
-export interface Env extends StripeEnv {
+export interface Env {
   // D1 Database for persistent storage
   DB: D1Database;
 
-  // KV Namespace for session tracking and rate limiting
+  // KV Namespace for session tracking
   REEF_KV: KVNamespace;
 
   // Environment variables
   ENVIRONMENT: string;
-  FREE_TIER_LIMIT: string;
+  FREE_ANALYSIS_LIMIT: string;
   CF_ACCOUNT_ID: string;
 
   // Secrets (set via wrangler secret)
   ANTHROPIC_API_KEY: string;
-
-  // Stripe secrets (set via wrangler secret)
-  // STRIPE_SECRET_KEY: string; - inherited from StripeEnv
-  // STRIPE_WEBHOOK_SECRET: string; - inherited from StripeEnv
-  // STRIPE_PRICE_ID: string; - inherited from StripeEnv
 
   // AI Gateway configuration
   AI_GATEWAY: {
@@ -178,18 +167,19 @@ const TankUpdateSchema = z.object({
 });
 
 /**
- * Schema for subscription checkout request
+ * Schema for credit purchase request
  */
-const SubscriptionCheckoutSchema = z.object({
-  successUrl: z.string().url(),
-  cancelUrl: z.string().url(),
+const CreditPurchaseSchema = z.object({
+  deviceId: z.string().min(1).describe('iOS device identifier'),
+  receiptData: z.string().min(1).describe('Base64-encoded App Store receipt'),
+  productId: z.string().min(1).describe('Product ID purchased'),
 });
 
 /**
- * Schema for subscription cancellation request
+ * Schema for credit balance request
  */
-const SubscriptionCancelSchema = z.object({
-  cancelAtPeriodEnd: z.boolean().optional().default(true),
+const CreditBalanceSchema = z.object({
+  deviceId: z.string().min(1).describe('iOS device identifier'),
 });
 
 /**
@@ -287,8 +277,8 @@ export type AnalysisRequest = z.infer<typeof AnalysisRequestSchema>;
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type CreateMeasurement = z.infer<typeof CreateMeasurementSchema>;
-export type SubscriptionCheckout = z.infer<typeof SubscriptionCheckoutSchema>;
-export type SubscriptionCancel = z.infer<typeof SubscriptionCancelSchema>;
+export type CreditPurchase = z.infer<typeof CreditPurchaseSchema>;
+export type CreditBalance = z.infer<typeof CreditBalanceSchema>;
 export type LivestockCreate = z.infer<typeof LivestockCreateSchema>;
 export type LivestockUpdate = z.infer<typeof LivestockUpdateSchema>;
 export type LivestockLog = z.infer<typeof LivestockLogSchema>;
@@ -389,153 +379,157 @@ async function callAIGateway(env: Env, prompt: string): Promise<string> {
 }
 
 // =============================================================================
-// SUBSCRIPTION & RATE LIMITING
+// CREDITS SYSTEM
 // =============================================================================
 
 /**
- * User data from database
+ * Device credits record from database
  */
-interface UserRecord {
-  id: string;
-  email: string;
-  subscription_tier: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
+interface DeviceCreditsRecord {
+  device_id: string;
+  free_used: number;
+  paid_credits: number;
+  total_analyses: number;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
- * Get user subscription tier from database
+ * Credit products configuration
  */
-async function getUserSubscriptionTier(
-  env: Env,
-  userId: string
-): Promise<{ tier: string; isPremium: boolean; user: UserRecord | null }> {
-  try {
-    // Try full query with stripe columns first
-    const user = (await env.DB.prepare(
-      'SELECT id, email, subscription_tier, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?'
-    )
-      .bind(userId)
-      .first()) as UserRecord | null;
-
-    if (!user) {
-      return { tier: 'free', isPremium: false, user: null };
-    }
-
-    const isPremium = user.subscription_tier === 'premium';
-    return { tier: user.subscription_tier, isPremium, user };
-  } catch {
-    // Fall back to basic query if stripe columns don't exist
-    try {
-      const user = (await env.DB.prepare(
-        'SELECT id, email, subscription_tier FROM users WHERE id = ?'
-      )
-        .bind(userId)
-        .first()) as UserRecord | null;
-
-      if (!user) {
-        return { tier: 'free', isPremium: false, user: null };
-      }
-
-      const isPremium = user.subscription_tier === 'premium';
-      return { tier: user.subscription_tier, isPremium, user };
-    } catch {
-      // No user table or other error - default to free tier
-      return { tier: 'free', isPremium: false, user: null };
-    }
-  }
-}
+const CREDIT_PRODUCTS: Record<string, number> = {
+  'com.reefbuddy.credits5': 5,
+  'com.reefbuddy.credits50': 50,
+};
 
 /**
- * Update user subscription tier in database
+ * Get or create device credits record
  */
-async function updateUserSubscription(
+async function getOrCreateDeviceCredits(
   env: Env,
-  userId: string,
-  tier: 'free' | 'premium',
-  stripeCustomerId?: string,
-  stripeSubscriptionId?: string
-): Promise<void> {
-  if (stripeCustomerId && stripeSubscriptionId) {
+  deviceId: string
+): Promise<DeviceCreditsRecord> {
+  let record = (await env.DB.prepare(
+    'SELECT * FROM device_credits WHERE device_id = ?'
+  )
+    .bind(deviceId)
+    .first()) as DeviceCreditsRecord | null;
+
+  if (!record) {
+    const now = new Date().toISOString();
     await env.DB.prepare(
-      'UPDATE users SET subscription_tier = ?, stripe_customer_id = ?, stripe_subscription_id = ? WHERE id = ?'
+      'INSERT INTO device_credits (device_id, free_used, paid_credits, total_analyses, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?)'
     )
-      .bind(tier, stripeCustomerId, stripeSubscriptionId, userId)
+      .bind(deviceId, now, now)
       .run();
-  } else if (tier === 'free') {
+
+    record = {
+      device_id: deviceId,
+      free_used: 0,
+      paid_credits: 0,
+      total_analyses: 0,
+      created_at: now,
+      updated_at: now,
+    };
+  }
+
+  return record;
+}
+
+/**
+ * Check if device has available credits (free or paid)
+ */
+async function checkDeviceCredits(
+  env: Env,
+  deviceId: string
+): Promise<{ allowed: boolean; freeRemaining: number; paidCredits: number; totalAnalyses: number }> {
+  const record = await getOrCreateDeviceCredits(env, deviceId);
+  const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
+  const freeRemaining = Math.max(0, freeLimit - record.free_used);
+
+  const allowed = freeRemaining > 0 || record.paid_credits > 0;
+
+  return {
+    allowed,
+    freeRemaining,
+    paidCredits: record.paid_credits,
+    totalAnalyses: record.total_analyses,
+  };
+}
+
+/**
+ * Consume one credit from device (free first, then paid)
+ */
+async function consumeDeviceCredit(env: Env, deviceId: string): Promise<boolean> {
+  const record = await getOrCreateDeviceCredits(env, deviceId);
+  const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
+  const now = new Date().toISOString();
+
+  if (record.free_used < freeLimit) {
+    // Use free credit
     await env.DB.prepare(
-      'UPDATE users SET subscription_tier = ?, stripe_subscription_id = NULL WHERE id = ?'
+      'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
     )
-      .bind(tier, userId)
+      .bind(now, deviceId)
       .run();
-  } else {
-    await env.DB.prepare('UPDATE users SET subscription_tier = ? WHERE id = ?').bind(tier, userId).run();
+    return true;
+  } else if (record.paid_credits > 0) {
+    // Use paid credit
+    await env.DB.prepare(
+      'UPDATE device_credits SET paid_credits = paid_credits - 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
+    )
+      .bind(now, deviceId)
+      .run();
+    return true;
   }
+
+  return false;
 }
 
 /**
- * Find user by Stripe subscription ID
+ * Add purchased credits to device
  */
-async function findUserByStripeSubscription(
+async function addDeviceCredits(
   env: Env,
-  subscriptionId: string
-): Promise<UserRecord | null> {
-  return (await env.DB.prepare('SELECT * FROM users WHERE stripe_subscription_id = ?')
-    .bind(subscriptionId)
-    .first()) as UserRecord | null;
-}
+  deviceId: string,
+  credits: number,
+  productId: string,
+  transactionId: string,
+  receiptData: string
+): Promise<boolean> {
+  // Check for duplicate transaction
+  const existingPurchase = await env.DB.prepare(
+    'SELECT id FROM purchase_history WHERE apple_transaction_id = ?'
+  )
+    .bind(transactionId)
+    .first();
 
-/**
- * Check and enforce free tier limits using KV
- * Premium users have unlimited access
- * Free tier users get 3 analysis requests per month
- */
-async function checkRateLimit(
-  env: Env,
-  userId: string
-): Promise<{ allowed: boolean; remaining: number; isPremium: boolean }> {
-  // Check if user is premium
-  const { isPremium } = await getUserSubscriptionTier(env, userId);
-
-  if (isPremium) {
-    return { allowed: true, remaining: -1, isPremium: true }; // -1 indicates unlimited
+  if (existingPurchase) {
+    console.log(`Duplicate transaction detected: ${transactionId}`);
+    return false;
   }
 
-  const key = `rate:${userId}:${new Date().toISOString().slice(0, 7)}`;
-  const limit = parseInt(env.FREE_TIER_LIMIT || '3', 10);
+  const now = new Date().toISOString();
+  const purchaseId = crypto.randomUUID();
 
-  const currentCount = parseInt((await env.REEF_KV.get(key)) || '0', 10);
+  // Ensure device record exists
+  await getOrCreateDeviceCredits(env, deviceId);
 
-  if (currentCount >= limit) {
-    return { allowed: false, remaining: 0, isPremium: false };
-  }
+  // Add credits
+  await env.DB.prepare(
+    'UPDATE device_credits SET paid_credits = paid_credits + ?, updated_at = ? WHERE device_id = ?'
+  )
+    .bind(credits, now, deviceId)
+    .run();
 
-  await env.REEF_KV.put(key, String(currentCount + 1), {
-    expirationTtl: 60 * 60 * 24 * 32,
-  });
+  // Record purchase
+  await env.DB.prepare(
+    'INSERT INTO purchase_history (id, device_id, product_id, credits_added, apple_transaction_id, receipt_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  )
+    .bind(purchaseId, deviceId, productId, credits, transactionId, receiptData, now)
+    .run();
 
-  return { allowed: true, remaining: limit - currentCount - 1, isPremium: false };
-}
-
-/**
- * Premium middleware - checks if user has premium subscription
- * Returns 402 Payment Required if not premium
- */
-async function requirePremium(
-  env: Env,
-  auth: AuthenticatedContext
-): Promise<Response | null> {
-  const { isPremium } = await getUserSubscriptionTier(env, auth.userId);
-
-  if (!isPremium) {
-    return errorResponse(
-      'Payment Required',
-      'This feature requires a premium subscription. Upgrade to premium for $4.99/month.',
-      402
-    );
-  }
-
-  return null; // User is premium, proceed
+  return true;
 }
 
 // =============================================================================
@@ -1205,6 +1199,16 @@ async function handleCreateMeasurement(
 // =============================================================================
 
 /**
+ * Extended analysis request schema with deviceId
+ */
+const AnalysisRequestWithDeviceSchema = z.object({
+  deviceId: z.string().min(1).describe('iOS device identifier'),
+  tankId: z.string().uuid(),
+  parameters: WaterParametersSchema,
+  tankVolume: z.number().positive().describe('Tank volume in gallons'),
+});
+
+/**
  * Handle water analysis request
  * POST /analyze
  */
@@ -1212,7 +1216,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
   try {
     const body = await request.json();
 
-    const validationResult = AnalysisRequestSchema.safeParse(body);
+    const validationResult = AnalysisRequestWithDeviceSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
@@ -1223,18 +1227,20 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       );
     }
 
-    const { tankId, parameters, tankVolume } = validationResult.data;
+    const { deviceId, tankId, parameters, tankVolume } = validationResult.data;
 
-    // Check rate limit (using tankId as user identifier for now)
-    const rateLimit = await checkRateLimit(env, tankId);
+    // Check device credits
+    const credits = await checkDeviceCredits(env, deviceId);
 
-    if (!rateLimit.allowed) {
+    if (!credits.allowed) {
       return jsonResponse(
         {
-          error: 'Rate limit exceeded',
-          message: 'Free tier limit of 3 analyses per month reached. Upgrade for unlimited access.',
+          error: 'No credits available',
+          message: 'You have used all your free analyses. Purchase credits to continue.',
+          freeRemaining: credits.freeRemaining,
+          paidCredits: credits.paidCredits,
         },
-        429
+        402
       );
     }
 
@@ -1260,6 +1266,18 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       );
     }
 
+    // Consume credit before calling AI
+    const consumed = await consumeDeviceCredit(env, deviceId);
+    if (!consumed) {
+      return jsonResponse(
+        {
+          error: 'No credits available',
+          message: 'Unable to consume credit. Please try again.',
+        },
+        402
+      );
+    }
+
     const prompt = `Analyze these saltwater aquarium water parameters and provide dosing recommendations:
 Tank Volume: ${tankVolume} gallons
 Parameters:
@@ -1268,6 +1286,9 @@ ${paramLines.join('\n')}
 Provide specific dosing recommendations to bring parameters to optimal reef levels. If any values are outside typical reef tank ranges, highlight this as a warning.`;
 
     const aiResponse = await callAIGateway(env, prompt);
+
+    // Get updated credit balance
+    const updatedCredits = await checkDeviceCredits(env, deviceId);
 
     // Try to parse AI response, fallback to raw string
     let analysis: unknown;
@@ -1281,7 +1302,9 @@ Provide specific dosing recommendations to bring parameters to optimal reef leve
       success: true,
       tankId,
       analysis,
-      rateLimitRemaining: rateLimit.remaining,
+      creditsRemaining: updatedCredits.freeRemaining + updatedCredits.paidCredits,
+      freeRemaining: updatedCredits.freeRemaining,
+      paidCredits: updatedCredits.paidCredits,
     });
   } catch (error) {
     console.error('Analysis error:', error);
@@ -1307,65 +1330,43 @@ function handleHealth(env: Env): Response {
 }
 
 // =============================================================================
-// SUBSCRIPTION HANDLERS
+// CREDITS HANDLERS
 // =============================================================================
 
 /**
- * Handle subscription checkout session creation
- * POST /subscriptions/create (authenticated)
+ * Handle get credit balance
+ * GET /credits/balance?deviceId=xxx
  */
-async function handleSubscriptionCreate(
-  request: Request,
-  env: Env,
-  auth: AuthenticatedContext
-): Promise<Response> {
+async function handleGetCreditsBalance(request: Request, env: Env): Promise<Response> {
   try {
-    const body = await request.json();
+    const url = new URL(request.url);
+    const deviceId = url.searchParams.get('deviceId');
 
-    const validationResult = SubscriptionCheckoutSchema.safeParse(body);
-    if (!validationResult.success) {
+    if (!deviceId) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          message: 'deviceId query parameter is required',
         },
         400
       );
     }
 
-    const { successUrl, cancelUrl } = validationResult.data;
-
-    // Get user email for Stripe
-    const { user } = await getUserSubscriptionTier(env, auth.userId);
-    if (!user) {
-      return errorResponse('Not found', 'User not found', 404);
-    }
-
-    // Check if user already has premium
-    if (user.subscription_tier === 'premium') {
-      return jsonResponse(
-        {
-          error: 'Already subscribed',
-          message: 'You already have an active premium subscription.',
-        },
-        400
-      );
-    }
-
-    // Create Stripe checkout session
-    const result = await createCheckoutSession(env, auth.userId, user.email, successUrl, cancelUrl);
-
-    if (!result.success) {
-      return errorResponse('Stripe error', result.error || 'Failed to create checkout session', 500);
-    }
+    const credits = await checkDeviceCredits(env, deviceId);
+    const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
 
     return jsonResponse({
       success: true,
-      sessionId: result.sessionId,
-      checkoutUrl: result.url,
+      deviceId,
+      freeLimit,
+      freeUsed: freeLimit - credits.freeRemaining,
+      freeRemaining: credits.freeRemaining,
+      paidCredits: credits.paidCredits,
+      totalCredits: credits.freeRemaining + credits.paidCredits,
+      totalAnalyses: credits.totalAnalyses,
     });
   } catch (error) {
-    console.error('Subscription create error:', error);
+    console.error('Get credits balance error:', error);
     return errorResponse(
       'Internal server error',
       error instanceof Error ? error.message : 'Unknown error',
@@ -1375,151 +1376,73 @@ async function handleSubscriptionCreate(
 }
 
 /**
- * Handle Stripe webhook events
- * POST /subscriptions/webhook (public - verified by signature)
+ * Validate Apple receipt with App Store
  */
-async function handleSubscriptionWebhook(request: Request, env: Env): Promise<Response> {
+async function validateAppleReceipt(
+  receiptData: string,
+  isSandbox: boolean
+): Promise<{ valid: boolean; transactionId?: string; productId?: string; error?: string }> {
+  const verifyUrl = isSandbox
+    ? 'https://sandbox.itunes.apple.com/verifyReceipt'
+    : 'https://buy.itunes.apple.com/verifyReceipt';
+
   try {
-    const payload = await request.text();
-    const signatureHeader = request.headers.get('Stripe-Signature');
+    const response = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        'receipt-data': receiptData,
+        'exclude-old-transactions': true,
+      }),
+    });
 
-    if (!signatureHeader) {
-      return errorResponse('Bad request', 'Missing Stripe-Signature header', 400);
-    }
-
-    const result = await handleWebhook(env, payload, signatureHeader);
-
-    if (!result.success) {
-      console.error('Webhook error:', result.error);
-      return errorResponse('Webhook error', result.error || 'Failed to process webhook', 400);
-    }
-
-    // Process specific events
-    switch (result.eventType) {
-      case 'checkout.session.completed': {
-        if (result.userId && result.subscriptionId) {
-          // Upgrade user to premium
-          await updateUserSubscription(
-            env,
-            result.userId,
-            'premium',
-            undefined, // Customer ID from subscription if needed
-            result.subscriptionId
-          );
-          console.log(`User ${result.userId} upgraded to premium`);
-        }
-        break;
-      }
-
-      case 'customer.subscription.deleted': {
-        if (result.subscriptionId) {
-          // Find user by subscription ID and downgrade
-          const user = await findUserByStripeSubscription(env, result.subscriptionId);
-          if (user) {
-            await updateUserSubscription(env, user.id, 'free');
-            console.log(`User ${user.id} downgraded to free`);
-          } else if (result.userId) {
-            // Fallback to userId from metadata
-            await updateUserSubscription(env, result.userId, 'free');
-            console.log(`User ${result.userId} downgraded to free (via metadata)`);
-          }
-        }
-        break;
-      }
-
-      default:
-        // Other events acknowledged but not processed
-        console.log(`Webhook event ${result.eventType} acknowledged`);
-    }
-
-    return jsonResponse({ received: true });
-  } catch (error) {
-    console.error('Webhook processing error:', error);
-    return errorResponse(
-      'Internal server error',
-      error instanceof Error ? error.message : 'Unknown error',
-      500
-    );
-  }
-}
-
-/**
- * Handle get subscription status
- * GET /subscriptions/status (authenticated)
- */
-async function handleSubscriptionStatus(env: Env, auth: AuthenticatedContext): Promise<Response> {
-  try {
-    const { tier, isPremium, user } = await getUserSubscriptionTier(env, auth.userId);
-
-    if (!user) {
-      return errorResponse('Not found', 'User not found', 404);
-    }
-
-    // Get rate limit info for free users
-    let rateLimitInfo = null;
-    if (!isPremium) {
-      const key = `rate:${auth.userId}:${new Date().toISOString().slice(0, 7)}`;
-      const currentCount = parseInt((await env.REEF_KV.get(key)) || '0', 10);
-      const limit = parseInt(env.FREE_TIER_LIMIT || '3', 10);
-      rateLimitInfo = {
-        used: currentCount,
-        limit,
-        remaining: Math.max(0, limit - currentCount),
+    const data = (await response.json()) as {
+      status: number;
+      receipt?: {
+        in_app?: Array<{
+          transaction_id: string;
+          product_id: string;
+        }>;
       };
+    };
+
+    // Status 21007 means receipt is from sandbox, retry with sandbox URL
+    if (data.status === 21007 && !isSandbox) {
+      return validateAppleReceipt(receiptData, true);
     }
 
-    return jsonResponse({
-      success: true,
-      subscription: {
-        tier,
-        isPremium,
-        stripeSubscriptionId: user.stripe_subscription_id,
-        features: isPremium
-          ? {
-              analysesPerMonth: 'unlimited',
-              csvExport: true,
-              historicalCharts: true,
-            }
-          : {
-              analysesPerMonth: 3,
-              csvExport: false,
-              historicalCharts: false,
-            },
-      },
-      rateLimit: rateLimitInfo,
-      pricing: {
-        premiumPrice: '$4.99/month',
-        features: [
-          'Unlimited water analyses',
-          'CSV export of measurements',
-          'Historical trend charts',
-          'Priority AI recommendations',
-        ],
-      },
-    });
+    if (data.status !== 0) {
+      return { valid: false, error: `Apple receipt validation failed with status ${data.status}` };
+    }
+
+    // Get the most recent transaction
+    const inAppPurchases = data.receipt?.in_app || [];
+    if (inAppPurchases.length === 0) {
+      return { valid: false, error: 'No in-app purchases found in receipt' };
+    }
+
+    const latestPurchase = inAppPurchases[inAppPurchases.length - 1];
+
+    return {
+      valid: true,
+      transactionId: latestPurchase.transaction_id,
+      productId: latestPurchase.product_id,
+    };
   } catch (error) {
-    console.error('Subscription status error:', error);
-    return errorResponse(
-      'Internal server error',
-      error instanceof Error ? error.message : 'Unknown error',
-      500
-    );
+    console.error('Apple receipt validation error:', error);
+    return { valid: false, error: error instanceof Error ? error.message : 'Receipt validation failed' };
   }
 }
 
 /**
- * Handle subscription cancellation
- * POST /subscriptions/cancel (authenticated)
+ * Handle credit purchase
+ * POST /credits/purchase
  */
-async function handleSubscriptionCancel(
-  request: Request,
-  env: Env,
-  auth: AuthenticatedContext
-): Promise<Response> {
+async function handleCreditsPurchase(request: Request, env: Env): Promise<Response> {
   try {
     const body = await request.json();
 
-    const validationResult = SubscriptionCancelSchema.safeParse(body);
+    const validationResult = CreditPurchaseSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
@@ -1530,44 +1453,78 @@ async function handleSubscriptionCancel(
       );
     }
 
-    const { cancelAtPeriodEnd } = validationResult.data;
+    const { deviceId, receiptData, productId } = validationResult.data;
 
-    const { user, isPremium } = await getUserSubscriptionTier(env, auth.userId);
-
-    if (!user) {
-      return errorResponse('Not found', 'User not found', 404);
-    }
-
-    if (!isPremium || !user.stripe_subscription_id) {
+    // Validate product ID
+    const creditsToAdd = CREDIT_PRODUCTS[productId];
+    if (!creditsToAdd) {
       return jsonResponse(
         {
-          error: 'No active subscription',
-          message: 'You do not have an active premium subscription to cancel.',
+          error: 'Invalid product',
+          message: `Unknown product ID: ${productId}`,
         },
         400
       );
     }
 
-    const result = await cancelSubscription(env, user.stripe_subscription_id, cancelAtPeriodEnd);
+    // Validate Apple receipt
+    const validation = await validateAppleReceipt(receiptData, false);
 
-    if (!result.success) {
-      return errorResponse('Stripe error', result.error || 'Failed to cancel subscription', 500);
+    if (!validation.valid) {
+      return jsonResponse(
+        {
+          error: 'Invalid receipt',
+          message: validation.error || 'Apple receipt validation failed',
+        },
+        400
+      );
     }
 
-    // If canceling immediately, update the database now
-    if (!cancelAtPeriodEnd) {
-      await updateUserSubscription(env, auth.userId, 'free');
+    // Verify product ID matches
+    if (validation.productId !== productId) {
+      return jsonResponse(
+        {
+          error: 'Product mismatch',
+          message: `Receipt product (${validation.productId}) does not match requested product (${productId})`,
+        },
+        400
+      );
     }
+
+    // Add credits
+    const added = await addDeviceCredits(
+      env,
+      deviceId,
+      creditsToAdd,
+      productId,
+      validation.transactionId!,
+      receiptData
+    );
+
+    if (!added) {
+      return jsonResponse(
+        {
+          error: 'Duplicate transaction',
+          message: 'This transaction has already been processed',
+        },
+        409
+      );
+    }
+
+    // Get updated balance
+    const credits = await checkDeviceCredits(env, deviceId);
 
     return jsonResponse({
       success: true,
-      message: cancelAtPeriodEnd
-        ? 'Subscription will be canceled at the end of the current billing period. You will retain premium access until then.'
-        : 'Subscription canceled immediately. Your account has been downgraded to free tier.',
-      cancelAtPeriodEnd,
+      creditsAdded: creditsToAdd,
+      newBalance: {
+        freeRemaining: credits.freeRemaining,
+        paidCredits: credits.paidCredits,
+        totalCredits: credits.freeRemaining + credits.paidCredits,
+      },
     });
   } catch (error) {
-    console.error('Subscription cancel error:', error);
+    console.error('Credit purchase error:', error);
     return errorResponse(
       'Internal server error',
       error instanceof Error ? error.message : 'Unknown error',
@@ -1785,7 +1742,7 @@ async function handleGetAverages(
 }
 
 /**
- * Handle CSV export request (Premium only)
+ * Handle CSV export request
  * GET /tanks/:tankId/export?start=&end=
  */
 async function handleExportCSV(
@@ -1795,16 +1752,6 @@ async function handleExportCSV(
   tankId: string
 ): Promise<Response> {
   try {
-    // Check premium access
-    const isPremium = await checkPremiumAccess(env.DB, auth.userId);
-    if (!isPremium) {
-      return errorResponse(
-        'Payment Required',
-        'CSV export is a premium feature. Upgrade to premium for $4.99/month.',
-        402
-      );
-    }
-
     // Verify tank ownership
     const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
     if (tankResult instanceof Response) {
@@ -2739,15 +2686,13 @@ export default {
             'PUT /api/tanks/:id': 'Update a tank (requires auth)',
             'DELETE /api/tanks/:id': 'Delete a tank (requires auth)',
             'POST /measurements': 'Record water measurements (requires auth)',
-            'POST /analyze': 'Analyze water parameters and get dosing recommendations',
-            'POST /subscriptions/create': 'Create Stripe checkout session (requires auth)',
-            'POST /subscriptions/webhook': 'Handle Stripe webhooks (public)',
-            'GET /subscriptions/status': 'Get subscription status (requires auth)',
-            'POST /subscriptions/cancel': 'Cancel subscription (requires auth)',
+            'POST /analyze': 'Analyze water parameters and get dosing recommendations (uses credits)',
+            'GET /credits/balance': 'Get device credit balance',
+            'POST /credits/purchase': 'Purchase credits with Apple receipt validation',
             'GET /tanks/:tankId/history': 'Get historical measurements (requires auth)',
             'GET /tanks/:tankId/trends': 'Get parameter trends over time (requires auth)',
             'GET /tanks/:tankId/averages': 'Get daily/weekly averages (requires auth)',
-            'GET /tanks/:tankId/export': 'Export measurements to CSV (premium only)',
+            'GET /tanks/:tankId/export': 'Export measurements to CSV (requires auth)',
             'POST /tanks/:tankId/livestock': 'Add new livestock to tank (requires auth)',
             'GET /tanks/:tankId/livestock': 'List tank livestock (requires auth)',
             'PUT /livestock/:id': 'Update livestock details (requires auth)',
@@ -2862,40 +2807,14 @@ export default {
         response = await handleAnalysis(request, env);
         break;
 
-      // Subscription endpoints
-      case pathname === '/subscriptions/create' && method === 'POST': {
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleSubscriptionCreate(request, env, authResult);
-        }
-        break;
-      }
-
-      case pathname === '/subscriptions/webhook' && method === 'POST':
-        response = await handleSubscriptionWebhook(request, env);
+      // Credits endpoints (public - uses deviceId for tracking)
+      case pathname === '/credits/balance' && method === 'GET':
+        response = await handleGetCreditsBalance(request, env);
         break;
 
-      case pathname === '/subscriptions/status' && method === 'GET': {
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleSubscriptionStatus(env, authResult);
-        }
+      case pathname === '/credits/purchase' && method === 'POST':
+        response = await handleCreditsPurchase(request, env);
         break;
-      }
-
-      case pathname === '/subscriptions/cancel' && method === 'POST': {
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleSubscriptionCancel(request, env, authResult);
-        }
-        break;
-      }
 
       // Historical data endpoints (requires authentication)
       // Pattern: /tanks/:tankId/history
@@ -2937,7 +2856,7 @@ export default {
         break;
       }
 
-      // Pattern: /tanks/:tankId/export (Premium only)
+      // Pattern: /tanks/:tankId/export
       case pathname.match(/^\/tanks\/([a-f0-9-]+)\/export$/) !== null && method === 'GET': {
         const match = pathname.match(/^\/tanks\/([a-f0-9-]+)\/export$/);
         const tankId = match![1];

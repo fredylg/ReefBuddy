@@ -15,21 +15,17 @@ binding = "DB"
 database_name = "reef-db"
 database_id = "5171dac0-7584-49a2-956b-971f2516e0cd"
 
-# KV Namespace Binding (for session tracking and Free Tier limits)
+# KV Namespace Binding (for session tracking)
 # Create with: npx wrangler kv:namespace create REEF_KV
 [[kv_namespaces]]
 binding = "REEF_KV"
 id = "b971329ac04e4171a65cfb907da0b08f"
 
-# Environment Variables (secrets should be set via wrangler secret)
+# Environment Variables
 [vars]
 ENVIRONMENT = "development"
-FREE_TIER_LIMIT = "3"
+FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
-
-# Stripe Price ID for ReefBuddy Premium ($4.99/month)
-# Create this in Stripe Dashboard: https://dashboard.stripe.com/products
-STRIPE_PRICE_ID = "mock_price_id"  # Replace with real Stripe price ID when ready
 
 # AI Gateway Configuration
 # Route all LLM calls through Cloudflare AI Gateway for caching
@@ -41,12 +37,9 @@ gateway_id = "reefbuddy-ai-gateway"
 # SECRETS REFERENCE
 # Set via wrangler secret put (these are NOT stored in this file):
 # - ANTHROPIC_API_KEY: API key for Claude AI Gateway
-# - STRIPE_SECRET_KEY: Stripe API secret key (sk_live_... or sk_test_...)
-# - STRIPE_WEBHOOK_SECRET: Stripe webhook signing secret (whsec_...)
 #
 # Example commands:
-#   wrangler secret put STRIPE_SECRET_KEY
-#   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put ANTHROPIC_API_KEY
 # =============================================================================
 
 # Development settings

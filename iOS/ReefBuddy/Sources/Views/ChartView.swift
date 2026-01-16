@@ -43,7 +43,7 @@ struct ChartView: View {
             }
         }
         .sheet(isPresented: $showingSubscription) {
-            SubscriptionView()
+            PurchaseCreditsView()
         }
     }
 

@@ -18,12 +18,12 @@
 
 ### File Inventory
 
-**Backend Source Files (5/5 verified):**
-- `src/index.ts` - Main worker (81KB)
-- `src/stripe.ts` - Stripe integration (15KB)
+**Backend Source Files (4/4 verified):**
+- `src/index.ts` - Main worker (81KB) - includes IAP credits system
 - `src/historical.ts` - Historical trends (10KB)
 - `src/export.ts` - CSV export (5KB)
 - `src/notifications.ts` - Push notifications (22KB)
+- ~~`src/stripe.ts`~~ - REMOVED (replaced by IAP credits)
 
 **Migrations (6/6 verified):**
 - `0001_initial_schema.sql` - Users, tanks, measurements
@@ -33,12 +33,13 @@
 - `0004_livestock_tracking.sql` - Livestock tables
 - `0005_notification_settings.sql` - Push notification tables
 
-**iOS Swift Files (23/23 verified):**
+**iOS Swift Files (26/26 verified):**
 - App: ReefBuddyApp.swift, ContentView.swift, AppIconGenerator.swift
 - Theme: BrutalistTheme.swift
-- Components: BrutalistButton.swift, BrutalistTextField.swift, ShareSheet.swift
+- Components: BrutalistButton.swift, BrutalistTextField.swift, ShareSheet.swift, BrutalistLoadingView.swift
 - Models: Tank.swift, Measurement.swift, User.swift, Livestock.swift
-- Views: TankListView.swift, MeasurementEntryView.swift, AnalysisView.swift, HistoryView.swift, ChartView.swift, SubscriptionView.swift, ExportView.swift, NotificationSettingsView.swift, LivestockListView.swift, LivestockDetailView.swift, AddLivestockView.swift
+- Views: TankListView.swift, MeasurementEntryView.swift, AnalysisView.swift, HistoryView.swift, ChartView.swift, SubscriptionView.swift, PurchaseCreditsView.swift, ExportView.swift, NotificationSettingsView.swift, LivestockListView.swift, LivestockDetailView.swift, AddLivestockView.swift
+- Store: StoreManager.swift (StoreKit 2 integration)
 - Networking: APIClient.swift
 
 **Xcode Project:**
@@ -392,32 +393,49 @@ xcodebuild test -project iOS/ReefBuddy.xcodeproj -scheme ReefBuddy -destination 
 
 ---
 
-## Phase 2.5: Subscription System
+## Phase 2.5: In-App Purchase Credits System (Replaced Subscriptions)
+
+### ⚠️ MIGRATION NOTE
+The original Stripe subscription system has been **replaced** with a device-based In-App Purchase credits system.
+- Stripe code removed from `src/index.ts`
+- `src/stripe.ts` has been deleted
+- Stripe config removed from `wrangler.toml`
 
 ### Database & Migrations
-- [x] Migration 0003: Add stripe_customer_id, stripe_subscription_id columns
-- [x] Indexes for subscription lookups
+- [x] Migration 0007: IAP credits tables (device_credits, purchase_history)
+- [x] Device-based credit tracking (no user auth required)
+- [x] Duplicate transaction prevention via apple_transaction_id
 
-### Subscription API
-- [x] `POST /subscriptions/create` - Create Stripe checkout session (requires auth)
-- [x] `POST /subscriptions/webhook` - Handle Stripe webhook events
-- [x] `GET /subscriptions/status` - Get current subscription status (requires auth)
-- [x] `POST /subscriptions/cancel` - Cancel subscription (requires auth)
+### Credits API
+- [x] `GET /credits/balance` - Get device credit balance
+- [x] `POST /credits/purchase` - Validate Apple receipt and add credits
+- [x] `POST /analyze` - Updated to deduct credits (deviceId required)
 
-### Stripe Integration
-- [x] `src/stripe.ts` - Stripe API client using fetch (Workers compatible)
-- [x] Webhook signature verification (HMAC-SHA256)
-- [x] Checkout session creation
-- [x] Subscription cancellation
+### Apple Receipt Validation
+- [x] Apple App Store receipt verification
+- [x] Automatic sandbox/production detection
+- [x] Transaction ID deduplication
 
-### Rate Limiting & Premium
-- [x] Premium users bypass rate limits (unlimited analyses)
-- [x] `requirePremium()` middleware for premium-only endpoints
-- [x] CSV export gated behind premium tier
+### Credit Logic
+```
+if free_used < 3:
+    use free credit (increment free_used)
+elif paid_credits > 0:
+    use paid credit (decrement paid_credits)
+else:
+    return 402 Payment Required
+```
 
 ### Pricing
-- Free tier: 3 analyses/month
-- Premium tier: $4.99/month, unlimited analyses, CSV export, historical charts
+- **Free tier:** 3 analyses per device (lifetime)
+- **5 Credits:** $0.99 (com.reefbuddy.credits5)
+- **50 Credits:** $4.99 - BEST VALUE (com.reefbuddy.credits50)
+
+### iOS Implementation
+- [x] `StoreManager.swift` - StoreKit 2 integration
+- [x] `PurchaseCreditsView.swift` - Purchase UI with brutalist design
+- [x] `BrutalistLoadingView.swift` - Loading indicator for AI analysis
+- [x] `APIClient.swift` - Credit balance and purchase methods
 
 ---
 

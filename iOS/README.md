@@ -49,7 +49,7 @@ When adding new Swift files, you must EDIT (not recreate) the `project.pbxproj` 
 
 See CLAUDE.md Section 8 for detailed instructions.
 
-## Current Swift Files (22 total)
+## Current Swift Files (26 total)
 
 ```
 Sources/
@@ -61,7 +61,9 @@ Sources/
 │   └── BrutalistTheme.swift
 ├── Components/
 │   ├── BrutalistButton.swift
-│   └── BrutalistTextField.swift
+│   ├── BrutalistTextField.swift
+│   ├── BrutalistLoadingView.swift     # AI analysis loading indicator
+│   └── ShareSheet.swift
 ├── Models/
 │   ├── Tank.swift
 │   ├── Measurement.swift
@@ -73,12 +75,15 @@ Sources/
 │   ├── AnalysisView.swift
 │   ├── HistoryView.swift
 │   ├── ChartView.swift
-│   ├── SubscriptionView.swift
+│   ├── SubscriptionView.swift         # Legacy (to be deprecated)
+│   ├── PurchaseCreditsView.swift      # IAP Credits purchase UI
 │   ├── ExportView.swift
 │   ├── LivestockListView.swift
 │   ├── LivestockDetailView.swift
 │   ├── AddLivestockView.swift
 │   └── NotificationSettingsView.swift
+├── Store/
+│   └── StoreManager.swift             # StoreKit 2 integration
 └── Networking/
     └── APIClient.swift
 ```

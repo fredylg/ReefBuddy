@@ -103,25 +103,12 @@ enum TankType: String, Codable, CaseIterable {
 // MARK: - Sample Data
 
 extension Tank {
-    /// Sample tanks for previews and testing
+    /// Sample tank for previews and testing
     static let samples: [Tank] = [
         Tank(
-            name: "Living Room Reef",
-            volumeGallons: 120,
-            tankType: .mixedReef,
-            notes: "Main display tank with mixed corals"
-        ),
-        Tank(
-            name: "Office Nano",
-            volumeGallons: 20,
-            tankType: .nano,
-            notes: "Small desk tank with softies"
-        ),
-        Tank(
-            name: "Frag Tank",
-            volumeGallons: 40,
-            tankType: .sps,
-            notes: "Coral propagation system"
+            name: "My Reef Tank",
+            volumeGallons: 75,
+            tankType: .mixedReef
         )
     ]
 

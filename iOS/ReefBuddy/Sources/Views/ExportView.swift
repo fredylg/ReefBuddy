@@ -17,7 +17,6 @@ struct ExportView: View {
     @State private var endDate = Date()
     @State private var isExporting = false
     @State private var showingShareSheet = false
-    @State private var showingSubscription = false
     @State private var exportURL: URL?
     @State private var showingError = false
     @State private var errorMessage = ""
@@ -27,11 +26,7 @@ struct ExportView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if isPremium {
-                    premiumContent
-                } else {
-                    freeContent
-                }
+                premiumContent
             }
             .background(BrutalistTheme.Colors.background)
             .navigationTitle("EXPORT DATA")
@@ -44,9 +39,6 @@ struct ExportView: View {
                     .font(BrutalistTheme.Typography.button)
                     .foregroundColor(BrutalistTheme.Colors.text)
                 }
-            }
-            .sheet(isPresented: $showingSubscription) {
-                SubscriptionView()
             }
             .sheet(isPresented: $showingShareSheet) {
                 if let url = exportURL {
@@ -82,20 +74,6 @@ struct ExportView: View {
         }
     }
 
-    // MARK: - Free Content (Premium Gate)
-
-    private var freeContent: some View {
-        VStack(spacing: BrutalistTheme.Spacing.xl) {
-            Spacer()
-
-            PremiumGateView(feature: "CSV Export") {
-                showingSubscription = true
-            }
-
-            Spacer()
-        }
-        .padding(BrutalistTheme.Spacing.lg)
-    }
 
     // MARK: - Export Header
 
@@ -279,11 +257,6 @@ struct ExportView: View {
 
     // MARK: - Computed Properties
 
-    private var isPremium: Bool {
-        // In real app, check user subscription status
-        // For demo, returning true to show the export UI
-        true
-    }
 
     private var filteredMeasurements: [Measurement] {
         measurements.filter { measurement in

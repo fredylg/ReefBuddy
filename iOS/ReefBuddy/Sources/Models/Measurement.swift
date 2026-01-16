@@ -216,49 +216,20 @@ enum ParameterStatus {
 // MARK: - Sample Data
 
 extension Measurement {
-    /// Sample measurements for previews and testing
-    static let samples: [Measurement] = [
-        Measurement(
-            tankId: Tank.sample.id,
-            measuredAt: Date(),
-            temperature: 78.2,
-            salinity: 1.025,
-            pH: 8.1,
-            alkalinity: 8.5,
-            calcium: 420.0,
-            magnesium: 1320.0,
-            nitrate: 5.0,
-            phosphate: 0.03,
-            notes: "All parameters looking good"
-        ),
-        Measurement(
-            tankId: Tank.sample.id,
-            measuredAt: Date().addingTimeInterval(-86400 * 7),
-            temperature: 77.8,
-            salinity: 1.024,
-            pH: 8.2,
-            alkalinity: 9.0,
-            calcium: 415.0,
-            magnesium: 1350.0,
-            nitrate: 8.0,
-            phosphate: 0.05
-        ),
-        Measurement(
-            tankId: Tank.sample.id,
-            measuredAt: Date().addingTimeInterval(-86400 * 14),
-            temperature: 79.0,
-            salinity: 1.026,
-            pH: 7.9,
-            alkalinity: 7.5,
-            calcium: 390.0,
-            magnesium: 1280.0,
-            nitrate: 12.0,
-            phosphate: 0.08,
-            notes: "Nitrate slightly elevated, did 10% water change"
-        )
-    ]
+    /// Sample measurements for previews and testing (empty for clean start)
+    static let samples: [Measurement] = []
 
-    static let sample = samples[0]
+    /// Single sample for previews
+    static let sample = Measurement(
+        tankId: Tank.sample.id,
+        measuredAt: Date(),
+        temperature: 78.0,
+        salinity: 1.025,
+        pH: 8.2,
+        alkalinity: 8.5,
+        calcium: 420.0,
+        magnesium: 1350.0
+    )
 }
 
 // MARK: - API Request/Response Models
@@ -330,12 +301,14 @@ struct DosingRecommendation: Codable, Identifiable {
 
 /// Request body for AI analysis endpoint (matches Worker's AnalysisRequestSchema)
 struct AnalysisRequest: Codable {
+    let deviceId: String
     let tankId: String
     let parameters: WaterParameters
     let tankVolume: Double
 
     // Use explicit coding keys to ensure camelCase (Worker expects camelCase, not snake_case)
     enum CodingKeys: String, CodingKey {
+        case deviceId
         case tankId
         case parameters
         case tankVolume
@@ -358,7 +331,8 @@ struct AnalysisRequest: Codable {
         }
     }
 
-    init(measurement: Measurement, tankVolume: Double) {
+    init(measurement: Measurement, tankVolume: Double, deviceId: String) {
+        self.deviceId = deviceId
         self.tankId = measurement.tankId.uuidString
         self.tankVolume = tankVolume
         self.parameters = WaterParameters(
@@ -380,7 +354,10 @@ struct AnalyzeAPIResponse: Codable {
     let success: Bool
     let tankId: String?
     let analysis: AnalysisContent?
-    let rateLimitRemaining: Int?
+    // Credit tracking fields (new IAP system)
+    let creditsRemaining: Int?
+    let freeRemaining: Int?
+    let paidCredits: Int?
 
     /// The analysis content - could be structured or just a recommendation string
     struct AnalysisContent: Codable {

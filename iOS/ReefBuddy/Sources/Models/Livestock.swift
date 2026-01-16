@@ -256,108 +256,31 @@ struct LivestockLog: Identifiable, Codable, Equatable {
 // MARK: - Sample Data
 
 extension Livestock {
-    /// Sample livestock for previews and testing
-    static let samples: [Livestock] = [
-        Livestock(
-            tankId: Tank.sample.id,
-            name: "Green Slimer",
-            scientificName: "Acropora yongei",
-            category: .sps,
-            healthStatus: .thriving,
-            quantity: 1,
-            purchaseDate: Date().addingTimeInterval(-86400 * 90),
-            purchasePrice: 75.00,
-            notes: "Fast grower, positioned high in tank"
-        ),
-        Livestock(
-            tankId: Tank.sample.id,
-            name: "Hammer Coral",
-            scientificName: "Euphyllia ancora",
-            category: .lps,
-            healthStatus: .healthy,
-            quantity: 1,
-            purchaseDate: Date().addingTimeInterval(-86400 * 60),
-            purchasePrice: 65.00,
-            notes: "Wall hammer, 8 heads"
-        ),
-        Livestock(
-            tankId: Tank.sample.id,
-            name: "Ocellaris Clownfish",
-            scientificName: "Amphiprion ocellaris",
-            category: .fish,
-            healthStatus: .thriving,
-            quantity: 2,
-            purchaseDate: Date().addingTimeInterval(-86400 * 180),
-            purchasePrice: 40.00,
-            notes: "Bonded pair, hosted by bubble tip anemone"
-        ),
-        Livestock(
-            tankId: Tank.sample.id,
-            name: "Bubble Tip Anemone",
-            scientificName: "Entacmaea quadricolor",
-            category: .anemone,
-            healthStatus: .healthy,
-            quantity: 1,
-            purchaseDate: Date().addingTimeInterval(-86400 * 120),
-            purchasePrice: 50.00,
-            notes: "Rose color variety"
-        ),
-        Livestock(
-            tankId: Tank.sample.id,
-            name: "Zoanthid Colony",
-            category: .softCoral,
-            healthStatus: .stressed,
-            quantity: 1,
-            purchaseDate: Date().addingTimeInterval(-86400 * 14),
-            purchasePrice: 35.00,
-            notes: "Mixed zoa garden, some polyps not opening"
-        ),
-        Livestock(
-            tankId: Tank.sample.id,
-            name: "Emerald Crab",
-            scientificName: "Mithraculus sculptus",
-            category: .invertebrate,
-            healthStatus: .healthy,
-            quantity: 2,
-            purchaseDate: Date().addingTimeInterval(-86400 * 45),
-            purchasePrice: 12.00,
-            notes: "Good algae cleaners"
-        )
-    ]
+    /// Sample livestock for previews and testing (empty for clean start)
+    static let samples: [Livestock] = []
 
-    static let sample = samples[0]
+    /// Single sample for previews
+    static let sample = Livestock(
+        tankId: Tank.sample.id,
+        name: "Sample Coral",
+        category: .lps,
+        healthStatus: .healthy,
+        quantity: 1,
+        purchaseDate: Date()
+    )
 }
 
 extension LivestockLog {
-    /// Sample logs for previews and testing
-    static let samples: [LivestockLog] = [
-        LivestockLog(
-            livestockId: Livestock.sample.id,
-            loggedAt: Date(),
-            healthStatus: .thriving,
-            notes: "New growth tips showing, polyp extension excellent"
-        ),
-        LivestockLog(
-            livestockId: Livestock.sample.id,
-            loggedAt: Date().addingTimeInterval(-86400 * 7),
-            healthStatus: .healthy,
-            notes: "Good coloration, moved to higher light"
-        ),
-        LivestockLog(
-            livestockId: Livestock.sample.id,
-            loggedAt: Date().addingTimeInterval(-86400 * 14),
-            healthStatus: .stressed,
-            notes: "Slight bleaching after new lights installed"
-        ),
-        LivestockLog(
-            livestockId: Livestock.sample.id,
-            loggedAt: Date().addingTimeInterval(-86400 * 30),
-            healthStatus: .healthy,
-            notes: "Acclimated well after dip and quarantine"
-        )
-    ]
+    /// Sample logs for previews and testing (empty for clean start)
+    static let samples: [LivestockLog] = []
 
-    static let sample = samples[0]
+    /// Single sample for previews
+    static let sample = LivestockLog(
+        livestockId: Livestock.sample.id,
+        loggedAt: Date(),
+        healthStatus: .healthy,
+        notes: "Sample log entry"
+    )
 }
 
 // MARK: - API Request Models

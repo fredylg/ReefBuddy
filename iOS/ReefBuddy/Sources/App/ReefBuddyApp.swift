@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - ReefBuddy App
 
@@ -10,6 +11,7 @@ struct ReefBuddyApp: App {
     // MARK: - State
 
     @StateObject private var appState = AppState()
+    @StateObject private var storeManager = StoreManager()
 
     // MARK: - Body
 
@@ -17,6 +19,7 @@ struct ReefBuddyApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .environmentObject(storeManager)
         }
     }
 }
@@ -50,12 +53,28 @@ final class AppState: ObservableObject {
     /// Error message to display
     @Published var errorMessage: String?
 
-    /// Number of free analyses remaining this month
-    @Published var freeAnalysesRemaining: Int = 3
+    /// Show purchase credits sheet when user runs out of credits
+    @Published var showPurchaseCredits: Bool = false
 
     // MARK: - API Client
 
     private let apiClient = APIClient()
+
+    // MARK: - Device ID
+
+    /// Get the device identifier for credit tracking
+    var deviceId: String {
+        if let id = UIDevice.current.identifierForVendor?.uuidString {
+            return id
+        }
+        let key = "ReefBuddy.DeviceID"
+        if let storedId = UserDefaults.standard.string(forKey: key) {
+            return storedId
+        }
+        let newId = UUID().uuidString
+        UserDefaults.standard.set(newId, forKey: key)
+        return newId
+    }
 
     // MARK: - Initialization
 
@@ -174,20 +193,25 @@ final class AppState: ObservableObject {
     }
 
     /// Request AI analysis for a measurement
+    /// Uses device-based credits (3 free, then paid via IAP)
     func requestAnalysis(for measurement: Measurement, tank: Tank) async -> AnalysisResponse? {
-        guard freeAnalysesRemaining > 0 else {
-            errorMessage = "No free analyses remaining. Upgrade to Premium for unlimited access."
-            return nil
-        }
-
         isLoading = true
         errorMessage = nil
 
         do {
-            let analysis = try await apiClient.analyzeParameters(measurement, tankVolume: tank.volumeGallons)
-            freeAnalysesRemaining -= 1
+            let analysis = try await apiClient.analyzeParameters(
+                measurement,
+                tankVolume: tank.volumeGallons,
+                deviceId: deviceId
+            )
             isLoading = false
             return analysis
+        } catch APIError.noCredits {
+            // Show purchase credits sheet
+            isLoading = false
+            showPurchaseCredits = true
+            errorMessage = "No analysis credits remaining. Purchase more to continue."
+            return nil
         } catch {
             errorMessage = "Analysis failed: \(error.localizedDescription)"
             isLoading = false

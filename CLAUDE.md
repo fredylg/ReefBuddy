@@ -166,7 +166,7 @@ git checkout HEAD -- iOS/ReefBuddy.xcodeproj/project.pbxproj
 ```
 
 ### Current iOS Source Files (update this list when adding files)
-**Total: 23 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
+**Total: 26 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
 ```
 iOS/ReefBuddy/Sources/
 ├── App/
@@ -178,24 +178,28 @@ iOS/ReefBuddy/Sources/
 ├── Components/
 │   ├── BrutalistButton.swift
 │   ├── BrutalistTextField.swift
+│   ├── BrutalistLoadingView.swift    # IAP Credits
 │   └── ShareSheet.swift
 ├── Models/
 │   ├── Tank.swift
 │   ├── Measurement.swift
 │   ├── User.swift
-│   └── Livestock.swift          # Phase 3
+│   └── Livestock.swift
 ├── Views/
 │   ├── TankListView.swift
 │   ├── MeasurementEntryView.swift
 │   ├── AnalysisView.swift
 │   ├── HistoryView.swift
 │   ├── ChartView.swift
-│   ├── SubscriptionView.swift
+│   ├── SubscriptionView.swift        # Legacy (to be deprecated)
+│   ├── PurchaseCreditsView.swift     # IAP Credits
 │   ├── ExportView.swift
-│   ├── LivestockListView.swift       # Phase 3
-│   ├── LivestockDetailView.swift     # Phase 3
-│   ├── AddLivestockView.swift        # Phase 3
-│   └── NotificationSettingsView.swift # Phase 3
+│   ├── LivestockListView.swift
+│   ├── LivestockDetailView.swift
+│   ├── AddLivestockView.swift
+│   └── NotificationSettingsView.swift
+├── Store/
+│   └── StoreManager.swift            # IAP Credits (StoreKit 2)
 └── Networking/
     └── APIClient.swift
 ```

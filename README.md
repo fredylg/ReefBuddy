@@ -84,9 +84,16 @@ See [`PLAN.md`](PLAN.md) for detailed development roadmap and current status.
 ## 🔒 Security
 
 - Session-based authentication with KV storage
-- Rate limiting (3 analyses/month free tier)
+- Device-based credit tracking (3 free analyses, then IAP)
 - Input validation with Zod schemas
 - AI Gateway for LLM call caching
+- Apple receipt validation for purchases
+
+## 💰 Pricing Model (In-App Purchase)
+
+- **Free:** 3 analyses per device (lifetime)
+- **5 Credits:** $0.99 (com.reefbuddy.credits5)
+- **50 Credits:** $4.99 - Best value, 50% savings (com.reefbuddy.credits50)
 
 ## 🚀 Deployment
 

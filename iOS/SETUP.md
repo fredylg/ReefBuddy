@@ -19,7 +19,9 @@ iOS/ReefBuddy/
 │   │
 │   ├── Components/
 │   │   ├── BrutalistButton.swift      (Custom button components)
-│   │   └── BrutalistTextField.swift   (Custom input components)
+│   │   ├── BrutalistTextField.swift   (Custom input components)
+│   │   ├── BrutalistLoadingView.swift (AI analysis loading indicator)
+│   │   └── ShareSheet.swift           (iOS share sheet wrapper)
 │   │
 │   ├── Models/
 │   │   ├── Tank.swift                 (Tank data model)
@@ -33,12 +35,16 @@ iOS/ReefBuddy/
 │   │   ├── AnalysisView.swift
 │   │   ├── HistoryView.swift
 │   │   ├── ChartView.swift
-│   │   ├── SubscriptionView.swift
+│   │   ├── SubscriptionView.swift     (Legacy - to be deprecated)
+│   │   ├── PurchaseCreditsView.swift  (IAP Credits purchase UI)
 │   │   ├── ExportView.swift
 │   │   ├── NotificationSettingsView.swift
 │   │   ├── LivestockListView.swift
 │   │   ├── LivestockDetailView.swift
 │   │   └── AddLivestockView.swift
+│   │
+│   ├── Store/
+│   │   └── StoreManager.swift         (StoreKit 2 integration)
 │   │
 │   └── Networking/
 │       └── APIClient.swift            (Cloudflare Workers API client)
@@ -76,7 +82,7 @@ The following files were missing from the Xcode project and have been added:
 4. **Livestock Tracking**: Monitor corals, fish, and invertebrates with health logging
 5. **Notifications**: Set parameter thresholds for alerts
 6. **Data Export**: Export measurements for analysis
-7. **Subscription Management**: Free tier (3 analyses/month) vs Premium (unlimited)
+7. **Credits System**: 3 free analyses, then in-app purchase credits (5 for $0.99, 50 for $4.99)
 
 ## API Integration
 

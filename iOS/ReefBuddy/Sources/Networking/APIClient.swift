@@ -153,7 +153,8 @@ actor APIClient {
 
     /// Request AI analysis of water parameters
     /// This endpoint routes through Cloudflare AI Gateway to Claude
-    func analyzeParameters(_ measurement: Measurement, tankVolume: Double) async throws -> AnalysisResponse {
+    /// Requires device credits (3 free, then paid)
+    func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String) async throws -> AnalysisResponse {
         let url = baseURL.appendingPathComponent("analyze")
         var request = makeRequest(url: url, method: "POST")
 
@@ -161,7 +162,7 @@ actor APIClient {
         let analysisEncoder = JSONEncoder()
         analysisEncoder.dateEncodingStrategy = .iso8601
 
-        let requestBody = AnalysisRequest(measurement: measurement, tankVolume: tankVolume)
+        let requestBody = AnalysisRequest(measurement: measurement, tankVolume: tankVolume, deviceId: deviceId)
         request.httpBody = try analysisEncoder.encode(requestBody)
 
         let (data, response) = try await session.data(for: request)
@@ -179,18 +180,39 @@ actor APIClient {
         }
     }
 
-    // MARK: - User/Subscription Endpoints
+    // MARK: - Credits Endpoints
 
-    /// Get the current user's free tier usage
-    func getFreeTierUsage() async throws -> FreeTierUsage {
-        let url = baseURL.appendingPathComponent("api/user/usage")
-        let request = makeRequest(url: url, method: "GET")
+    /// Get the device's credit balance
+    func getCreditsBalance(deviceId: String) async throws -> CreditsBalanceResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("credits/balance"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "deviceId", value: deviceId)
+        ]
+
+        let request = makeRequest(url: components.url!, method: "GET")
 
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
 
-        let apiResponse = try decoder.decode(APIResponse<FreeTierUsage>.self, from: data)
-        return apiResponse.data
+        return try decoder.decode(CreditsBalanceResponse.self, from: data)
+    }
+
+    /// Purchase credits with Apple receipt
+    func purchaseCredits(deviceId: String, receiptData: String, productId: String) async throws -> CreditsPurchaseResponse {
+        let url = baseURL.appendingPathComponent("credits/purchase")
+        var request = makeRequest(url: url, method: "POST")
+
+        let requestBody = CreditsPurchaseRequest(
+            deviceId: deviceId,
+            receiptData: receiptData,
+            productId: productId
+        )
+        request.httpBody = try encoder.encode(requestBody)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        return try decoder.decode(CreditsPurchaseResponse.self, from: data)
     }
 
     // MARK: - Private Helpers
@@ -221,6 +243,8 @@ actor APIClient {
             throw APIError.badRequest
         case 401:
             throw APIError.unauthorized
+        case 402:
+            throw APIError.noCredits
         case 403:
             throw APIError.forbidden
         case 404:
@@ -244,16 +268,37 @@ struct APIResponse<T: Decodable>: Decodable {
     let message: String?
 }
 
-// MARK: - Free Tier Usage
+// MARK: - Credits Models
 
-/// Tracks the user's free tier usage
-struct FreeTierUsage: Codable {
-    let analysesUsed: Int
-    let analysesLimit: Int
-    let resetDate: Date
+/// Request body for purchasing credits
+struct CreditsPurchaseRequest: Codable {
+    let deviceId: String
+    let receiptData: String
+    let productId: String
+}
 
-    var remaining: Int {
-        max(0, analysesLimit - analysesUsed)
+/// Response from credits balance endpoint
+struct CreditsBalanceResponse: Codable {
+    let success: Bool
+    let deviceId: String
+    let freeLimit: Int
+    let freeUsed: Int
+    let freeRemaining: Int
+    let paidCredits: Int
+    let totalCredits: Int
+    let totalAnalyses: Int
+}
+
+/// Response from credits purchase endpoint
+struct CreditsPurchaseResponse: Codable {
+    let success: Bool
+    let creditsAdded: Int
+    let newBalance: NewBalanceInfo
+
+    struct NewBalanceInfo: Codable {
+        let freeRemaining: Int
+        let paidCredits: Int
+        let totalCredits: Int
     }
 }
 
@@ -264,6 +309,7 @@ enum APIError: LocalizedError {
     case invalidResponse
     case badRequest
     case unauthorized
+    case noCredits
     case forbidden
     case notFound
     case rateLimited
@@ -280,6 +326,8 @@ enum APIError: LocalizedError {
             return "Invalid request. Please check your input."
         case .unauthorized:
             return "Authentication required"
+        case .noCredits:
+            return "No analysis credits remaining. Purchase more to continue."
         case .forbidden:
             return "Access denied"
         case .notFound:
