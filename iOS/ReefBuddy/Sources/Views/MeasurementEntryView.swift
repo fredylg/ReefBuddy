@@ -13,6 +13,7 @@ struct MeasurementEntryView: View {
     // MARK: - State
 
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var analysisStorage: AnalysisStorage
     @State private var measurement: MeasurementDraft = MeasurementDraft()
     @State private var showingAnalysis = false
     @State private var analysisResult: AnalysisResponse?
@@ -53,7 +54,11 @@ struct MeasurementEntryView: View {
         }
         .sheet(isPresented: $showingAnalysis) {
             if let analysis = analysisResult {
-                AnalysisResultSheet(analysis: analysis)
+                AnalysisResultSheet(
+                    analysis: analysis,
+                    tank: tank,
+                    parameters: measurement.toAnalyzedParameters(temperatureUnit: temperatureUnit)
+                )
             }
         }
         .alert("MEASUREMENT SAVED", isPresented: $showingSaveConfirmation) {
@@ -527,6 +532,27 @@ struct MeasurementDraft {
             notes: notes.isEmpty ? nil : notes
         )
     }
+    
+    /// Convert to AnalyzedParameters for saving with analysis
+    func toAnalyzedParameters(temperatureUnit: TemperatureUnit = .celsius) -> AnalyzedParameters {
+        let tempInFahrenheit: Double? = {
+            guard let temp = Double(temperature) else { return nil }
+            return temperatureUnit.toFahrenheit(temp)
+        }()
+        
+        return AnalyzedParameters(
+            salinity: Double(salinity),
+            temperature: tempInFahrenheit,
+            ph: Double(pH),
+            alkalinity: Double(alkalinity),
+            calcium: Double(calcium),
+            magnesium: Double(magnesium),
+            nitrate: Double(nitrate),
+            nitrite: Double(nitrite),
+            ammonia: Double(ammonia),
+            phosphate: Double(phosphate)
+        )
+    }
 }
 
 // MARK: - Analysis Result Sheet
@@ -534,7 +560,11 @@ struct MeasurementDraft {
 /// Modal sheet displaying AI analysis results with New Brutalist design
 struct AnalysisResultSheet: View {
     let analysis: AnalysisResponse
+    let tank: Tank
+    let parameters: AnalyzedParameters
+    
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var analysisStorage: AnalysisStorage
     @State private var showingShareSheet = false
     @State private var showingSavedConfirmation = false
 
@@ -936,8 +966,12 @@ struct AnalysisResultSheet: View {
     // MARK: - Actions
 
     private func saveAnalysis() {
-        // For now, just show confirmation
-        // In production, this would save to local storage or sync to backend
+        let savedAnalysis = SavedAnalysis(
+            from: analysis,
+            tank: tank,
+            parameters: parameters
+        )
+        analysisStorage.save(savedAnalysis)
         showingSavedConfirmation = true
     }
 
@@ -985,25 +1019,30 @@ struct AnalysisResultSheet: View {
 }
 
 #Preview("Analysis Result") {
-    AnalysisResultSheet(analysis: AnalysisResponse(
-        summary: "Your tank parameters are mostly within optimal ranges. Alkalinity is slightly low which may affect coral growth over time.",
-        recommendations: [
-            "Increase alkalinity dosing by 10%",
-            "Monitor calcium consumption closely",
-            "Consider a 10% water change this week"
-        ],
-        warnings: [
-            "Alkalinity is below target range"
-        ],
-        dosingAdvice: [
-            DosingRecommendation(
-                product: "Alkalinity Buffer",
-                amount: "15ml",
-                frequency: "Daily",
-                reason: "To raise dKH from 7.2 to 8.5"
-            )
-        ]
-    ))
+    AnalysisResultSheet(
+        analysis: AnalysisResponse(
+            summary: "Your tank parameters are mostly within optimal ranges. Alkalinity is slightly low which may affect coral growth over time.",
+            recommendations: [
+                "Increase alkalinity dosing by 10%",
+                "Monitor calcium consumption closely",
+                "Consider a 10% water change this week"
+            ],
+            warnings: [
+                "Alkalinity is below target range"
+            ],
+            dosingAdvice: [
+                DosingRecommendation(
+                    product: "Alkalinity Buffer",
+                    amount: "15ml",
+                    frequency: "Daily",
+                    reason: "To raise dKH from 7.2 to 8.5"
+                )
+            ]
+        ),
+        tank: Tank.samples.first ?? Tank(name: "Preview Tank", volumeGallons: 50, tankType: .reef),
+        parameters: AnalyzedParameters(salinity: 1.025, temperature: 78, ph: 8.2, alkalinity: 7.2)
+    )
+    .environmentObject(AnalysisStorage())
 }
 
 #Preview("Loading View") {

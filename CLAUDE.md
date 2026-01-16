@@ -166,7 +166,7 @@ git checkout HEAD -- iOS/ReefBuddy.xcodeproj/project.pbxproj
 ```
 
 ### Current iOS Source Files (update this list when adding files)
-**Total: 26 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
+**Total: 28 Swift files** (verify with: `find iOS/ReefBuddy/Sources -name "*.swift" | wc -l`)
 ```
 iOS/ReefBuddy/Sources/
 ├── App/
@@ -178,28 +178,30 @@ iOS/ReefBuddy/Sources/
 ├── Components/
 │   ├── BrutalistButton.swift
 │   ├── BrutalistTextField.swift
-│   ├── BrutalistLoadingView.swift    # IAP Credits
+│   ├── BrutalistLoadingView.swift    # IAP Credits loading indicator
 │   └── ShareSheet.swift
 ├── Models/
 │   ├── Tank.swift
 │   ├── Measurement.swift
 │   ├── User.swift
-│   └── Livestock.swift
+│   ├── Livestock.swift
+│   └── SavedAnalysis.swift           # Saved AI analyses model
 ├── Views/
 │   ├── TankListView.swift
 │   ├── MeasurementEntryView.swift
 │   ├── AnalysisView.swift
 │   ├── HistoryView.swift
 │   ├── ChartView.swift
-│   ├── SubscriptionView.swift        # Legacy (to be deprecated)
-│   ├── PurchaseCreditsView.swift     # IAP Credits
+│   ├── PurchaseCreditsView.swift     # IAP Credits purchase UI
+│   ├── SavedAnalysesView.swift       # View saved AI analyses
 │   ├── ExportView.swift
 │   ├── LivestockListView.swift
 │   ├── LivestockDetailView.swift
 │   ├── AddLivestockView.swift
 │   └── NotificationSettingsView.swift
 ├── Store/
-│   └── StoreManager.swift            # IAP Credits (StoreKit 2)
+│   ├── StoreManager.swift            # IAP Credits (StoreKit 2)
+│   └── AnalysisStorage.swift         # Local persistence for saved analyses
 └── Networking/
     └── APIClient.swift
 ```

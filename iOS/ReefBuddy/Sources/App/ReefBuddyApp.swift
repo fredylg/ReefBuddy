@@ -12,6 +12,7 @@ struct ReefBuddyApp: App {
 
     @StateObject private var appState = AppState()
     @StateObject private var storeManager = StoreManager()
+    @StateObject private var analysisStorage = AnalysisStorage()
 
     // MARK: - Body
 
@@ -20,6 +21,7 @@ struct ReefBuddyApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(storeManager)
+                .environmentObject(analysisStorage)
         }
     }
 }

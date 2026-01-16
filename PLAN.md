@@ -33,13 +33,13 @@
 - `0004_livestock_tracking.sql` - Livestock tables
 - `0005_notification_settings.sql` - Push notification tables
 
-**iOS Swift Files (26/26 verified):**
+**iOS Swift Files (28/28 verified):**
 - App: ReefBuddyApp.swift, ContentView.swift, AppIconGenerator.swift
 - Theme: BrutalistTheme.swift
 - Components: BrutalistButton.swift, BrutalistTextField.swift, ShareSheet.swift, BrutalistLoadingView.swift
-- Models: Tank.swift, Measurement.swift, User.swift, Livestock.swift
-- Views: TankListView.swift, MeasurementEntryView.swift, AnalysisView.swift, HistoryView.swift, ChartView.swift, SubscriptionView.swift, PurchaseCreditsView.swift, ExportView.swift, NotificationSettingsView.swift, LivestockListView.swift, LivestockDetailView.swift, AddLivestockView.swift
-- Store: StoreManager.swift (StoreKit 2 integration)
+- Models: Tank.swift, Measurement.swift, User.swift, Livestock.swift, SavedAnalysis.swift
+- Views: TankListView.swift, MeasurementEntryView.swift, AnalysisView.swift, HistoryView.swift, ChartView.swift, PurchaseCreditsView.swift, ExportView.swift, NotificationSettingsView.swift, LivestockListView.swift, LivestockDetailView.swift, AddLivestockView.swift, SavedAnalysesView.swift
+- Store: StoreManager.swift (StoreKit 2 integration), AnalysisStorage.swift (local persistence)
 - Networking: APIClient.swift
 
 **Xcode Project:**
@@ -727,6 +727,14 @@ stripe listen --forward-to localhost:8787/subscriptions/webhook
    - UUID `8A1B2C3D00000030` used for both root PBXGroup and AddLivestockView.swift → Fixed by changing AddLivestockView.swift to `8A1B2C3D00000031A`
    - UUID `8A1B2C3D00000031` used for both ReefBuddy PBXGroup and ShareSheet PBXBuildFile → Fixed by changing ShareSheet to `8A1B2C3D00000033`/`8A1B2C3D00000034`
    **Prevention:** Always verify UUID uniqueness before committing changes: `grep "8A1B2C3D000000XX" project.pbxproj | sort | uniq -d` (should return nothing)
+
+6. **Saved Analyses Feature:** IMPLEMENTED (2026-01-17) - Users can now save and view their AI analyses:
+   - **SavedAnalysis.swift** - Model for persisting analysis results with tank info and parameters
+   - **AnalysisStorage.swift** - UserDefaults-based persistence manager
+   - **SavedAnalysesView.swift** - Brutalist-styled view to browse saved analyses with tank filtering
+   - **MeasurementEntryView** updated to save analyses to local storage
+   - **Settings** now includes "Saved Analyses" option with count badge
+   - Analyses are persisted locally on device and survive app restarts
 
 ### Low
 1. **iOS Simulator Testing:** Full UI testing requires Xcode installation. Currently only Command Line Tools are installed.

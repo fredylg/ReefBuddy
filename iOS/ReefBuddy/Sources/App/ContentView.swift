@@ -239,9 +239,11 @@ enum Tab: CaseIterable {
 struct SettingsView: View {
 
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var analysisStorage: AnalysisStorage
     @State private var showingNotificationSettings = false
     @State private var showingSubscription = false
     @State private var showingExport = false
+    @State private var showingSavedAnalyses = false
 
     var body: some View {
         ScrollView {
@@ -270,6 +272,18 @@ struct SettingsView: View {
 
                 // Data Section
                 settingsSection(title: "DATA", icon: "externaldrive.fill") {
+                    settingsRow(
+                        icon: "doc.text.magnifyingglass",
+                        title: "Saved Analyses",
+                        subtitle: "\(analysisStorage.savedAnalyses.count) saved"
+                    ) {
+                        showingSavedAnalyses = true
+                    }
+                    
+                    Rectangle()
+                        .fill(BrutalistTheme.Colors.text.opacity(0.1))
+                        .frame(height: 1)
+                    
                     settingsRow(
                         icon: "square.and.arrow.up.fill",
                         title: "Export Data",
@@ -331,6 +345,21 @@ struct SettingsView: View {
         .sheet(isPresented: $showingExport) {
             if let tank = appState.selectedTank {
                 ExportView(tank: tank, measurements: appState.measurements)
+            }
+        }
+        .sheet(isPresented: $showingSavedAnalyses) {
+            NavigationStack {
+                SavedAnalysesView()
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Done") {
+                                showingSavedAnalyses = false
+                            }
+                            .font(BrutalistTheme.Typography.button)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                        }
+                    }
             }
         }
     }

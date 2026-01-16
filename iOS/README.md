@@ -49,7 +49,7 @@ When adding new Swift files, you must EDIT (not recreate) the `project.pbxproj` 
 
 See CLAUDE.md Section 8 for detailed instructions.
 
-## Current Swift Files (26 total)
+## Current Swift Files (28 total)
 
 ```
 Sources/
@@ -68,25 +68,38 @@ Sources/
 │   ├── Tank.swift
 │   ├── Measurement.swift
 │   ├── User.swift
-│   └── Livestock.swift
+│   ├── Livestock.swift
+│   └── SavedAnalysis.swift            # Saved AI analyses model
 ├── Views/
 │   ├── TankListView.swift
 │   ├── MeasurementEntryView.swift
 │   ├── AnalysisView.swift
 │   ├── HistoryView.swift
 │   ├── ChartView.swift
-│   ├── SubscriptionView.swift         # Legacy (to be deprecated)
 │   ├── PurchaseCreditsView.swift      # IAP Credits purchase UI
+│   ├── SavedAnalysesView.swift        # View saved AI analyses
 │   ├── ExportView.swift
 │   ├── LivestockListView.swift
 │   ├── LivestockDetailView.swift
 │   ├── AddLivestockView.swift
 │   └── NotificationSettingsView.swift
 ├── Store/
-│   └── StoreManager.swift             # StoreKit 2 integration
+│   ├── StoreManager.swift             # StoreKit 2 integration
+│   └── AnalysisStorage.swift          # Local persistence for saved analyses
 └── Networking/
     └── APIClient.swift
 ```
+
+## Key Features
+
+### Saved Analyses
+Users can save AI water analyses for later reference:
+- **Save**: After running an analysis, tap "Save Analysis" to store it locally
+- **View**: Go to Settings → Saved Analyses to browse all saved analyses
+- **Filter**: Filter saved analyses by tank
+- **Delete**: Swipe or tap to delete individual analyses
+
+Saved analyses are stored in UserDefaults and persist across app restarts.
 
 ## Design System
 
