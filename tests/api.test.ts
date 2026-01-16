@@ -42,6 +42,7 @@ const validWaterParameters = {
  * Valid analysis request with all required fields
  */
 const validAnalysisRequest = {
+  deviceId: "TEST-DEVICE-001", // Device identifier for credits tracking
   tankId: "550e8400-e29b-41d4-a716-446655440000", // Valid UUID
   parameters: validWaterParameters,
   tankVolume: 75, // gallons
@@ -53,12 +54,18 @@ const validAnalysisRequest = {
 
 /**
  * Make a POST request to the analyze endpoint
+ * Automatically adds deviceId if not provided
  */
-async function postAnalyze(body: unknown): Promise<Response> {
+async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
+  // Ensure deviceId is present (required for the API)
+  const requestBody = {
+    deviceId: "TEST-DEVICE-001",
+    ...body,
+  };
   return SELF.fetch("http://localhost/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
 }
 

@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "jose": "^5.2.0",
     "zod": "^4.3.5"
   }
 }

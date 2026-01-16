@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import DeviceCheck
 
 // MARK: - API Client
 
@@ -154,15 +155,25 @@ actor APIClient {
     /// Request AI analysis of water parameters
     /// This endpoint routes through Cloudflare AI Gateway to Claude
     /// Requires device credits (3 free, then paid)
+    /// Includes DeviceCheck token for device attestation
     func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String) async throws -> AnalysisResponse {
         let url = baseURL.appendingPathComponent("analyze")
         var request = makeRequest(url: url, method: "POST")
+
+        // Generate DeviceCheck token for device attestation
+        let deviceToken = await generateDeviceToken()
 
         // Use a plain JSON encoder for this endpoint (Worker expects camelCase, not snake_case)
         let analysisEncoder = JSONEncoder()
         analysisEncoder.dateEncodingStrategy = .iso8601
 
-        let requestBody = AnalysisRequest(measurement: measurement, tankVolume: tankVolume, deviceId: deviceId)
+        let requestBody = AnalysisRequest(
+            measurement: measurement,
+            tankVolume: tankVolume,
+            deviceId: deviceId,
+            deviceToken: deviceToken,
+            isDevelopment: isDebugBuild()
+        )
         request.httpBody = try analysisEncoder.encode(requestBody)
 
         let (data, response) = try await session.data(for: request)
@@ -178,6 +189,39 @@ actor APIClient {
         } else {
             throw APIError.invalidResponse
         }
+    }
+
+    // MARK: - DeviceCheck
+
+    /// Generate a DeviceCheck token for device attestation
+    /// Returns nil if DeviceCheck is not supported on this device
+    private func generateDeviceToken() async -> String? {
+        guard DCDevice.current.isSupported else {
+            print("DeviceCheck not supported on this device")
+            return nil
+        }
+
+        return await withCheckedContinuation { continuation in
+            DCDevice.current.generateToken { data, error in
+                if let error = error {
+                    print("DeviceCheck token generation failed: \(error.localizedDescription)")
+                    continuation.resume(returning: nil)
+                } else if let data = data {
+                    continuation.resume(returning: data.base64EncodedString())
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
+    /// Check if this is a debug/development build
+    private func isDebugBuild() -> Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
     }
 
     // MARK: - Credits Endpoints

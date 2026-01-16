@@ -1039,7 +1039,7 @@ struct AnalysisResultSheet: View {
                 )
             ]
         ),
-        tank: Tank.samples.first ?? Tank(name: "Preview Tank", volumeGallons: 50, tankType: .reef),
+        tank: Tank.samples.first ?? Tank(name: "Preview Tank", volumeGallons: 50, tankType: .fowlr),
         parameters: AnalyzedParameters(salinity: 1.025, temperature: 78, ph: 8.2, alkalinity: 7.2)
     )
     .environmentObject(AnalysisStorage())

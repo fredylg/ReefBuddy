@@ -62,14 +62,19 @@ struct SavedAnalysis: Identifiable, Codable {
     /// Create a SavedAnalysis from an AnalysisResponse and tank info
     init(from response: AnalysisResponse, tank: Tank, parameters: AnalyzedParameters) {
         self.id = UUID()
-        self.tankId = tank.id
+        self.tankId = tank.id.uuidString
         self.tankName = tank.name
         self.analyzedAt = Date()
         self.parameters = parameters
         self.summary = response.summary
         self.recommendations = response.recommendations
         self.warnings = response.warnings
-        self.dosingAdvice = response.dosingAdvice
+        // Convert DosingRecommendation array to formatted string
+        if let dosing = response.dosingAdvice, !dosing.isEmpty {
+            self.dosingAdvice = dosing.map { "\($0.product): \($0.amount) \($0.frequency) - \($0.reason)" }.joined(separator: "\n")
+        } else {
+            self.dosingAdvice = nil
+        }
     }
 }
 

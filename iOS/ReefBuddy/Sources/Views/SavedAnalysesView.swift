@@ -110,10 +110,11 @@ struct SavedAnalysesView: View {
                 ForEach(appState.tanks) { tank in
                     filterButton(
                         title: tank.name.uppercased(),
-                        isSelected: selectedTankFilter == tank.id
+                        isSelected: selectedTankFilter == tank.id.uuidString
                     ) {
+                        let tankIdString = tank.id.uuidString
                         withAnimation {
-                            selectedTankFilter = selectedTankFilter == tank.id ? nil : tank.id
+                            selectedTankFilter = selectedTankFilter == tankIdString ? nil : tankIdString
                         }
                     }
                 }

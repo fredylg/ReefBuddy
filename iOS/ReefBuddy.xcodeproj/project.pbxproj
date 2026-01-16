@@ -33,9 +33,9 @@
 		8A1B2C3D0000003C /* StoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003D /* StoreManager.swift */; };
 		8A1B2C3D0000003E /* PurchaseCreditsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003F /* PurchaseCreditsView.swift */; };
 		8A1B2C3D00000042 /* BrutalistLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000043 /* BrutalistLoadingView.swift */; };
-		8A1B2C3D00000060 /* SavedAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000061 /* SavedAnalysis.swift */; };
-		8A1B2C3D00000062 /* AnalysisStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000063 /* AnalysisStorage.swift */; };
-		8A1B2C3D00000064 /* SavedAnalysesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000065 /* SavedAnalysesView.swift */; };
+		8A1B2C3D00000090 /* SavedAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000091 /* SavedAnalysis.swift */; };
+		8A1B2C3D00000092 /* AnalysisStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000093 /* AnalysisStorage.swift */; };
+		8A1B2C3D00000094 /* SavedAnalysesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000095 /* SavedAnalysesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,9 +66,9 @@
 		8A1B2C3D0000003D /* StoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreManager.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000003F /* PurchaseCreditsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseCreditsView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000043 /* BrutalistLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistLoadingView.swift; sourceTree = "<group>"; };
-		8A1B2C3D00000061 /* SavedAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAnalysis.swift; sourceTree = "<group>"; };
-		8A1B2C3D00000063 /* AnalysisStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisStorage.swift; sourceTree = "<group>"; };
-		8A1B2C3D00000065 /* SavedAnalysesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAnalysesView.swift; sourceTree = "<group>"; };
+		8A1B2C3D00000091 /* SavedAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAnalysis.swift; sourceTree = "<group>"; };
+		8A1B2C3D00000093 /* AnalysisStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisStorage.swift; sourceTree = "<group>"; };
+		8A1B2C3D00000095 /* SavedAnalysesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAnalysesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -117,7 +117,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1B2C3D0000003D /* StoreManager.swift */,
-				8A1B2C3D00000063 /* AnalysisStorage.swift */,
+				8A1B2C3D00000093 /* AnalysisStorage.swift */,
 			);
 			path = Store;
 			sourceTree = "<group>";
@@ -158,7 +158,7 @@
 				8A1B2C3D00000018 /* Measurement.swift */,
 				8A1B2C3D00000019 /* User.swift */,
 				8A1B2C3D00000028 /* Livestock.swift */,
-				8A1B2C3D00000061 /* SavedAnalysis.swift */,
+				8A1B2C3D00000091 /* SavedAnalysis.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -177,7 +177,7 @@
 				8A1B2C3D0000002E /* LivestockDetailView.swift */,
 				8A1B2C3D00000031A /* AddLivestockView.swift */,
 				8A1B2C3D0000003F /* PurchaseCreditsView.swift */,
-				8A1B2C3D00000065 /* SavedAnalysesView.swift */,
+				8A1B2C3D00000095 /* SavedAnalysesView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -300,9 +300,9 @@
 				8A1B2C3D0000003C /* StoreManager.swift in Sources */,
 				8A1B2C3D0000003E /* PurchaseCreditsView.swift in Sources */,
 				8A1B2C3D00000042 /* BrutalistLoadingView.swift in Sources */,
-				8A1B2C3D00000060 /* SavedAnalysis.swift in Sources */,
-				8A1B2C3D00000062 /* AnalysisStorage.swift in Sources */,
-				8A1B2C3D00000064 /* SavedAnalysesView.swift in Sources */,
+				8A1B2C3D00000090 /* SavedAnalysis.swift in Sources */,
+				8A1B2C3D00000092 /* AnalysisStorage.swift in Sources */,
+				8A1B2C3D00000094 /* SavedAnalysesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

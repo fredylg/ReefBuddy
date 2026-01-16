@@ -302,6 +302,8 @@ struct DosingRecommendation: Codable, Identifiable {
 /// Request body for AI analysis endpoint (matches Worker's AnalysisRequestSchema)
 struct AnalysisRequest: Codable {
     let deviceId: String
+    let deviceToken: String?
+    let isDevelopment: Bool
     let tankId: String
     let parameters: WaterParameters
     let tankVolume: Double
@@ -309,6 +311,8 @@ struct AnalysisRequest: Codable {
     // Use explicit coding keys to ensure camelCase (Worker expects camelCase, not snake_case)
     enum CodingKeys: String, CodingKey {
         case deviceId
+        case deviceToken
+        case isDevelopment
         case tankId
         case parameters
         case tankVolume
@@ -331,8 +335,10 @@ struct AnalysisRequest: Codable {
         }
     }
 
-    init(measurement: Measurement, tankVolume: Double, deviceId: String) {
+    init(measurement: Measurement, tankVolume: Double, deviceId: String, deviceToken: String? = nil, isDevelopment: Bool = false) {
         self.deviceId = deviceId
+        self.deviceToken = deviceToken
+        self.isDevelopment = isDevelopment
         self.tankId = measurement.tankId.uuidString
         self.tankVolume = tankVolume
         self.parameters = WaterParameters(
