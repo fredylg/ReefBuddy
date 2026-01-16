@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+.turbo/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+*.xcuserstate
+
+# Xcode user-specific files
+iOS/ReefBuddy.xcodeproj/xcuserdata/
+iOS/ReefBuddy.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
