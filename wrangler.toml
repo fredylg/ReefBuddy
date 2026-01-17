@@ -34,6 +34,16 @@ gateway_id = "reefbuddy-ai-gateway"
 # Create gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
 
 # =============================================================================
+# OBSERVABILITY CONFIGURATION
+# Enable logging for debugging and monitoring
+# Access logs at: https://dash.cloudflare.com/workers-and-pages/monitoring/logs
+# =============================================================================
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+# =============================================================================
 # SECRETS REFERENCE
 # Set via wrangler secret put (these are NOT stored in this file):
 #

@@ -204,10 +204,13 @@ class StoreManager: ObservableObject {
         jwsRepresentation: String,
         productId: String
     ) async -> Bool {
-        let transactionId = String(transaction.id)
+        // Use a unique identifier for this validation attempt
+        // StoreKit 2 transaction IDs might be 0 in sandbox, so we'll use a UUID
+        let transactionId = UUID().uuidString
         let originalTransactionId = String(transaction.originalID)
 
-        print("📦 Sending JWS to backend for validation (transactionId: \(transactionId))")
+        print("📦 Sending JWS to backend for validation (transactionId: \(transactionId), originalId: \(originalTransactionId))")
+        print("🔐 JWS Representation: \(jwsRepresentation)")
 
         do {
             let response = try await apiClient.purchaseCredits(

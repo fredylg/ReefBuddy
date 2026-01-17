@@ -275,6 +275,11 @@ actor APIClient {
         let url = baseURL.appendingPathComponent("credits/purchase")
         var request = makeRequest(url: url, method: "POST")
 
+        // Use camelCase for credits purchase (backend expects camelCase, not snake_case)
+        let creditsEncoder = JSONEncoder()
+        creditsEncoder.dateEncodingStrategy = .iso8601
+        // Note: No keyEncodingStrategy set, so it uses camelCase by default
+
         let requestBody = CreditsPurchaseRequest(
             deviceId: deviceId,
             jwsRepresentation: jwsRepresentation,
@@ -282,7 +287,7 @@ actor APIClient {
             originalTransactionId: originalTransactionId,
             productId: productId
         )
-        request.httpBody = try encoder.encode(requestBody)
+        request.httpBody = try creditsEncoder.encode(requestBody)
 
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)
