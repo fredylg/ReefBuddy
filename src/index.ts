@@ -2368,10 +2368,7 @@ async function handleJWSPurchase(
   // TEMPORARY: Skip JWS verification for debugging
   console.log(`🔍 TEMPORARILY SKIPPING JWS VERIFICATION FOR DEBUGGING`);
 
-  // TEMPORARY: Skip JWS signature verification for debugging
-  console.log(`🔍 TEMPORARILY SKIPPING JWS SIGNATURE VERIFICATION FOR DEBUGGING`);
-
-  // Parse JWS payload manually to extract transaction data
+  // Parse JWS payload first to check environment
   let jwsPayload: JWSTransactionPayload;
   try {
     const parts = jwsRepresentation.split('.');
@@ -2382,24 +2379,43 @@ async function handleJWSPurchase(
     const payloadBytes = base64UrlDecode(parts[1]);
     const payloadJson = new TextDecoder().decode(payloadBytes);
     jwsPayload = JSON.parse(payloadJson) as JWSTransactionPayload;
-
-    console.log(`🔍 Extracted JWS payload: transactionId=${jwsPayload.transactionId}, productId=${jwsPayload.productId}, bundleId=${jwsPayload.bundleId}`);
-
   } catch (parseError) {
     console.error(`❌ JWS parsing failed: ${parseError}`);
     return jsonResponse(
       {
         error: 'Invalid transaction',
         message: 'Failed to parse JWS payload',
-        debug: { step: 'jws_parsing', error: parseError instanceof Error ? parseError.message : 'Unknown error' }
       },
       400
     );
   }
 
-  // Create mock verification object
-  const verification = { valid: true, payload: jwsPayload };
-  const payload = verification.payload;
+  // For Xcode/sandbox environment, skip cryptographic verification
+  // Sandbox transactions use different keys and may not be verifiable
+  let payload: JWSTransactionPayload;
+  if (jwsPayload.environment === 'Xcode') {
+    console.log(`🔍 Xcode environment detected, skipping JWS signature verification`);
+    payload = jwsPayload;
+  } else {
+    // Verify production transactions with full cryptographic validation
+    console.log(`🔍 Production environment, verifying JWS signature...`);
+    const verification = await verifyAppleJWS(jwsRepresentation);
+
+    if (!verification.valid || !verification.payload) {
+      console.error(`❌ JWS verification failed: ${verification.error}`);
+      return jsonResponse(
+        {
+          error: 'Invalid transaction',
+          message: verification.error || 'JWS verification failed',
+        },
+        400
+      );
+    }
+
+    payload = verification.payload;
+  }
+
+  console.log(`🔍 JWS validation successful: transactionId=${payload.transactionId}, productId=${payload.productId}, bundleId=${payload.bundleId}, environment=${payload.environment}`);
   console.log(`🔍 JWS payload: transactionId=${payload.transactionId}, productId=${payload.productId}, bundleId=${payload.bundleId}`);
 
   // Use transaction ID from JWS payload instead of request parameter
