@@ -1,0 +1,50 @@
+{
+  "identifier" : "com.reefbuddy.storekit",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "$0.99",
+      "familyShareable" : false,
+      "internalID" : "C7B8E4F2-1A2B-3C4D-5E6F-7G8H9I0J1K2L",
+      "localizations" : [
+        {
+          "description" : "Get 5 analysis credits for your aquarium water testing",
+          "displayName" : "5 Analysis Credits",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.reefbuddy.credits5",
+      "referenceName" : "5 Credits",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "$4.99",
+      "familyShareable" : false,
+      "internalID" : "M3N4O5P6-Q7R8-S9T0-U1V2-W3X4Y5Z6A7B8",
+      "localizations" : [
+        {
+          "description" : "Get 50 analysis credits for your aquarium water testing - Best value with 50% savings!",
+          "displayName" : "50 Analysis Credits",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.reefbuddy.credits50",
+      "referenceName" : "50 Credits",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "distribution" : "Available for Testing",
+    "distributionBundleID" : "com.reefbuddy.app",
+    "distributionTeamID" : ""
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 1,
+    "minor" : 0
+  }
+}

@@ -1,0 +1,47 @@
+# In-App Purchase Screenshots Requirements
+
+## Required Screenshots for App Store Review
+
+Each IAP product requires at least one screenshot showing the purchase flow.
+
+### Screenshot Specifications:
+- **Resolution:** 1242 x 2688 pixels (iPhone 13/14/15 Pro Max) or higher
+- **Format:** PNG or JPEG
+- **Maximum Size:** 4000 x 4000 pixels
+- **Content:** Must show the actual purchase interface
+
+### Screenshot Content Guidelines:
+
+#### For "5 Analysis Credits" ($0.99):
+1. Show the purchase screen with:
+   - Product title: "5 Analysis Credits"
+   - Price: "$0.99"
+   - Description: "Get 5 analysis credits for your aquarium water testing"
+   - Purchase button visible
+
+#### For "50 Analysis Credits" ($4.99):
+1. Show the purchase screen with:
+   - Product title: "50 Analysis Credits"
+   - Price: "$4.99"
+   - Description: "Get 50 analysis credits for your aquarium water testing - Best value with 50% savings!"
+   - Purchase button visible
+
+### Apple Review Notes:
+When submitting for review, provide:
+- **Demo Account:** Create a test account for Apple reviewers
+- **Purchase Instructions:** "Tap 'Purchase Credits' → Select either package → Complete purchase"
+- **Expected Behavior:** "Credits are added to user balance and can be used for water analysis"
+
+### Screenshot Creation Tips:
+1. Take screenshots on a device (not simulator) for best quality
+2. Ensure the ReefBuddy branding and New Brutalist design is clearly visible
+3. Show the purchase interface with pricing clearly displayed
+4. Make sure no personal information is visible
+
+### Testing Screenshots:
+Before submitting, verify screenshots show:
+- [ ] Clear product titles and descriptions
+- [ ] Accurate pricing display
+- [ ] Purchase buttons are accessible
+- [ ] App branding is consistent
+- [ ] No UI glitches or layout issues

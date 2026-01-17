@@ -68,6 +68,7 @@ See [`PLAN.md`](PLAN.md) for detailed development roadmap and current status.
 - [`CLAUDE.md`](CLAUDE.md) - Development standards and agent roles
 - [`PLAN.md`](PLAN.md) - Project roadmap and QA status
 - [`iOS/README.md`](iOS/README.md) - iOS-specific setup and guidelines
+- [`iap-configuration/`](iap-configuration/) - In-App Purchase setup and StoreKit files
 - [`web/`](web/) - Promotional website
 - [`migrations/`](migrations/) - Database schema changes
 
