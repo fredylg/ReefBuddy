@@ -96,25 +96,25 @@ struct PurchaseCreditsView: View {
             
             HStack(spacing: BrutalistTheme.Spacing.lg) {
                 balanceItem(
-                    value: storeManager.creditBalance?.freeRemaining ?? 3,
+                    value: storeManager.creditBalance?.freeRemaining ?? 0,
                     label: "FREE LEFT"
                 )
-                
+
                 Rectangle()
                     .fill(BrutalistTheme.Colors.text)
                     .frame(width: 3, height: 50)
-                
+
                 balanceItem(
                     value: storeManager.creditBalance?.paidCredits ?? 0,
                     label: "PURCHASED"
                 )
-                
+
                 Rectangle()
                     .fill(BrutalistTheme.Colors.text)
                     .frame(width: 3, height: 50)
-                
+
                 balanceItem(
-                    value: (storeManager.creditBalance?.freeRemaining ?? 3) + (storeManager.creditBalance?.paidCredits ?? 0),
+                    value: storeManager.totalCredits,
                     label: "TOTAL",
                     isHighlighted: true
                 )

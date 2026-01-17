@@ -224,6 +224,7 @@ class StoreManager: ObservableObject {
     // MARK: - Credit Balance
     
     /// Fetch current credit balance from server
+    /// If fetch fails, initializes with default 3 free credits for offline use
     func fetchCreditBalance() async {
         do {
             let balance = try await apiClient.getCreditsBalance(deviceId: deviceId)
@@ -237,7 +238,33 @@ class StoreManager: ObservableObject {
             creditBalance = newBalance
         } catch {
             print("❌ Failed to fetch credit balance: \(error)")
+            // Initialize with default 3 free credits for offline/development use
+            // This ensures credit tracking works even without backend connectivity
+            if creditBalance == nil {
+                let defaultBalance = CreditBalance(
+                    freeRemaining: 3,
+                    paidCredits: 0,
+                    totalCredits: 3,
+                    totalAnalyses: 0
+                )
+                print("📱 Initialized default credit balance: 3 free credits")
+                creditBalance = defaultBalance
+            }
         }
+    }
+
+    /// Check if user has credits available for analysis
+    var hasCredits: Bool {
+        guard let balance = creditBalance else {
+            // If no balance info, assume no credits (fail safe)
+            return false
+        }
+        return balance.totalCredits > 0
+    }
+
+    /// Get the total number of credits available
+    var totalCredits: Int {
+        return creditBalance?.totalCredits ?? 0
     }
 
     /// Update credit balance with new values (used after analysis)

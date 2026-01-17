@@ -23,6 +23,7 @@ struct MeasurementEntryView: View {
     @State private var errorMessage = ""
     @State private var isAnalyzing = false
     @State private var temperatureUnit: TemperatureUnit = .celsius
+    @State private var showingPurchaseCredits = false
 
     // MARK: - Body
 
@@ -71,6 +72,9 @@ struct MeasurementEntryView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage)
+        }
+        .sheet(isPresented: $showingPurchaseCredits) {
+            PurchaseCreditsView()
         }
     }
 
@@ -416,6 +420,12 @@ struct MeasurementEntryView: View {
     // MARK: - Actions
 
     private func analyzeParameters() {
+        // Check if user has credits before starting analysis
+        guard storeManager.hasCredits else {
+            showingPurchaseCredits = true
+            return
+        }
+
         let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
 
         isAnalyzing = true
@@ -436,6 +446,10 @@ struct MeasurementEntryView: View {
                     isAnalyzing = false
                     errorMessage = error
                     showingError = true
+                    // If no credits error, show purchase sheet
+                    if error.contains("credits") {
+                        showingPurchaseCredits = true
+                    }
                 }
             } else {
                 await MainActor.run {
@@ -679,9 +693,6 @@ struct AnalysisResultSheet: View {
                     .font(.system(size: 10, weight: .bold))
 
                 Spacer()
-
-                Text("POWERED BY CLAUDE")
-                    .font(.system(size: 10, weight: .bold))
             }
             .foregroundColor(BrutalistTheme.Colors.text)
             .padding(.horizontal, BrutalistTheme.Spacing.lg)

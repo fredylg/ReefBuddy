@@ -68,11 +68,11 @@ struct ContentView: View {
     }
 
     private var freeTierBadge: some View {
-        let totalCredits = (storeManager.creditBalance?.freeRemaining ?? 3) + (storeManager.creditBalance?.paidCredits ?? 0)
+        let credits = storeManager.totalCredits
         return VStack(spacing: 2) {
-            Text("\(totalCredits)")
+            Text("\(credits)")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(totalCredits > 0 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning)
+                .foregroundColor(credits > 0 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning)
 
             Text("CREDITS")
                 .font(.system(size: 8, weight: .bold))
