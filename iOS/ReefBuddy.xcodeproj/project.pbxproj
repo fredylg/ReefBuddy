@@ -7,13 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1641E6502F1B2B370017122A /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1641E64F2F1B2B360017122A /* StoreKit.framework */; };
+		1641E6522F1B2B6B0017122A /* ReefBuddy.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 1641E6512F1B2B6B0017122A /* ReefBuddy.storekit */; };
+		1641E6542F1B2C410017122A /* StoreKit.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1641E6532F1B2C410017122A /* StoreKit.plist */; };
 		8A1B2C3D00000001 /* ReefBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000011 /* ReefBuddyApp.swift */; };
 		8A1B2C3D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000012 /* ContentView.swift */; };
 		8A1B2C3D00000003 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000013 /* AppIconGenerator.swift */; };
 		8A1B2C3D00000004 /* BrutalistTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000014 /* BrutalistTheme.swift */; };
 		8A1B2C3D00000005 /* BrutalistButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000015 /* BrutalistButton.swift */; };
 		8A1B2C3D00000006 /* BrutalistTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000016 /* BrutalistTextField.swift */; };
-		8A1B2C3D0000003A /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003B /* ShareSheet.swift */; };
 		8A1B2C3D00000007 /* Tank.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000017 /* Tank.swift */; };
 		8A1B2C3D00000008 /* Measurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000018 /* Measurement.swift */; };
 		8A1B2C3D00000009 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000019 /* User.swift */; };
@@ -30,6 +32,7 @@
 		8A1B2C3D0000002B /* LivestockListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002C /* LivestockListView.swift */; };
 		8A1B2C3D0000002D /* LivestockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000002E /* LivestockDetailView.swift */; };
 		8A1B2C3D0000002F /* AddLivestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000031A /* AddLivestockView.swift */; };
+		8A1B2C3D0000003A /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003B /* ShareSheet.swift */; };
 		8A1B2C3D0000003C /* StoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003D /* StoreManager.swift */; };
 		8A1B2C3D0000003E /* PurchaseCreditsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000003F /* PurchaseCreditsView.swift */; };
 		8A1B2C3D00000042 /* BrutalistLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000043 /* BrutalistLoadingView.swift */; };
@@ -39,6 +42,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1641E64F2F1B2B360017122A /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		1641E6512F1B2B6B0017122A /* ReefBuddy.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = ReefBuddy.storekit; sourceTree = "<group>"; };
+		1641E6532F1B2C410017122A /* StoreKit.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = StoreKit.plist; sourceTree = "<group>"; };
 		8A1B2C3D00000010 /* ReefBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReefBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1B2C3D00000011 /* ReefBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReefBuddyApp.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -46,7 +52,6 @@
 		8A1B2C3D00000014 /* BrutalistTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistTheme.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000015 /* BrutalistButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistButton.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000016 /* BrutalistTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistTextField.swift; sourceTree = "<group>"; };
-		8A1B2C3D0000003B /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000017 /* Tank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tank.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000018 /* Measurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Measurement.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000019 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
@@ -63,6 +68,7 @@
 		8A1B2C3D0000002C /* LivestockListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockListView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000002E /* LivestockDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockDetailView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000031A /* AddLivestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLivestockView.swift; sourceTree = "<group>"; };
+		8A1B2C3D0000003B /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000003D /* StoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreManager.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000003F /* PurchaseCreditsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseCreditsView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000043 /* BrutalistLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistLoadingView.swift; sourceTree = "<group>"; };
@@ -76,23 +82,35 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1641E6502F1B2B370017122A /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1641E64E2F1B2B360017122A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1641E64F2F1B2B360017122A /* StoreKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		8A1B2C3D00000030 = {
 			isa = PBXGroup;
 			children = (
 				8A1B2C3D00000031 /* ReefBuddy */,
+				1641E64E2F1B2B360017122A /* Frameworks */,
 				8A1B2C3D00000040 /* Products */,
+				1641E6532F1B2C410017122A /* StoreKit.plist */,
 			);
 			sourceTree = "<group>";
 		};
 		8A1B2C3D00000031 /* ReefBuddy */ = {
 			isa = PBXGroup;
 			children = (
+				1641E6512F1B2B6B0017122A /* ReefBuddy.storekit */,
 				8A1B2C3D00000032 /* Sources */,
 				8A1B2C3D00000039 /* Resources */,
 			);
@@ -111,15 +129,6 @@
 				8A1B2C3D00000044 /* Store */,
 			);
 			path = Sources;
-			sourceTree = "<group>";
-		};
-		8A1B2C3D00000044 /* Store */ = {
-			isa = PBXGroup;
-			children = (
-				8A1B2C3D0000003D /* StoreManager.swift */,
-				8A1B2C3D00000093 /* AnalysisStorage.swift */,
-			);
-			path = Store;
 			sourceTree = "<group>";
 		};
 		8A1B2C3D00000033 /* App */ = {
@@ -206,6 +215,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		8A1B2C3D00000044 /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				8A1B2C3D0000003D /* StoreManager.swift */,
+				8A1B2C3D00000093 /* AnalysisStorage.swift */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -265,6 +283,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A1B2C3D0000000E /* Assets.xcassets in Resources */,
+				1641E6522F1B2B6B0017122A /* ReefBuddy.storekit in Resources */,
+				1641E6542F1B2C410017122A /* StoreKit.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -316,7 +336,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = UAUBPV3Q4Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -328,7 +348,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.reefbuddy.app;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.aethers.reefbuddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -343,7 +363,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = UAUBPV3Q4Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -355,7 +375,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.reefbuddy.app;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.aethers.reefbuddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

@@ -120,14 +120,10 @@ final class AppState: ObservableObject {
             tanks.append(newTank)
             selectedTank = newTank
         } catch {
-            // In DEBUG mode, allow local creation even if API fails
-            #if DEBUG
-            print("API create failed (expected in local dev): \(error.localizedDescription)")
+            // Allow local creation even if API fails (works offline)
+            print("API create failed, using local storage: \(error.localizedDescription)")
             tanks.append(tank)
             selectedTank = tank
-            #else
-            errorMessage = "Failed to create tank: \(error.localizedDescription)"
-            #endif
         }
 
         isLoading = false
@@ -142,17 +138,11 @@ final class AppState: ObservableObject {
         do {
             try await apiClient.deleteTank(tank.id)
         } catch {
-            // In DEBUG mode, allow local deletion even if API fails
-            #if DEBUG
-            print("API delete failed (expected in local dev): \(error.localizedDescription)")
-            #else
-            errorMessage = "Failed to delete tank: \(error.localizedDescription)"
-            isLoading = false
-            return
-            #endif
+            // Log API failure but continue with local deletion
+            print("API delete failed, using local deletion: \(error.localizedDescription)")
         }
 
-        // Remove from local state
+        // Remove from local state (always works offline)
         tanks.removeAll { $0.id == tank.id }
         if selectedTank?.id == tank.id {
             selectedTank = tanks.first
@@ -186,13 +176,9 @@ final class AppState: ObservableObject {
             let saved = try await apiClient.createMeasurement(measurement)
             measurements.insert(saved, at: 0)
         } catch {
-            // In DEBUG mode, allow local save even if API fails
-            #if DEBUG
-            print("API save measurement failed (expected in local dev): \(error.localizedDescription)")
+            // Allow local save even if API fails (works offline)
+            print("API save measurement failed, using local storage: \(error.localizedDescription)")
             measurements.insert(measurement, at: 0)
-            #else
-            errorMessage = "Failed to save measurement: \(error.localizedDescription)"
-            #endif
         }
 
         isLoading = false
