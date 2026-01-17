@@ -227,8 +227,19 @@ class StoreManager: ObservableObject {
             return true
         } catch {
             print("Failed to validate purchase with server: \(error)")
+
+            // For development/testing: allow local credit addition when backend unavailable
+            // This allows testing the purchase flow without deployed backend
+            #if DEBUG
+            print("DEBUG: Adding credits locally due to server unavailability")
+            await addCreditsLocally(for: productId)
+            purchaseError = "Purchase completed (local mode - server unavailable)"
+            return true
+            #else
+            // In production/TestFlight, server validation is required
             purchaseError = "Server validation failed: \(error.localizedDescription)"
             return false
+            #endif
         }
     }
     
@@ -262,6 +273,42 @@ class StoreManager: ObservableObject {
         )
         print("🔄 Updating credit balance: free=\(mergedBalance.freeRemaining), paid=\(mergedBalance.paidCredits), total=\(mergedBalance.totalCredits)")
         creditBalance = mergedBalance
+    }
+
+    /// Add credits locally (for development when server validation unavailable)
+    private func addCreditsLocally(for productId: String) async {
+        let creditsToAdd: Int
+        switch productId {
+        case "com.reefbuddy.credits5":
+            creditsToAdd = 5
+        case "com.reefbuddy.credits50":
+            creditsToAdd = 50
+        default:
+            print("Unknown product ID: \(productId)")
+            return
+        }
+
+        guard let currentBalance = creditBalance else {
+            // Initialize with credits if no balance exists
+            creditBalance = CreditBalance(
+                freeRemaining: 3, // Keep free credits
+                paidCredits: creditsToAdd,
+                totalCredits: 3 + creditsToAdd,
+                totalAnalyses: 0
+            )
+            return
+        }
+
+        // Add to existing paid credits
+        let newBalance = CreditBalance(
+            freeRemaining: currentBalance.freeRemaining,
+            paidCredits: currentBalance.paidCredits + creditsToAdd,
+            totalCredits: currentBalance.totalCredits + creditsToAdd,
+            totalAnalyses: currentBalance.totalAnalyses
+        )
+
+        creditBalance = newBalance
+        print("💰 DEBUG: Added \(creditsToAdd) credits locally. New balance: free=\(newBalance.freeRemaining), paid=\(newBalance.paidCredits), total=\(newBalance.totalCredits)")
     }
 
     /// Decrement local credit balance (for development when backend is unavailable)
