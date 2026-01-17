@@ -13,9 +13,6 @@ actor APIClient {
     /// Production API URL (Cloudflare Worker)
     private static let productionURL = "https://reefbuddy.fredylg.workers.dev"
 
-    /// Local development URL for testing on device
-    private static let localDevURL = "http://localhost:8787"
-
     /// Base URL for the API (Cloudflare Worker)
     private let baseURL: URL
 
@@ -31,20 +28,15 @@ actor APIClient {
     // MARK: - Initialization
 
     init(baseURL: URL? = nil) {
-        // Priority: 1) Passed URL, 2) Environment variable, 3) DEBUG=local, 4) Production
+        // Priority: 1) Passed URL, 2) Environment variable, 3) Production URL (always)
         if let baseURL = baseURL {
             self.baseURL = baseURL
         } else if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
                   let url = URL(string: envURL) {
             self.baseURL = url
         } else {
-            // Use local development server in DEBUG mode
-            #if DEBUG
-            self.baseURL = URL(string: Self.localDevURL)!
-            #else
-            // Production: use Cloudflare Worker
+            // Always use production Cloudflare Worker
             self.baseURL = URL(string: Self.productionURL)!
-            #endif
         }
 
         // Configure URL session
