@@ -10,9 +10,13 @@ struct ReefBuddyApp: App {
 
     // MARK: - State
 
-    @StateObject private var appState = AppState()
     @StateObject private var storeManager = StoreManager()
     @StateObject private var analysisStorage = AnalysisStorage()
+    @StateObject private var appState: AppState
+
+    init() {
+        _appState = StateObject(wrappedValue: AppState())
+    }
 
     // MARK: - Body
 
@@ -58,7 +62,7 @@ final class AppState: ObservableObject {
     /// Show purchase credits sheet when user runs out of credits
     @Published var showPurchaseCredits: Bool = false
 
-    // MARK: - API Client
+    // MARK: - Dependencies
 
     private let apiClient = APIClient()
 
@@ -196,18 +200,29 @@ final class AppState: ObservableObject {
 
     /// Request AI analysis for a measurement
     /// Uses device-based credits (3 free, then paid via IAP)
-    func requestAnalysis(for measurement: Measurement, tank: Tank) async -> AnalysisResponse? {
+    func requestAnalysis(for measurement: Measurement, tank: Tank, storeManager: StoreManager) async -> AnalysisResponse? {
         isLoading = true
         errorMessage = nil
 
         do {
-            let analysis = try await apiClient.analyzeParameters(
+            let result = try await apiClient.analyzeParameters(
                 measurement,
                 tankVolume: tank.volumeGallons,
                 deviceId: deviceId
             )
+
+            // Update credit balance in StoreManager if available
+            if let creditBalance = result.creditBalance {
+                print("💰 Analysis completed, updating credit balance: free=\(creditBalance.freeRemaining), paid=\(creditBalance.paidCredits)")
+                storeManager.updateCreditBalance(creditBalance)
+            } else {
+                print("⚠️ Analysis completed but no credit balance in response - decrementing local balance")
+                // For development: decrement local credit balance when backend doesn't provide it
+                storeManager.decrementLocalCredit()
+            }
+
             isLoading = false
-            return analysis
+            return result.analysis
         } catch APIError.noCredits {
             // Show purchase credits sheet
             isLoading = false

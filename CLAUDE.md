@@ -90,6 +90,12 @@ A task is not complete until:
 - **Verify Xcode Project:** `./verify-xcode-project.sh` (Run before/after ANY iOS work)
 - **Setup Git Hooks:** `./setup-hooks.sh` (Enables pre-commit validation to prevent UUID collisions)
 
+### Development Testing Features
+- **Offline Credit System:** Credit tracking works without backend for development
+- **Automatic Credit Initialization:** App starts with 3 free credits if backend unavailable
+- **Local Credit Decrement:** Credits decrease after analysis even without server sync
+- **Debug Logging:** Console logs show credit balance changes for easy debugging
+
 ## 8. Promotional Website
 
 ### Overview

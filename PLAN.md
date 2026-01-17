@@ -718,7 +718,7 @@ stripe listen --forward-to localhost:8787/subscriptions/webhook
 1. **AppIcon PNG Missing:** FIXED - Generated brutalist "RB" icon (1024x1024) on aquamarine background
 2. **Migration Numbering Conflict:** FIXED - Renamed `0003_historical_features.sql` to `0006_historical_features.sql`
 3. **Missing API Tests:** FIXED - Added 80 comprehensive tests for Livestock and Notifications APIs
-4. **Xcode UUID Collision Crash:** FIXED (2026-01-17) - Multiple UUID collisions causing Xcode to crash:
+4.. **Xcode UUID Collision Crash:** FIXED (2026-01-17) - Multiple UUID collisions causing Xcode to crash:
 5. **Xcode Project Protection:** IMPLEMENTED (2026-01-17) - Added multiple layers of protection:
    - **`.cursorrules`** - Cursor-specific project rules with UUID validation commands
    - **`setup-hooks.sh`** - Script to enable git pre-commit validation
@@ -735,6 +735,12 @@ stripe listen --forward-to localhost:8787/subscriptions/webhook
    - **MeasurementEntryView** updated to save analyses to local storage
    - **Settings** now includes "Saved Analyses" option with count badge
    - Analyses are persisted locally on device and survive app restarts
+
+7. **Credit System Offline Support:** IMPLEMENTED (2026-01-17) - Credit system now works without backend for development:
+   - **StoreManager** auto-initializes with 3 free credits if backend fetch fails
+   - **Local credit decrement** when analysis completes but backend doesn't provide balance
+   - **Seamless fallback** - UI shows credits even when backend is unavailable
+   - **Development-friendly** - Full credit flow testing without local backend setup
 
 ### Low
 1. **iOS Simulator Testing:** Full UI testing requires Xcode installation. Currently only Command Line Tools are installed.

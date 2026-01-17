@@ -13,6 +13,7 @@ struct MeasurementEntryView: View {
     // MARK: - State
 
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var storeManager: StoreManager
     @EnvironmentObject private var analysisStorage: AnalysisStorage
     @State private var measurement: MeasurementDraft = MeasurementDraft()
     @State private var showingAnalysis = false
@@ -420,7 +421,7 @@ struct MeasurementEntryView: View {
         isAnalyzing = true
 
         Task {
-            if let analysis = await appState.requestAnalysis(for: measurementModel, tank: tank) {
+            if let analysis = await appState.requestAnalysis(for: measurementModel, tank: tank, storeManager: storeManager) {
                 await MainActor.run {
                     isAnalyzing = false
                     analysisResult = analysis

@@ -156,7 +156,7 @@ actor APIClient {
     /// This endpoint routes through Cloudflare AI Gateway to Claude
     /// Requires device credits (3 free, then paid)
     /// Includes DeviceCheck token for device attestation
-    func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String) async throws -> AnalysisResponse {
+    func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String) async throws -> AnalysisResult {
         let url = baseURL.appendingPathComponent("analyze")
         var request = makeRequest(url: url, method: "POST")
 
@@ -184,8 +184,31 @@ actor APIClient {
         analysisDecoder.dateDecodingStrategy = .iso8601
         let apiResponse = try analysisDecoder.decode(AnalyzeAPIResponse.self, from: data)
 
+        // Debug log the response
+        print("🔍 API Response - success: \(apiResponse.success), creditsRemaining: \(apiResponse.creditsRemaining ?? -1), freeRemaining: \(apiResponse.freeRemaining ?? -1), paidCredits: \(apiResponse.paidCredits ?? -1)")
+
         if let analysis = apiResponse.analysis {
-            return analysis.toAnalysisResponse()
+            // Create credit balance if available
+            let creditBalance: CreditBalance?
+            if let freeRemaining = apiResponse.freeRemaining,
+               let paidCredits = apiResponse.paidCredits,
+               let creditsRemaining = apiResponse.creditsRemaining {
+                // Note: totalAnalyses is not provided in analysis response, so we use a placeholder
+                // The StoreManager will merge this with existing data if needed
+                creditBalance = CreditBalance(
+                    freeRemaining: freeRemaining,
+                    paidCredits: paidCredits,
+                    totalCredits: creditsRemaining,
+                    totalAnalyses: -1 // Use -1 to indicate this field should be preserved from existing balance
+                )
+            } else {
+                creditBalance = nil
+            }
+
+            return AnalysisResult(
+                analysis: analysis.toAnalysisResponse(),
+                creditBalance: creditBalance
+            )
         } else {
             throw APIError.invalidResponse
         }
@@ -344,6 +367,28 @@ struct CreditsPurchaseResponse: Codable {
         let paidCredits: Int
         let totalCredits: Int
     }
+}
+
+// MARK: - Credit Balance
+
+/// Credit balance information
+struct CreditBalance: Codable {
+    let freeRemaining: Int
+    let paidCredits: Int
+    let totalCredits: Int
+    let totalAnalyses: Int
+
+    var hasCredits: Bool {
+        totalCredits > 0
+    }
+}
+
+// MARK: - Analysis Result
+
+/// Combined result from analysis endpoint (analysis + credit balance)
+struct AnalysisResult {
+    let analysis: AnalysisResponse
+    let creditBalance: CreditBalance?
 }
 
 // MARK: - API Errors

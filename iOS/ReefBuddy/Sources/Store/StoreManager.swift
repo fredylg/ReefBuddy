@@ -61,16 +61,6 @@ class StoreManager: ObservableObject {
     
     // MARK: - Credit Balance Model
     
-    struct CreditBalance: Codable {
-        let freeRemaining: Int
-        let paidCredits: Int
-        let totalCredits: Int
-        let totalAnalyses: Int
-        
-        var hasCredits: Bool {
-            totalCredits > 0
-        }
-    }
     
     // MARK: - Initialization
     
@@ -83,6 +73,22 @@ class StoreManager: ObservableObject {
         // Load products
         Task {
             await loadProducts()
+        }
+
+        // Fetch initial credit balance
+        Task {
+            await fetchCreditBalance()
+        }
+
+        // For development: initialize with default credits if fetch fails
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
+            await MainActor.run {
+                if creditBalance == nil {
+                    print("📱 Initializing with default credits for development")
+                    creditBalance = CreditBalance(freeRemaining: 3, paidCredits: 0, totalCredits: 3, totalAnalyses: 0)
+                }
+            }
         }
     }
     
@@ -232,15 +238,63 @@ class StoreManager: ObservableObject {
     func fetchCreditBalance() async {
         do {
             let balance = try await apiClient.getCreditsBalance(deviceId: deviceId)
-            creditBalance = CreditBalance(
+            let newBalance = CreditBalance(
                 freeRemaining: balance.freeRemaining,
                 paidCredits: balance.paidCredits,
                 totalCredits: balance.totalCredits,
                 totalAnalyses: balance.totalAnalyses
             )
+            print("📡 Fetched credit balance: free=\(newBalance.freeRemaining), paid=\(newBalance.paidCredits), total=\(newBalance.totalCredits)")
+            creditBalance = newBalance
         } catch {
-            print("Failed to fetch credit balance: \(error)")
+            print("❌ Failed to fetch credit balance: \(error)")
         }
+    }
+
+    /// Update credit balance with new values (used after analysis)
+    func updateCreditBalance(_ newBalance: CreditBalance) {
+        // Preserve totalAnalyses if the new balance has the sentinel value -1
+        let mergedBalance = CreditBalance(
+            freeRemaining: newBalance.freeRemaining,
+            paidCredits: newBalance.paidCredits,
+            totalCredits: newBalance.totalCredits,
+            totalAnalyses: newBalance.totalAnalyses == -1 ? (creditBalance?.totalAnalyses ?? 0) : newBalance.totalAnalyses
+        )
+        print("🔄 Updating credit balance: free=\(mergedBalance.freeRemaining), paid=\(mergedBalance.paidCredits), total=\(mergedBalance.totalCredits)")
+        creditBalance = mergedBalance
+    }
+
+    /// Decrement local credit balance (for development when backend is unavailable)
+    func decrementLocalCredit() {
+        guard let currentBalance = creditBalance else {
+            print("⚠️ No credit balance to decrement")
+            return
+        }
+
+        // Decrement free credits first, then paid credits
+        let newFreeRemaining: Int
+        let newPaidCredits: Int
+
+        if currentBalance.freeRemaining > 0 {
+            newFreeRemaining = currentBalance.freeRemaining - 1
+            newPaidCredits = currentBalance.paidCredits
+        } else if currentBalance.paidCredits > 0 {
+            newFreeRemaining = currentBalance.freeRemaining
+            newPaidCredits = currentBalance.paidCredits - 1
+        } else {
+            print("⚠️ No credits available to decrement")
+            return
+        }
+
+        let newBalance = CreditBalance(
+            freeRemaining: newFreeRemaining,
+            paidCredits: newPaidCredits,
+            totalCredits: newFreeRemaining + newPaidCredits,
+            totalAnalyses: currentBalance.totalAnalyses + 1
+        )
+
+        print("📱 Decremented local credit: free=\(newBalance.freeRemaining), paid=\(newBalance.paidCredits), total=\(newBalance.totalCredits)")
+        creditBalance = newBalance
     }
     
     // MARK: - Transaction Listener
