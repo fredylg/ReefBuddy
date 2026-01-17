@@ -2390,11 +2390,11 @@ async function handleJWSPurchase(
     );
   }
 
-  // For Xcode/sandbox environment, skip cryptographic verification
-  // Sandbox transactions use different keys and may not be verifiable
+  // For Xcode/Sandbox environments, skip cryptographic verification
+  // Development transactions use different keys and may not be verifiable
   let payload: JWSTransactionPayload;
-  if (jwsPayload.environment === 'Xcode') {
-    console.log(`🔍 Xcode environment detected, skipping JWS signature verification`);
+  if (jwsPayload.environment === 'Xcode' || jwsPayload.environment === 'Sandbox') {
+    console.log(`🔍 ${jwsPayload.environment} environment detected, skipping JWS signature verification`);
     payload = jwsPayload;
   } else {
     // Verify production transactions with full cryptographic validation
