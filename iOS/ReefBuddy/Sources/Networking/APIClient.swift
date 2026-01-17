@@ -264,14 +264,22 @@ actor APIClient {
         return try decoder.decode(CreditsBalanceResponse.self, from: data)
     }
 
-    /// Purchase credits with Apple receipt
-    func purchaseCredits(deviceId: String, receiptData: String, productId: String) async throws -> CreditsPurchaseResponse {
+    /// Purchase credits using StoreKit 2 JWS transaction
+    func purchaseCredits(
+        deviceId: String,
+        jwsRepresentation: String,
+        transactionId: String,
+        originalTransactionId: String,
+        productId: String
+    ) async throws -> CreditsPurchaseResponse {
         let url = baseURL.appendingPathComponent("credits/purchase")
         var request = makeRequest(url: url, method: "POST")
 
         let requestBody = CreditsPurchaseRequest(
             deviceId: deviceId,
-            receiptData: receiptData,
+            jwsRepresentation: jwsRepresentation,
+            transactionId: transactionId,
+            originalTransactionId: originalTransactionId,
             productId: productId
         )
         request.httpBody = try encoder.encode(requestBody)
@@ -337,10 +345,12 @@ struct APIResponse<T: Decodable>: Decodable {
 
 // MARK: - Credits Models
 
-/// Request body for purchasing credits
+/// Request body for purchasing credits (StoreKit 2 JWS format)
 struct CreditsPurchaseRequest: Codable {
     let deviceId: String
-    let receiptData: String
+    let jwsRepresentation: String      // StoreKit 2 signed transaction
+    let transactionId: String          // Transaction ID from StoreKit 2
+    let originalTransactionId: String  // Original transaction ID
     let productId: String
 }
 

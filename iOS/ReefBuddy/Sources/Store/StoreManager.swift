@@ -144,9 +144,16 @@ class StoreManager: ObservableObject {
                 // Verify the transaction
                 switch verification {
                 case .verified(let transaction):
-                    // Send receipt to backend for validation and credit addition
-                    let success = await validateAndAddCredits(for: transaction, productId: product.id)
-                    
+                    // Get JWS from VerificationResult (not Transaction)
+                    let jwsRepresentation = verification.jwsRepresentation
+
+                    // Send JWS to backend for validation and credit addition
+                    let success = await validateAndAddCredits(
+                        for: transaction,
+                        jwsRepresentation: jwsRepresentation,
+                        productId: product.id
+                    )
+
                     if success {
                         // Mark transaction as finished
                         await transaction.finish()
@@ -157,7 +164,7 @@ class StoreManager: ObservableObject {
                         purchaseInProgress = false
                         return false
                     }
-                    
+
                 case .unverified(_, let error):
                     purchaseError = "Purchase verification failed: \(error.localizedDescription)"
                     purchaseInProgress = false
@@ -185,26 +192,32 @@ class StoreManager: ObservableObject {
         }
     }
     
-    // MARK: - Receipt Validation
-    
-    /// Validate transaction with backend and add credits
-    private func validateAndAddCredits(for transaction: Transaction, productId: String) async -> Bool {
-        // Get the App Store receipt
-        guard let receiptURL = Bundle.main.appStoreReceiptURL,
-              let receiptData = try? Data(contentsOf: receiptURL) else {
-            purchaseError = "Could not retrieve purchase receipt"
-            return false
-        }
-        
-        let receiptString = receiptData.base64EncodedString()
-        
+    // MARK: - Transaction Validation (StoreKit 2)
+
+    /// Validate transaction with backend using StoreKit 2 JWS
+    /// - Parameters:
+    ///   - transaction: The verified Transaction from StoreKit 2
+    ///   - jwsRepresentation: The JWS string from VerificationResult.jwsRepresentation
+    ///   - productId: The product ID being purchased
+    private func validateAndAddCredits(
+        for transaction: Transaction,
+        jwsRepresentation: String,
+        productId: String
+    ) async -> Bool {
+        let transactionId = String(transaction.id)
+        let originalTransactionId = String(transaction.originalID)
+
+        print("📦 Sending JWS to backend for validation (transactionId: \(transactionId))")
+
         do {
             let response = try await apiClient.purchaseCredits(
                 deviceId: deviceId,
-                receiptData: receiptString,
+                jwsRepresentation: jwsRepresentation,
+                transactionId: transactionId,
+                originalTransactionId: originalTransactionId,
                 productId: productId
             )
-            
+
             // Update local credit balance
             creditBalance = CreditBalance(
                 freeRemaining: response.newBalance.freeRemaining,
@@ -212,10 +225,11 @@ class StoreManager: ObservableObject {
                 totalCredits: response.newBalance.totalCredits,
                 totalAnalyses: creditBalance?.totalAnalyses ?? 0
             )
-            
+
+            print("✅ Purchase validated, credits added: \(response.creditsAdded)")
             return true
         } catch {
-            print("Failed to validate purchase with server: \(error)")
+            print("❌ Failed to validate purchase with server: \(error)")
             purchaseError = "Server validation failed: \(error.localizedDescription)"
             return false
         }
@@ -322,10 +336,15 @@ class StoreManager: ObservableObject {
             for await result in Transaction.updates {
                 switch result {
                 case .verified(let transaction):
-                    // Validate with backend
-                    await self.validateAndAddCredits(for: transaction, productId: transaction.productID)
+                    // Get JWS from VerificationResult and validate with backend
+                    let jwsRepresentation = result.jwsRepresentation
+                    await self.validateAndAddCredits(
+                        for: transaction,
+                        jwsRepresentation: jwsRepresentation,
+                        productId: transaction.productID
+                    )
                     await transaction.finish()
-                    
+
                 case .unverified(_, let error):
                     print("Unverified transaction update: \(error)")
                 }

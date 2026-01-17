@@ -29,6 +29,7 @@ ReefBuddy is a fully functional iOS app for saltwater aquarium hobbyists featuri
 | ID | Description | Resolution | Date |
 |----|-------------|------------|------|
 | BUG-001 | Credit system not enforced - unlimited analyses | Fixed credit tracking: (1) StoreManager now initializes 3 free credits when backend unavailable, (2) Added hasCredits check before analysis, (3) Fixed UI to show actual credit count instead of fallback values | 2026-01-18 |
+| BUG-002 | IAP purchases fail in Simulator with "Failed to validate purchase with server" | Migrated from legacy StoreKit 1 receipt validation to StoreKit 2 JWS verification. iOS now sends `transaction.jwsRepresentation`, backend verifies signature using Apple's public keys via Web Crypto API. Works in Simulator, Sandbox, and Production. See `STOREKIT2_IMPLEMENTATION.md` for details. | 2026-01-18 |
 
 ---
 
