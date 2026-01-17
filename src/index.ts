@@ -617,31 +617,44 @@ async function getOrCreateDeviceCredits(
   env: Env,
   deviceId: string
 ): Promise<DeviceCreditsRecord> {
-  let record = (await env.DB.prepare(
-    'SELECT * FROM device_credits WHERE device_id = ?'
-  )
-    .bind(deviceId)
-    .first()) as DeviceCreditsRecord | null;
-
-  if (!record) {
-    const now = new Date().toISOString();
-    await env.DB.prepare(
-      'INSERT INTO device_credits (device_id, free_used, paid_credits, total_analyses, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?)'
+  try {
+    let record = (await env.DB.prepare(
+      'SELECT * FROM device_credits WHERE device_id = ?'
     )
-      .bind(deviceId, now, now)
-      .run();
+      .bind(deviceId)
+      .first()) as DeviceCreditsRecord | null;
 
-    record = {
-      device_id: deviceId,
-      free_used: 0,
-      paid_credits: 0,
-      total_analyses: 0,
-      created_at: now,
-      updated_at: now,
-    };
+    if (!record) {
+      const now = new Date().toISOString();
+      const insertResult = await env.DB.prepare(
+        'INSERT INTO device_credits (device_id, free_used, paid_credits, total_analyses, created_at, updated_at) VALUES (?, 0, 0, 0, ?, ?)'
+      )
+        .bind(deviceId, now, now)
+        .run();
+
+      if (!insertResult.success) {
+        throw new Error(`Failed to create device credits record: ${insertResult.error}`);
+      }
+
+      record = {
+        device_id: deviceId,
+        free_used: 0,
+        paid_credits: 0,
+        total_analyses: 0,
+        created_at: now,
+        updated_at: now,
+      };
+    }
+
+    return record;
+  } catch (error) {
+    console.error('Error in getOrCreateDeviceCredits:', error);
+    // Check if error is due to missing table
+    if (error instanceof Error && error.message.includes('no such table')) {
+      throw new Error('Database migration not applied. Please run: npx wrangler d1 migrations apply reef-db --remote');
+    }
+    throw error;
   }
-
-  return record;
 }
 
 /**
@@ -669,29 +682,44 @@ async function checkDeviceCredits(
  * Consume one credit from device (free first, then paid)
  */
 async function consumeDeviceCredit(env: Env, deviceId: string): Promise<boolean> {
-  const record = await getOrCreateDeviceCredits(env, deviceId);
-  const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
-  const now = new Date().toISOString();
+  try {
+    const record = await getOrCreateDeviceCredits(env, deviceId);
+    const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
+    const now = new Date().toISOString();
 
-  if (record.free_used < freeLimit) {
-    // Use free credit
-    await env.DB.prepare(
-      'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
-    )
-      .bind(now, deviceId)
-      .run();
-    return true;
-  } else if (record.paid_credits > 0) {
-    // Use paid credit
-    await env.DB.prepare(
-      'UPDATE device_credits SET paid_credits = paid_credits - 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
-    )
-      .bind(now, deviceId)
-      .run();
-    return true;
+    if (record.free_used < freeLimit) {
+      // Use free credit
+      const updateResult = await env.DB.prepare(
+        'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
+      )
+        .bind(now, deviceId)
+        .run();
+      
+      if (!updateResult.success) {
+        console.error('Failed to consume free credit:', updateResult.error);
+        return false;
+      }
+      return true;
+    } else if (record.paid_credits > 0) {
+      // Use paid credit
+      const updateResult = await env.DB.prepare(
+        'UPDATE device_credits SET paid_credits = paid_credits - 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
+      )
+        .bind(now, deviceId)
+        .run();
+      
+      if (!updateResult.success) {
+        console.error('Failed to consume paid credit:', updateResult.error);
+        return false;
+      }
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error in consumeDeviceCredit:', error);
+    throw error;
   }
-
-  return false;
 }
 
 /**
