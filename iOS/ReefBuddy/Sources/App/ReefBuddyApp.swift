@@ -95,12 +95,10 @@ final class AppState: ObservableObject {
             selectedTank = first
         }
         
-        // Load livestock from local storage
-        livestock = livestockStorage.livestock
-        livestockLogs = livestockStorage.livestockLogs
-        
-        // Load measurements from local storage (for selected tank if available)
+        // Load livestock and measurements from local storage (filtered by selected tank)
         if let tank = selectedTank {
+            livestock = livestockStorage.livestock(for: tank.id)
+            livestockLogs = livestockStorage.livestockLogs(for: tank.id)
             measurements = measurementStorage.measurements(for: tank.id)
         }
         
@@ -122,6 +120,16 @@ final class AppState: ObservableObject {
 
     // MARK: - Tank Operations
 
+    /// Select a tank and reload its associated data
+    func selectTank(_ tank: Tank) {
+        selectedTank = tank
+        // Reload livestock and measurements for the new tank
+        livestock = livestockStorage.livestock(for: tank.id)
+        livestockLogs = livestockStorage.livestockLogs(for: tank.id)
+        measurements = measurementStorage.measurements(for: tank.id)
+        print("📱 Selected tank: \(tank.name) - loaded \(livestock.count) livestock, \(livestockLogs.count) logs, \(measurements.count) measurements")
+    }
+
     /// Fetch all tanks from the backend
     /// Falls back to local storage if API fails
     func fetchTanks() async {
@@ -136,16 +144,16 @@ final class AppState: ObservableObject {
             tankStorage.save(tanks)
             
             if selectedTank == nil, let first = tanks.first {
-                selectedTank = first
+                selectTank(first)
             }
         } catch {
             // If API fails, use local storage
             print("⚠️ Failed to fetch tanks from backend: \(error.localizedDescription)")
             print("📦 Using local storage instead")
             tanks = tankStorage.tanks
-            
+
             if selectedTank == nil, let first = tanks.first {
-                selectedTank = first
+                selectTank(first)
             }
             
             // Only show error if we have no local tanks either
@@ -167,14 +175,14 @@ final class AppState: ObservableObject {
             // Try to save to backend
             let newTank = try await apiClient.createTank(tank)
             tanks.append(newTank)
-            selectedTank = newTank
+            selectTank(newTank)
             // Save to local storage
             tankStorage.save(newTank)
         } catch {
             // Allow local creation even if API fails (works offline)
             print("⚠️ API create failed, using local storage: \(error.localizedDescription)")
             tanks.append(tank)
-            selectedTank = tank
+            selectTank(tank)
             // Save to local storage
             tankStorage.save(tank)
         }
@@ -332,10 +340,13 @@ final class AppState: ObservableObject {
             }
         }
 
-        // Add to local array
-        livestock.append(livestockToSave)
-        // Save to local storage
+        // Save to local storage first
         livestockStorage.save(livestockToSave)
+        
+        // Reload from storage to ensure sync (important for TestFlight/persistence)
+        if let tank = selectedTank {
+            livestock = livestockStorage.livestock(for: tank.id)
+        }
 
         // TODO: In production, call API to save to backend
 

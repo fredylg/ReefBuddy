@@ -45,6 +45,14 @@ struct LivestockListView: View {
                 AddLivestockView(tank: tank)
             }
         }
+        .onChange(of: showingAddSheet) { _, isShowing in
+            // Reload livestock when sheet dismisses (after adding new livestock)
+            if !isShowing, let tank = appState.selectedTank {
+                Task {
+                    await appState.fetchLivestock(for: tank)
+                }
+            }
+        }
         .sheet(item: $selectedLivestock) { livestock in
             LivestockDetailView(livestock: livestock)
         }

@@ -23,7 +23,7 @@ struct TankListView: View {
                         tank: tank,
                         isSelected: appState.selectedTank?.id == tank.id,
                         onSelect: {
-                            appState.selectedTank = tank
+                            appState.selectTank(tank)
                         },
                         onDelete: {
                             tankToDelete = tank

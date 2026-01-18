@@ -84,6 +84,13 @@ class LivestockStorage: ObservableObject {
     func livestock(for tankId: UUID) -> [Livestock] {
         livestock.filter { $0.tankId == tankId }
     }
+
+    /// Get logs for livestock in a specific tank
+    func livestockLogs(for tankId: UUID) -> [LivestockLog] {
+        let tankLivestockIds = livestock.filter { $0.tankId == tankId }.map { $0.id }
+        return livestockLogs.filter { tankLivestockIds.contains($0.livestockId) }
+            .sorted { $0.loggedAt > $1.loggedAt }
+    }
     
     // MARK: - Livestock Log Methods
     
