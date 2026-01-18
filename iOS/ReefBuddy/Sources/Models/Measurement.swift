@@ -307,6 +307,7 @@ struct AnalysisRequest: Codable {
     let tankId: String
     let parameters: WaterParameters
     let tankVolume: Double
+    let temperatureUnit: String
 
     // Use explicit coding keys to ensure camelCase (Worker expects camelCase, not snake_case)
     enum CodingKeys: String, CodingKey {
@@ -316,6 +317,7 @@ struct AnalysisRequest: Codable {
         case tankId
         case parameters
         case tankVolume
+        case temperatureUnit
     }
 
     struct WaterParameters: Codable {
@@ -335,12 +337,13 @@ struct AnalysisRequest: Codable {
         }
     }
 
-    init(measurement: Measurement, tankVolume: Double, deviceId: String, deviceToken: String? = nil, isDevelopment: Bool = false) {
+    init(measurement: Measurement, tankVolume: Double, deviceId: String, deviceToken: String? = nil, isDevelopment: Bool = false, temperatureUnit: String = "F") {
         self.deviceId = deviceId
         self.deviceToken = deviceToken
         self.isDevelopment = isDevelopment
         self.tankId = measurement.tankId.uuidString
         self.tankVolume = tankVolume
+        self.temperatureUnit = temperatureUnit
         self.parameters = WaterParameters(
             salinity: measurement.salinity,
             temperature: measurement.temperature,

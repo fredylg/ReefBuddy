@@ -37,8 +37,8 @@ ReefBuddy v1.0 is complete and ready for App Store submission.
 
 - [x] Backend deployed to Cloudflare Workers
 - [x] D1 migrations applied
-- [ ] App Store Connect IAP products configured
-- [ ] TestFlight beta testing
+- [x] App Store Connect IAP products configured
+- [x] TestFlight beta testing
 - [ ] App Store submission
 
 ---
@@ -56,14 +56,6 @@ ReefBuddy v1.0 is complete and ready for App Store submission.
 
 ---
 
-## Future Enhancements (Backlog)
 
-- [ ] Multi-tank comparison charts
-- [ ] Coral growth tracking with photos
-- [ ] Equipment maintenance reminders
-- [ ] Community parameter sharing
-- [ ] Apple Watch companion app
-
----
 
 *Last Updated: 2026-01-18*

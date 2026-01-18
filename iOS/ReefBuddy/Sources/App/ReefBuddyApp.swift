@@ -65,6 +65,10 @@ final class AppState: ObservableObject {
     // MARK: - Dependencies
 
     private let apiClient = APIClient()
+    private let tankStorage = TankStorage()
+    private let livestockStorage = LivestockStorage()
+    private let measurementStorage = MeasurementStorage()
+    private let imageStorage = ImageStorage()
 
     // MARK: - Device ID
 
@@ -85,51 +89,101 @@ final class AppState: ObservableObject {
     // MARK: - Initialization
 
     init() {
-        // Load sample data for development
+        // Load tanks from local storage first (works offline)
+        tanks = tankStorage.tanks
+        if selectedTank == nil, let first = tanks.first {
+            selectedTank = first
+        }
+        
+        // Load livestock from local storage
+        livestock = livestockStorage.livestock
+        livestockLogs = livestockStorage.livestockLogs
+        
+        // Load measurements from local storage (for selected tank if available)
+        if let tank = selectedTank {
+            measurements = measurementStorage.measurements(for: tank.id)
+        }
+        
+        // Load sample data for development (only in DEBUG, after loading from storage)
         #if DEBUG
-        loadSampleData()
+        // Only load sample data if no tanks in storage
+        if tanks.isEmpty {
+            loadSampleData()
+            // Save sample data to storage
+            tankStorage.save(tanks)
+            livestockStorage.save(livestock)
+            livestockStorage.saveLogs(livestockLogs)
+            if let tank = selectedTank {
+                measurementStorage.save(measurements, for: tank.id)
+            }
+        }
         #endif
     }
 
     // MARK: - Tank Operations
 
     /// Fetch all tanks from the backend
+    /// Falls back to local storage if API fails
     func fetchTanks() async {
         isLoading = true
         errorMessage = nil
 
         do {
-            tanks = try await apiClient.getTanks()
+            // Try to fetch from backend
+            let backendTanks = try await apiClient.getTanks()
+            tanks = backendTanks
+            // Save to local storage
+            tankStorage.save(tanks)
+            
             if selectedTank == nil, let first = tanks.first {
                 selectedTank = first
             }
         } catch {
-            errorMessage = "Failed to load tanks: \(error.localizedDescription)"
+            // If API fails, use local storage
+            print("⚠️ Failed to fetch tanks from backend: \(error.localizedDescription)")
+            print("📦 Using local storage instead")
+            tanks = tankStorage.tanks
+            
+            if selectedTank == nil, let first = tanks.first {
+                selectedTank = first
+            }
+            
+            // Only show error if we have no local tanks either
+            if tanks.isEmpty {
+                errorMessage = "Failed to load tanks: \(error.localizedDescription)"
+            }
         }
 
         isLoading = false
     }
 
     /// Create a new tank
+    /// Saves to local storage regardless of API success/failure
     func createTank(_ tank: Tank) async {
         isLoading = true
         errorMessage = nil
 
         do {
+            // Try to save to backend
             let newTank = try await apiClient.createTank(tank)
             tanks.append(newTank)
             selectedTank = newTank
+            // Save to local storage
+            tankStorage.save(newTank)
         } catch {
             // Allow local creation even if API fails (works offline)
-            print("API create failed, using local storage: \(error.localizedDescription)")
+            print("⚠️ API create failed, using local storage: \(error.localizedDescription)")
             tanks.append(tank)
             selectedTank = tank
+            // Save to local storage
+            tankStorage.save(tank)
         }
 
         isLoading = false
     }
 
     /// Delete a tank
+    /// Removes from local storage regardless of API success/failure
     func deleteTank(_ tank: Tank) async {
         isLoading = true
         errorMessage = nil
@@ -139,11 +193,14 @@ final class AppState: ObservableObject {
             try await apiClient.deleteTank(tank.id)
         } catch {
             // Log API failure but continue with local deletion
-            print("API delete failed, using local deletion: \(error.localizedDescription)")
+            print("⚠️ API delete failed, using local deletion: \(error.localizedDescription)")
         }
 
         // Remove from local state (always works offline)
         tanks.removeAll { $0.id == tank.id }
+        // Remove from local storage
+        tankStorage.delete(tank.id)
+        
         if selectedTank?.id == tank.id {
             selectedTank = tanks.first
         }
@@ -154,31 +211,50 @@ final class AppState: ObservableObject {
     // MARK: - Measurement Operations
 
     /// Fetch measurements for a specific tank
+    /// Falls back to local storage if API fails
     func fetchMeasurements(for tank: Tank) async {
         isLoading = true
         errorMessage = nil
 
         do {
-            measurements = try await apiClient.getMeasurements(for: tank.id)
+            // Try to fetch from backend
+            let backendMeasurements = try await apiClient.getMeasurements(for: tank.id)
+            measurements = backendMeasurements
+            // Save to local storage
+            measurementStorage.save(backendMeasurements, for: tank.id)
         } catch {
-            errorMessage = "Failed to load measurements: \(error.localizedDescription)"
+            // If API fails, use local storage
+            print("⚠️ Failed to fetch measurements from backend: \(error.localizedDescription)")
+            print("📦 Using local storage instead")
+            measurements = measurementStorage.measurements(for: tank.id)
+            
+            // Only show error if we have no local measurements either
+            if measurements.isEmpty {
+                errorMessage = "Failed to load measurements: \(error.localizedDescription)"
+            }
         }
 
         isLoading = false
     }
 
     /// Submit a new measurement
+    /// Saves to local storage regardless of API success/failure
     func submitMeasurement(_ measurement: Measurement) async {
         isLoading = true
         errorMessage = nil
 
         do {
+            // Try to save to backend
             let saved = try await apiClient.createMeasurement(measurement)
             measurements.insert(saved, at: 0)
+            // Save to local storage
+            measurementStorage.save(saved)
         } catch {
             // Allow local save even if API fails (works offline)
-            print("API save measurement failed, using local storage: \(error.localizedDescription)")
+            print("⚠️ API save measurement failed, using local storage: \(error.localizedDescription)")
             measurements.insert(measurement, at: 0)
+            // Save to local storage
+            measurementStorage.save(measurement)
         }
 
         isLoading = false
@@ -186,7 +262,7 @@ final class AppState: ObservableObject {
 
     /// Request AI analysis for a measurement
     /// Uses device-based credits (3 free, then paid via IAP)
-    func requestAnalysis(for measurement: Measurement, tank: Tank, storeManager: StoreManager) async -> AnalysisResponse? {
+    func requestAnalysis(for measurement: Measurement, tank: Tank, storeManager: StoreManager, temperatureUnit: String = "F") async -> AnalysisResponse? {
         isLoading = true
         errorMessage = nil
 
@@ -194,7 +270,8 @@ final class AppState: ObservableObject {
             let result = try await apiClient.analyzeParameters(
                 measurement,
                 tankVolume: tank.volumeGallons,
-                deviceId: deviceId
+                deviceId: deviceId,
+                temperatureUnit: temperatureUnit
             )
 
             // Update credit balance in StoreManager if available
@@ -225,63 +302,116 @@ final class AppState: ObservableObject {
     // MARK: - Livestock Operations
 
     /// Fetch livestock for a specific tank
+    /// Falls back to local storage if API fails
     func fetchLivestock(for tank: Tank) async {
         isLoading = true
         errorMessage = nil
 
-        // For now, filter from local data - in production would fetch from API
-        livestock = livestock.filter { $0.tankId == tank.id }
-
+        // Load from local storage first
+        livestock = livestockStorage.livestock(for: tank.id)
+        
+        // TODO: In production, fetch from API and merge with local storage
+        // For now, we use local storage only
+        
         isLoading = false
     }
 
     /// Add new livestock
+    /// Saves to local storage and handles images
     func addLivestock(_ newLivestock: Livestock) async {
         isLoading = true
         errorMessage = nil
 
-        // In production, this would call the API
-        // For now, add to local array
-        livestock.append(newLivestock)
+        var livestockToSave = newLivestock
+        
+        // Save image to file system if present
+        if let photoData = newLivestock.photoData {
+            if let imagePath = imageStorage.saveImage(photoData, for: newLivestock.id) {
+                // Note: We keep photoData in memory for display, but it's also saved to disk
+                print("📸 Saved livestock image to: \(imagePath)")
+            }
+        }
+
+        // Add to local array
+        livestock.append(livestockToSave)
+        // Save to local storage
+        livestockStorage.save(livestockToSave)
+
+        // TODO: In production, call API to save to backend
 
         isLoading = false
     }
 
     /// Update existing livestock
+    /// Saves to local storage and handles images
     func updateLivestock(_ updatedLivestock: Livestock) async {
         isLoading = true
         errorMessage = nil
 
+        var updated = updatedLivestock
+        updated.updatedAt = Date()
+        
+        // Save image to file system if present
+        if let photoData = updated.photoData {
+            if let imagePath = imageStorage.saveImage(photoData, for: updated.id) {
+                print("📸 Updated livestock image to: \(imagePath)")
+            }
+        }
+
         // Find and update the livestock
-        if let index = livestock.firstIndex(where: { $0.id == updatedLivestock.id }) {
-            var updated = updatedLivestock
-            updated.updatedAt = Date()
+        if let index = livestock.firstIndex(where: { $0.id == updated.id }) {
             livestock[index] = updated
         }
+        
+        // Save to local storage
+        livestockStorage.save(updated)
+
+        // TODO: In production, call API to update on backend
 
         isLoading = false
     }
 
     /// Delete livestock
+    /// Removes from local storage and deletes images
     func deleteLivestock(_ livestockToDelete: Livestock) async {
         isLoading = true
         errorMessage = nil
 
-        // Remove from local array - in production would call API
+        // Delete image from file system
+        imageStorage.deleteImage(for: livestockToDelete.id)
+
+        // Remove from local array
         livestock.removeAll { $0.id == livestockToDelete.id }
         // Also remove related logs
         livestockLogs.removeAll { $0.livestockId == livestockToDelete.id }
+        
+        // Remove from local storage
+        livestockStorage.deleteLivestock(livestockToDelete.id)
+
+        // TODO: In production, call API to delete on backend
 
         isLoading = false
     }
 
     /// Add a health log entry for livestock
+    /// Saves to local storage and handles images
     func addLivestockLog(_ log: LivestockLog) async {
         isLoading = true
         errorMessage = nil
 
+        var logToSave = log
+        
+        // Save image to file system if present
+        if let photoData = log.photoData {
+            if let imagePath = imageStorage.saveImage(photoData, for: log.id) {
+                print("📸 Saved log image to: \(imagePath)")
+            }
+        }
+
         // Add the log
-        livestockLogs.insert(log, at: 0)
+        livestockLogs.insert(logToSave, at: 0)
+        // Save to local storage
+        livestockStorage.saveLog(logToSave)
 
         // Update livestock health status
         if let index = livestock.firstIndex(where: { $0.id == log.livestockId }) {
@@ -289,15 +419,17 @@ final class AppState: ObservableObject {
             updated.healthStatus = log.healthStatus
             updated.updatedAt = Date()
             livestock[index] = updated
+            // Save updated livestock
+            livestockStorage.save(updated)
         }
 
         isLoading = false
     }
 
     /// Fetch health logs for specific livestock
+    /// Loads from local storage
     func fetchLivestockLogs(for livestockItem: Livestock) -> [LivestockLog] {
-        return livestockLogs.filter { $0.livestockId == livestockItem.id }
-            .sorted { $0.loggedAt > $1.loggedAt }
+        return livestockStorage.logs(for: livestockItem.id)
     }
 
     // MARK: - Sample Data (Debug)

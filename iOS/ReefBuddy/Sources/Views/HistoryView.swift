@@ -39,6 +39,10 @@ struct HistoryView: View {
             }
         }
         .background(BrutalistTheme.Colors.background)
+        .task {
+            // Fetch measurements from backend on view appear (syncs with local storage)
+            await appState.fetchMeasurements(for: tank)
+        }
         .sheet(isPresented: $showingChart) {
             ChartView(
                 tank: tank,

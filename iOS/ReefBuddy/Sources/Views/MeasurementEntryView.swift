@@ -420,6 +420,9 @@ struct MeasurementEntryView: View {
     // MARK: - Actions
 
     private func analyzeParameters() {
+        // Dismiss keyboard
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
         // Check if user has credits before starting analysis
         guard storeManager.hasCredits else {
             showingPurchaseCredits = true
@@ -431,7 +434,8 @@ struct MeasurementEntryView: View {
         isAnalyzing = true
 
         Task {
-            if let analysis = await appState.requestAnalysis(for: measurementModel, tank: tank, storeManager: storeManager) {
+            let unitString = temperatureUnit == .celsius ? "C" : "F"
+            if let analysis = await appState.requestAnalysis(for: measurementModel, tank: tank, storeManager: storeManager, temperatureUnit: unitString) {
                 await MainActor.run {
                     isAnalyzing = false
                     analysisResult = analysis
@@ -460,6 +464,9 @@ struct MeasurementEntryView: View {
     }
 
     private func saveParameters() {
+        // Dismiss keyboard
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
         let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
 
         Task {

@@ -156,7 +156,7 @@ actor APIClient {
     /// This endpoint routes through Cloudflare AI Gateway to Claude
     /// Requires device credits (3 free, then paid)
     /// Includes DeviceCheck token for device attestation
-    func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String) async throws -> AnalysisResult {
+    func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String, temperatureUnit: String = "F") async throws -> AnalysisResult {
         let url = baseURL.appendingPathComponent("analyze")
         var request = makeRequest(url: url, method: "POST")
 
@@ -172,7 +172,8 @@ actor APIClient {
             tankVolume: tankVolume,
             deviceId: deviceId,
             deviceToken: deviceToken,
-            isDevelopment: isDebugBuild()
+            isDevelopment: isDebugBuild(),
+            temperatureUnit: temperatureUnit
         )
         request.httpBody = try analysisEncoder.encode(requestBody)
 

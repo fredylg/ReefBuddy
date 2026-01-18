@@ -42,6 +42,10 @@ struct TankListView: View {
             .padding(BrutalistTheme.Spacing.lg)
         }
         .background(BrutalistTheme.Colors.background)
+        .task {
+            // Fetch tanks from backend on view appear (syncs with local storage)
+            await appState.fetchTanks()
+        }
         .sheet(isPresented: $showingAddTank) {
             AddTankSheet()
         }

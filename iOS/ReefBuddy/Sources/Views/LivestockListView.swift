@@ -55,6 +55,12 @@ struct LivestockListView: View {
             addButton
         }
         .background(BrutalistTheme.Colors.background)
+        .task {
+            // Fetch livestock from backend on view appear (syncs with local storage)
+            if let tank = appState.selectedTank {
+                await appState.fetchLivestock(for: tank)
+            }
+        }
         .sheet(isPresented: $showingAddSheet) {
             if let tank = appState.selectedTank {
                 AddLivestockView(tank: tank)
