@@ -164,7 +164,7 @@ struct Livestock: Identifiable, Codable, Equatable {
     /// Purchase price (optional)
     var purchasePrice: Double?
 
-    /// Photo data filename or URL (optional)
+    /// Photo data - NOT encoded to UserDefaults (stored in file system via ImageStorage)
     var photoData: Data?
 
     /// Notes about this livestock
@@ -175,6 +175,16 @@ struct Livestock: Identifiable, Codable, Equatable {
 
     /// Date record was last updated
     var updatedAt: Date
+
+    // MARK: - Coding Keys
+
+    /// Exclude photoData from encoding to prevent UserDefaults size limit issues
+    /// Images are stored separately in the file system via ImageStorage
+    private enum CodingKeys: String, CodingKey {
+        case id, tankId, name, scientificName, category, healthStatus
+        case quantity, purchaseDate, purchasePrice, notes, createdAt, updatedAt
+        // photoData intentionally excluded - stored in file system
+    }
 
     // MARK: - Initialization
 
@@ -231,8 +241,17 @@ struct LivestockLog: Identifiable, Codable, Equatable {
     /// Observations or notes
     var notes: String?
 
-    /// Photo data for this log entry (optional)
+    /// Photo data - NOT encoded to UserDefaults (stored in file system via ImageStorage)
     var photoData: Data?
+
+    // MARK: - Coding Keys
+
+    /// Exclude photoData from encoding to prevent UserDefaults size limit issues
+    /// Images are stored separately in the file system via ImageStorage
+    private enum CodingKeys: String, CodingKey {
+        case id, livestockId, loggedAt, healthStatus, notes
+        // photoData intentionally excluded - stored in file system
+    }
 
     // MARK: - Initialization
 

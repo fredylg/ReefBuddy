@@ -163,20 +163,20 @@ class LivestockStorage: ObservableObject {
     }
     
     /// Persist livestock to UserDefaults
-    /// Also saves images to file system separately
+    /// Images are saved to file system separately (not encoded in UserDefaults to avoid size limits)
     private func persistLivestock() {
         do {
             // Save images to file system for each livestock item
             for item in livestock {
                 if let photoData = item.photoData {
-                    imageStorage.saveImage(photoData, for: item.id)
+                    _ = imageStorage.saveImage(photoData, for: item.id)
                 }
             }
-            
-            // Encode livestock (photoData is included but also saved separately to file system)
+
+            // Encode livestock (photoData excluded via CodingKeys to prevent UserDefaults size issues)
             let data = try encoder.encode(livestock)
             UserDefaults.standard.set(data, forKey: livestockKey)
-            print("💾 Saved \(livestock.count) livestock items to local storage")
+            print("💾 Saved \(livestock.count) livestock items to local storage (\(data.count) bytes)")
         } catch {
             print("⚠️ Failed to save livestock to local storage: \(error.localizedDescription)")
         }
@@ -210,20 +210,20 @@ class LivestockStorage: ObservableObject {
     }
     
     /// Persist logs to UserDefaults
-    /// Also saves images to file system separately
+    /// Images are saved to file system separately (not encoded in UserDefaults to avoid size limits)
     private func persistLogs() {
         do {
             // Save images to file system for each log entry
             for log in livestockLogs {
                 if let photoData = log.photoData {
-                    imageStorage.saveImage(photoData, for: log.id)
+                    _ = imageStorage.saveImage(photoData, for: log.id)
                 }
             }
-            
-            // Encode logs (photoData is included but also saved separately to file system)
+
+            // Encode logs (photoData excluded via CodingKeys to prevent UserDefaults size issues)
             let data = try encoder.encode(livestockLogs)
             UserDefaults.standard.set(data, forKey: logsKey)
-            print("💾 Saved \(livestockLogs.count) livestock logs to local storage")
+            print("💾 Saved \(livestockLogs.count) livestock logs to local storage (\(data.count) bytes)")
         } catch {
             print("⚠️ Failed to save livestock logs to local storage: \(error.localizedDescription)")
         }
