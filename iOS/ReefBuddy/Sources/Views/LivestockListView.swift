@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Livestock List View
 
-/// Grid/list view displaying all livestock in the selected tank.
+/// List view displaying all livestock in the selected tank with images on the left.
 /// New Brutalist design: sharp corners, bold borders, high contrast.
 struct LivestockListView: View {
 
@@ -13,23 +13,6 @@ struct LivestockListView: View {
     @State private var selectedLivestock: Livestock?
     @State private var livestockToDelete: Livestock?
     @State private var showDeleteConfirmation = false
-    @State private var displayMode: DisplayMode = .grid
-
-    // MARK: - Display Mode
-
-    enum DisplayMode: String, CaseIterable {
-        case grid = "grid"
-        case list = "list"
-
-        var icon: String {
-            switch self {
-            case .grid:
-                return "square.grid.2x2.fill"
-            case .list:
-                return "list.bullet"
-            }
-        }
-    }
 
     // MARK: - Body
 
@@ -43,11 +26,7 @@ struct LivestockListView: View {
                 if appState.livestock.isEmpty {
                     emptyStateView
                 } else {
-                    if displayMode == .grid {
-                        gridView
-                    } else {
-                        listView
-                    }
+                    listView
                 }
             }
 
@@ -95,31 +74,6 @@ struct LivestockListView: View {
                 .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
 
             Spacer()
-
-            // Display mode toggle
-            HStack(spacing: 0) {
-                ForEach(DisplayMode.allCases, id: \.self) { mode in
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            displayMode = mode
-                        }
-                    }) {
-                        Image(systemName: mode.icon)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.text)
-                            .frame(width: 36, height: 36)
-                            .background(displayMode == mode ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
-                    }
-                    .buttonStyle(.plain)
-
-                    if mode != DisplayMode.allCases.last {
-                        Rectangle()
-                            .fill(BrutalistTheme.Colors.text)
-                            .frame(width: BrutalistTheme.Borders.light)
-                    }
-                }
-            }
-            .brutalistBorder(width: BrutalistTheme.Borders.light)
         }
         .padding(.horizontal, BrutalistTheme.Spacing.lg)
         .padding(.vertical, BrutalistTheme.Spacing.md)
@@ -130,37 +84,6 @@ struct LivestockListView: View {
                 .frame(height: BrutalistTheme.Borders.light),
             alignment: .bottom
         )
-    }
-
-    // MARK: - Grid View
-
-    private var gridView: some View {
-        ScrollView {
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: BrutalistTheme.Spacing.md),
-                    GridItem(.flexible(), spacing: BrutalistTheme.Spacing.md)
-                ],
-                spacing: BrutalistTheme.Spacing.md
-            ) {
-                ForEach(appState.livestock) { livestock in
-                    LivestockGridItem(livestock: livestock)
-                        .onTapGesture {
-                            selectedLivestock = livestock
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                livestockToDelete = livestock
-                                showDeleteConfirmation = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                }
-            }
-            .padding(BrutalistTheme.Spacing.lg)
-            .padding(.bottom, 100) // Space for FAB
-        }
     }
 
     // MARK: - List View
@@ -244,102 +167,6 @@ struct LivestockListView: View {
             await appState.deleteLivestock(livestock)
         }
         livestockToDelete = nil
-    }
-}
-
-// MARK: - Grid Item
-
-/// Individual livestock card for grid display
-struct LivestockGridItem: View {
-    let livestock: Livestock
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Photo or placeholder
-            photoSection
-                .frame(height: 120)
-                .clipped()
-
-            // Divider
-            Rectangle()
-                .fill(BrutalistTheme.Colors.text)
-                .frame(height: BrutalistTheme.Borders.standard)
-
-            // Info section
-            VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
-                // Category badge
-                categoryBadge
-
-                // Name
-                Text(livestock.name.uppercased())
-                    .font(BrutalistTheme.Typography.bodyBold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
-                    .lineLimit(1)
-
-                // Quantity if > 1
-                if livestock.quantity > 1 {
-                    Text("QTY: \(livestock.quantity)")
-                        .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
-                }
-
-                // Health indicator
-                healthIndicator
-            }
-            .padding(BrutalistTheme.Spacing.sm)
-        }
-        .background(BrutalistTheme.Colors.cardBackground)
-        .brutalistCard(
-            borderWidth: BrutalistTheme.Borders.standard,
-            shadowOffset: BrutalistTheme.Shadows.offset
-        )
-    }
-
-    private var photoSection: some View {
-        Group {
-            if let photoData = livestock.photoData,
-               let uiImage = UIImage(data: photoData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                ZStack {
-                    Rectangle()
-                        .fill(BrutalistTheme.Colors.text.opacity(0.1))
-
-                    Image(systemName: livestock.category.icon)
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
-                }
-            }
-        }
-    }
-
-    private var categoryBadge: some View {
-        HStack(spacing: BrutalistTheme.Spacing.xs) {
-            Image(systemName: livestock.category.icon)
-                .font(.system(size: 10, weight: .bold))
-
-            Text(livestock.category.displayName.uppercased())
-                .font(.system(size: 10, weight: .bold))
-        }
-        .foregroundColor(BrutalistTheme.Colors.text)
-        .padding(.horizontal, BrutalistTheme.Spacing.xs)
-        .padding(.vertical, 2)
-        .background(BrutalistTheme.Colors.action.opacity(0.3))
-        .brutalistBorder(width: 1)
-    }
-
-    private var healthIndicator: some View {
-        HStack(spacing: BrutalistTheme.Spacing.xs) {
-            Circle()
-                .fill(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.action)
-                .frame(width: 8, height: 8)
-
-            Text(livestock.healthStatus.displayName)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text.opacity(0.8))
-        }
     }
 }
 
@@ -451,16 +278,9 @@ struct LivestockListItem: View {
 
 // MARK: - Preview
 
-#Preview("Livestock List - Grid") {
+#Preview("Livestock List") {
     LivestockListView()
         .environmentObject(AppState())
-}
-
-#Preview("Grid Item") {
-    LivestockGridItem(livestock: Livestock.sample)
-        .frame(width: 180)
-        .padding()
-        .background(BrutalistTheme.Colors.background)
 }
 
 #Preview("List Item") {

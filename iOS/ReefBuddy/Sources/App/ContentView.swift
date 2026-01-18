@@ -248,16 +248,16 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: BrutalistTheme.Spacing.md) {
-                // Notifications Section
-                settingsSection(title: "ALERTS", icon: "bell.fill") {
-                    settingsRow(
-                        icon: "bell.badge.fill",
-                        title: "Notification Settings",
-                        subtitle: "Configure parameter alerts"
-                    ) {
-                        showingNotificationSettings = true
-                    }
-                }
+                // Notifications Section - Hidden for now
+                // settingsSection(title: "ALERTS", icon: "bell.fill") {
+                //     settingsRow(
+                //         icon: "bell.badge.fill",
+                //         title: "Notification Settings",
+                //         subtitle: "Configure parameter alerts"
+                //     ) {
+                //         showingNotificationSettings = true
+                //     }
+                // }
 
                 // Account Section
                 settingsSection(title: "ACCOUNT", icon: "person.fill") {
