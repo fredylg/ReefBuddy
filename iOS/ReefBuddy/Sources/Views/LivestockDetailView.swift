@@ -85,9 +85,13 @@ struct LivestockDetailView: View {
             }
             .sheet(isPresented: $showingHealthLogSheet) {
                 AddHealthLogSheet(livestock: livestock) { newLog in
-                    healthLogs.insert(newLog, at: 0)
-                    livestock.healthStatus = newLog.healthStatus
                     Task {
+                        // Save the log to storage
+                        await appState.addLivestockLog(newLog)
+                        // Reload logs to get the updated list
+                        loadHealthLogs()
+                        // Update livestock health status
+                        livestock.healthStatus = newLog.healthStatus
                         await appState.updateLivestock(livestock)
                     }
                 }
@@ -447,12 +451,8 @@ struct LivestockDetailView: View {
     }
 
     private func loadHealthLogs() {
-        // Load sample logs for now - in production would fetch from AppState/API
-        healthLogs = LivestockLog.samples.filter { $0.livestockId == livestock.id }
-        if healthLogs.isEmpty {
-            // Show sample data for preview purposes
-            healthLogs = LivestockLog.samples
-        }
+        // Load logs from storage via AppState
+        healthLogs = appState.fetchLivestockLogs(for: livestock)
     }
 }
 
