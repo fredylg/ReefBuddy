@@ -10,7 +10,22 @@ This folder contains all icons and screenshots needed to publish ReefBuddy to th
   - Features hard black shadow and 3pt border following New Brutalist design principles
   - Upload to App Store Connect → App Information → App Icon
 
-## 📸 Screenshots
+## ⚠️ IMPORTANT: Screenshot Status
+
+**Current screenshots are MOCKUPS** generated programmatically. They need to be replaced with **real screenshots** from the iOS Simulator.
+
+**To capture real screenshots:**
+1. See `SCREENSHOT-GUIDE.md` for detailed instructions
+2. Run `./capture-app-screenshots.sh` for interactive capture
+3. Use `python3 resize-screenshots.py <screenshot.png> <view-name>` to resize
+
+**Required App Store sizes:**
+- 1284 × 2778 px (iPhone 6.7" Portrait)
+- 2778 × 1284 px (iPhone 6.7" Landscape)
+- 1242 × 2688 px (iPhone 6.5" Portrait)
+- 2688 × 1242 px (iPhone 6.5" Landscape)
+
+## 📸 Screenshots (Mockups - Replace with Real Screenshots)
 
 Screenshots are organized by device size. Each device folder contains 4 different app views:
 
