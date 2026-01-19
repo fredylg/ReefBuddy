@@ -43,7 +43,7 @@
 		8A1B2C3D00000098 /* LivestockStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000099 /* LivestockStorage.swift */; };
 		8A1B2C3D0000009A /* MeasurementStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009B /* MeasurementStorage.swift */; };
 		8A1B2C3D0000009C /* ImageStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009D /* ImageStorage.swift */; };
-		8A1B2C3D00000044 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000045 /* KeychainManager.swift */; };
+		8A1B2C3D00000044 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000044 /* KeychainManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -229,7 +229,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1B2C3D0000003D /* StoreManager.swift */,
-				8A1B2C3D00000045 /* KeychainManager.swift */,
+				8A1B2C3D00000044 /* KeychainManager.swift */,
 				8A1B2C3D00000093 /* AnalysisStorage.swift */,
 				8A1B2C3D00000097 /* TankStorage.swift */,
 				8A1B2C3D00000099 /* LivestockStorage.swift */,
