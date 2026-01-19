@@ -327,11 +327,15 @@ actor APIClient {
         case 402:
             throw APIError.noCredits
         case 403:
-            throw APIError.forbidden
+            // Check for specific error code in response body
+            // For now, default to deviceCheckRequired for 403s from analysis endpoints
+            throw APIError.deviceCheckRequired
         case 404:
             throw APIError.notFound
         case 429:
             throw APIError.rateLimited
+        case 503:
+            throw APIError.serviceUnavailable
         case 500...599:
             throw APIError.serverError(httpResponse.statusCode)
         default:
@@ -416,8 +420,10 @@ enum APIError: LocalizedError {
     case unauthorized
     case noCredits
     case forbidden
+    case deviceCheckRequired
     case notFound
     case rateLimited
+    case serviceUnavailable
     case serverError(Int)
     case unknown(Int)
     case decodingError(Error)
@@ -435,10 +441,14 @@ enum APIError: LocalizedError {
             return "No analysis credits remaining. Purchase more to continue."
         case .forbidden:
             return "Access denied"
+        case .deviceCheckRequired:
+            return "Please update to the latest app version to continue."
         case .notFound:
             return "Resource not found"
         case .rateLimited:
             return "Too many requests. Please wait and try again."
+        case .serviceUnavailable:
+            return "Service temporarily unavailable. Please try again in a moment."
         case .serverError(let code):
             return "Server error (\(code)). Please try again later."
         case .unknown(let code):

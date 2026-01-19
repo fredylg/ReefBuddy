@@ -104,3 +104,4 @@ iOS/ReefBuddy/Sources/
 ├── Store/         StoreManager (StoreKit 2), AnalysisStorage
 └── Networking/    APIClient
 ```
+Just in case CLOyYanvmEhgQJm9tIzJElDM6sUmPBP+SfREtwvWAso=

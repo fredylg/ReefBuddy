@@ -435,18 +435,19 @@ struct MeasurementEntryView: View {
 
         Task {
             let unitString = temperatureUnit == .celsius ? "C" : "F"
-            if let analysis = await appState.requestAnalysis(for: measurementModel, tank: tank, storeManager: storeManager, temperatureUnit: unitString) {
-                await MainActor.run {
-                    isAnalyzing = false
-                    analysisResult = analysis
-                    showingAnalysis = true
-                }
+            do {
+                if let analysis = try await appState.requestAnalysis(for: measurementModel, tank: tank, storeManager: storeManager, temperatureUnit: unitString) {
+                    await MainActor.run {
+                        isAnalyzing = false
+                        analysisResult = analysis
+                        showingAnalysis = true
+                    }
 
-                // Also save the measurement
-                await appState.submitMeasurement(measurementModel)
-            } else if let error = appState.errorMessage {
-                // Show error to user
-                await MainActor.run {
+                    // Also save the measurement
+                    await appState.submitMeasurement(measurementModel)
+                } else if let error = appState.errorMessage {
+                    // Show error to user
+                    await MainActor.run {
                     isAnalyzing = false
                     errorMessage = error
                     showingError = true
@@ -458,6 +459,25 @@ struct MeasurementEntryView: View {
             } else {
                 await MainActor.run {
                     isAnalyzing = false
+                }
+            }
+            } catch APIError.deviceCheckRequired {
+                await MainActor.run {
+                    isAnalyzing = false
+                    errorMessage = "Please update to the latest app version to continue."
+                    showingError = true
+                }
+            } catch APIError.serviceUnavailable {
+                await MainActor.run {
+                    isAnalyzing = false
+                    errorMessage = "Service temporarily unavailable. Please try again in a moment."
+                    showingError = true
+                }
+            } catch {
+                await MainActor.run {
+                    isAnalyzing = false
+                    errorMessage = "Analysis failed: \(error.localizedDescription)"
+                    showingError = true
                 }
             }
         }

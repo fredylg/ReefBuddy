@@ -1084,6 +1084,19 @@ private func validateResponse(_ response: URLResponse) throws {
 - **L3:** Input Length Limits - Additional validation
 - **L4:** Receipt Encryption - Complex database changes
 
+### Remaining Security Changes Summary
+
+| Item | Type | Breaks v1.0.0? | Description |
+|------|------|----------------|-------------|
+| **H2** | iOS + Backend | ❌ YES (if no grace period) | Strengthen Device ID Verification - Make DeviceCheck tokens mandatory after iOS v1.0.1 release |
+| **M1** | iOS Only | ✅ NO | Migrate Credentials to Keychain - Move device ID storage from UserDefaults to secure Keychain with automatic migration |
+| **iOS-1** | iOS Only | ✅ NO | Handle New Backend Error Codes - Add graceful handling for 403 (device verification) and 503 (service unavailable) error codes |
+| **H1** | Backend Only | ✅ NO | Prompt Injection Protection - Add validation to prevent malicious prompts from affecting AI responses |
+| **M2** | Backend Only | ✅ NO | Bcrypt Salt Rounds - Increase password hashing complexity for new user accounts only |
+| **L2** | Backend Only | ✅ NO | Request ID Tracing - Add unique request IDs for better debugging and log correlation |
+| **L3** | Backend Only | ✅ NO | Input Length Limits - Add maximum length validation for all user inputs to prevent buffer overflows |
+| **L4** | Backend Only | ✅ NO | Receipt Encryption - Encrypt StoreKit receipt data in database for enhanced privacy |
+
 #### Implementation Decision
 These fixes were deferred because:
 1. **H1:** Could impact AI response quality and requires extensive testing
