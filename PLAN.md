@@ -39,7 +39,7 @@ ReefBuddy v1.0 is complete and ready for App Store submission.
 - [x] D1 migrations applied
 - [x] App Store Connect IAP products configured
 - [x] TestFlight beta testing
-- [ ] App Store submission
+- [x] App Store submission
 
 ---
 

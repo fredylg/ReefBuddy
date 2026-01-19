@@ -34,6 +34,41 @@ import {
 } from './notifications';
 
 // =============================================================================
+// CORS AND SECURITY CONFIGURATION
+// =============================================================================
+
+const ALLOWED_ORIGINS = [
+  'capacitor://localhost',           // iOS app
+  'ionic://localhost',               // iOS app alternative
+  'http://localhost:8100',           // Local development
+  'http://localhost:3000',           // Web development
+  'http://localhost:8787',           // Wrangler dev
+];
+
+// CORS and security headers for all responses
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Device-ID',
+};
+
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+};
+
+// Helper function to get all response headers
+function getAllHeaders(corsHeaders: Record<string, string>): Record<string, string> {
+  return {
+    ...corsHeaders,
+    ...SECURITY_HEADERS,
+  };
+}
+
+// =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
 
@@ -329,7 +364,11 @@ function generateUUID(): string {
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+      ...SECURITY_HEADERS,
+    },
   });
 }
 
@@ -337,7 +376,14 @@ function jsonResponse(data: unknown, status = 200): Response {
  * Create an error response
  */
 function errorResponse(error: string, message: string, status: number): Response {
-  return jsonResponse({ error, message }, status);
+  return new Response(JSON.stringify({ error, message }), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+      ...SECURITY_HEADERS,
+    },
+  });
 }
 
 // =============================================================================
@@ -3709,16 +3755,23 @@ export default {
     // Log all incoming requests for debugging
     console.log(`🌐 ${method} ${pathname} - ${new Date().toISOString()}`);
 
+    // Validate request origin for CORS
+    const requestOrigin = request.headers.get('Origin');
+    const isAllowedOrigin = !requestOrigin || ALLOWED_ORIGINS.includes(requestOrigin);
+    const corsOrigin = isAllowedOrigin ? (requestOrigin || '*') : ALLOWED_ORIGINS[0];
+
     // CORS headers for all responses
     const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      ...CORS_HEADERS,
+      'Access-Control-Allow-Origin': corsOrigin,
     };
 
     // Handle CORS preflight
     if (method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders });
+      return new Response(null, {
+        status: 204,
+        headers: { ...corsHeaders, ...SECURITY_HEADERS }
+      });
     }
 
     let response: Response;
