@@ -43,14 +43,13 @@
 		8A1B2C3D00000098 /* LivestockStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000099 /* LivestockStorage.swift */; };
 		8A1B2C3D0000009A /* MeasurementStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009B /* MeasurementStorage.swift */; };
 		8A1B2C3D0000009C /* ImageStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009D /* ImageStorage.swift */; };
-		8A1B2C3D00000046 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000046 /* KeychainManager.swift */; };
+		8A1B2C3D0000009E /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009F /* KeychainManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1641E64F2F1B2B360017122A /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		1641E6512F1B2B6B0017122A /* ReefBuddy.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = ReefBuddy.storekit; sourceTree = "<group>"; };
 		1641E6532F1B2C410017122A /* StoreKit.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = StoreKit.plist; sourceTree = "<group>"; };
-		8A1B2C3D00000046 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000010 /* ReefBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReefBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1B2C3D00000011 /* ReefBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReefBuddyApp.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -85,6 +84,7 @@
 		8A1B2C3D00000099 /* LivestockStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivestockStorage.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000009B /* MeasurementStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementStorage.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000009D /* ImageStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStorage.swift; sourceTree = "<group>"; };
+		8A1B2C3D0000009F /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -229,7 +229,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1B2C3D0000003D /* StoreManager.swift */,
-				8A1B2C3D00000046 /* KeychainManager.swift */,
+				8A1B2C3D0000009F /* KeychainManager.swift */,
 				8A1B2C3D00000093 /* AnalysisStorage.swift */,
 				8A1B2C3D00000097 /* TankStorage.swift */,
 				8A1B2C3D00000099 /* LivestockStorage.swift */,
@@ -333,7 +333,6 @@
 				8A1B2C3D0000002D /* LivestockDetailView.swift in Sources */,
 				8A1B2C3D0000002F /* AddLivestockView.swift in Sources */,
 				8A1B2C3D0000003C /* StoreManager.swift in Sources */,
-				8A1B2C3D00000046 /* KeychainManager.swift in Sources */,
 				8A1B2C3D0000003E /* PurchaseCreditsView.swift in Sources */,
 				8A1B2C3D00000042 /* BrutalistLoadingView.swift in Sources */,
 				8A1B2C3D00000090 /* SavedAnalysis.swift in Sources */,
@@ -343,6 +342,7 @@
 				8A1B2C3D00000098 /* LivestockStorage.swift in Sources */,
 				8A1B2C3D0000009A /* MeasurementStorage.swift in Sources */,
 				8A1B2C3D0000009C /* ImageStorage.swift in Sources */,
+				8A1B2C3D0000009E /* KeychainManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
