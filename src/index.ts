@@ -1714,10 +1714,27 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
         );
       }
     } else {
-      // DeviceCheck not configured - allow requests but log warning
-      // This is for development/testing environments where DeviceCheck may not be set up
-      if (!deviceToken) {
-        console.warn(`DeviceCheck not configured and no token provided for ${deviceId}`);
+      // DeviceCheck not configured
+      // SECURITY: In production, DeviceCheck must be configured to prevent abuse
+      const isProduction = env.ENVIRONMENT === 'production';
+      
+      if (isProduction) {
+        // Production requires DeviceCheck - reject if not configured
+        console.error(`SECURITY: DeviceCheck not configured in production for ${deviceId} - rejecting request`);
+        return jsonResponse(
+          {
+            error: 'Service configuration error',
+            message: 'Device verification is required but not properly configured. Please contact support.',
+            code: 'DEVICE_CHECK_MISCONFIGURED',
+          },
+          503
+        );
+      } else {
+        // Development/testing: allow requests but log warning
+        // This is for local development where DeviceCheck may not be set up
+        if (!deviceToken) {
+          console.warn(`DeviceCheck not configured and no token provided for ${deviceId} (development mode)`);
+        }
       }
     }
 

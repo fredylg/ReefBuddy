@@ -43,3 +43,7 @@ coverage/
 
 # Claude IDE settings
 .claude/
+
+# Security - Private keys (NEVER commit these!)
+*.p8
+AuthKey_*.p8

@@ -23,7 +23,7 @@ id = "b971329ac04e4171a65cfb907da0b08f"
 
 # Environment Variables
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
 
