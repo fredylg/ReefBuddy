@@ -598,15 +598,12 @@ async function validateDeviceToken(
     // Handle all possible status codes
     if (response.status === 200) {
       // Success - device token is valid and device is genuine
-      // Response should contain bit state information
-      if (responseData && (responseData.bit0 !== undefined || responseData.bit1 !== undefined || responseData.last_update_time !== undefined)) {
-        console.log(`✅ DeviceCheck validation successful for transaction ${transactionId}`);
-        return { valid: true };
-      } else {
-        // 200 but unexpected response format - log and reject for security
-        console.error(`⚠️ DeviceCheck returned 200 but with unexpected response format: ${responseText}`);
-        return { valid: false, error: 'Unexpected DeviceCheck response format' };
-      }
+      // A 200 status from Apple's DeviceCheck API means the token is valid
+      // Note: bit0/bit1 may not exist if bits haven't been set yet (first query)
+      // This is normal and expected - we only care that Apple validated the token
+      console.log(`✅ DeviceCheck validation successful for transaction ${transactionId}`);
+      console.log(`🔐 DeviceCheck response data: ${JSON.stringify(responseData)}`);
+      return { valid: true };
     } else if (response.status === 400) {
       // Bad request - invalid token format or missing parameters
       const errorMsg = responseData?.reason || responseData?.raw || responseText || 'Invalid device token format';
