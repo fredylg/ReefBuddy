@@ -3957,6 +3957,7 @@ export default {
             'PUT /api/tanks/:id': 'Update a tank (requires auth)',
             'DELETE /api/tanks/:id': 'Delete a tank (requires auth)',
             'POST /measurements': 'Record water measurements (requires auth)',
+            'POST /api/measurements': 'Record water measurements (requires auth) - alias for /measurements',
             'POST /analyze': 'Analyze water parameters and get dosing recommendations (uses credits)',
             'GET /credits/balance': 'Get device credit balance',
             'POST /credits/purchase': 'Purchase credits with Apple receipt validation',
@@ -4063,7 +4064,8 @@ export default {
       }
 
       // Measurements endpoint (requires authentication)
-      case pathname === '/measurements' && method === 'POST': {
+      // Support both /measurements and /api/measurements for backward compatibility
+      case (pathname === '/measurements' || pathname === '/api/measurements') && method === 'POST': {
         const authResult = await authenticateRequest(request, env);
         if (authResult instanceof Response) {
           response = authResult;
