@@ -556,19 +556,54 @@ async function validateDeviceToken(
     return { valid: true };
   }
 
-  // Use the correct DeviceCheck API endpoint: query_two_bits
-  // This endpoint validates the device token by querying device state
+  // SECURITY FIX: Use update_two_bits instead of query_two_bits for validation
+  // query_two_bits returns 200 with "Failed to find bit state" for both valid and invalid tokens
+  // update_two_bits will only succeed (200) if the token is valid, and fail (400/401) if invalid
+  // We use bit 0 for validation (set to current value to avoid changing state)
   const apiUrl = isDevelopment
-    ? 'https://api.development.devicecheck.apple.com/v1/query_two_bits'
-    : 'https://api.devicecheck.apple.com/v1/query_two_bits';
+    ? 'https://api.development.devicecheck.apple.com/v1/update_two_bits'
+    : 'https://api.devicecheck.apple.com/v1/update_two_bits';
 
   try {
     const jwt = await generateAppleJWT(env);
     const timestamp = Date.now();
     const transactionId = crypto.randomUUID();
 
-    console.log(`🔐 DeviceCheck validation: Calling ${apiUrl} with transaction ${transactionId}`);
+    // First, query current bit state to avoid changing it unnecessarily
+    const queryUrl = isDevelopment
+      ? 'https://api.development.devicecheck.apple.com/v1/query_two_bits'
+      : 'https://api.devicecheck.apple.com/v1/query_two_bits';
+    
+    const queryResponse = await fetch(queryUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        device_token: deviceToken,
+        timestamp: timestamp,
+        transaction_id: transactionId,
+      }),
+    });
 
+    const queryText = await queryResponse.text();
+    let currentBit0 = 0; // Default to 0 if bits haven't been set
+    let currentBit1 = 0;
+    
+    try {
+      const queryData = JSON.parse(queryText);
+      if (queryData.bit0 !== undefined) currentBit0 = queryData.bit0;
+      if (queryData.bit1 !== undefined) currentBit1 = queryData.bit1;
+    } catch {
+      // If query fails or returns "Failed to find bit state", bits are 0
+      // This is fine - we'll try to set them to validate the token
+    }
+
+    console.log(`🔐 DeviceCheck validation: Attempting to update bits (bit0=${currentBit0}, bit1=${currentBit1}) with transaction ${transactionId}`);
+
+    // Attempt to update the bits to their current values
+    // This validates the token without actually changing device state
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -579,6 +614,8 @@ async function validateDeviceToken(
         device_token: deviceToken,
         timestamp: timestamp,
         transaction_id: transactionId,
+        bit0: currentBit0,
+        bit1: currentBit1,
       }),
     });
 
@@ -597,37 +634,9 @@ async function validateDeviceToken(
 
     // Handle all possible status codes
     if (response.status === 200) {
-      // Check response body for error messages even with 200 status
-      // Apple may return 200 with error messages in some cases
-      const responseStr = typeof responseData === 'string' ? responseData.toLowerCase() : JSON.stringify(responseData).toLowerCase();
-      
-      // Check for specific error messages that indicate invalid tokens
-      // "Failed to find bit state" is OK (means bits haven't been set, but token is valid)
-      // But other errors indicate problems
-      const criticalErrors = [
-        'missing or incorrectly formatted device token',
-        'missing or badly formatted device token',
-        'invalid device token',
-        'unauthorized',
-        'forbidden',
-        'authentication failed',
-      ];
-      
-      const hasCriticalError = criticalErrors.some(error => responseStr.includes(error));
-      
-      if (hasCriticalError) {
-        // 200 status but critical error in response body - reject
-        const errorMsg = responseData?.reason || responseData?.data || responseData?.error || responseText || 'DeviceCheck returned error in response';
-        console.error(`❌ DeviceCheck returned 200 but with critical error: ${errorMsg}`);
-        return { valid: false, error: errorMsg };
-      }
-      
       // Success - device token is valid and device is genuine
-      // A 200 status from Apple's DeviceCheck API means the token is valid
-      // Note: bit0/bit1 may not exist if bits haven't been set yet (first query)
-      // "Failed to find bit state" is acceptable - it just means bits haven't been set
+      // update_two_bits only returns 200 if the token is valid
       console.log(`✅ DeviceCheck validation successful for transaction ${transactionId}`);
-      console.log(`🔐 DeviceCheck response data: ${JSON.stringify(responseData)}`);
       return { valid: true };
     } else if (response.status === 400) {
       // Bad request - invalid token format or missing parameters
