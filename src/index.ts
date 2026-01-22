@@ -1614,7 +1614,7 @@ async function handleCreateMeasurement(
  */
 const AnalysisRequestWithDeviceSchema = z.object({
   deviceId: z.string().min(1).describe('iOS device identifier'),
-  deviceToken: z.string().optional().describe('Apple DeviceCheck token for device attestation'),
+  deviceToken: z.string().optional().describe('Apple DeviceCheck token for device attestation (required when DeviceCheck is configured)'),
   isDevelopment: z.boolean().optional().default(false).describe('Use DeviceCheck sandbox environment'),
   tankId: z.string().uuid(),
   parameters: WaterParametersSchema,
@@ -1682,26 +1682,42 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
 
     const { deviceId, deviceToken, isDevelopment, tankId, parameters, tankVolume, temperatureUnit } = validationResult.data;
 
-    // Validate device with Apple DeviceCheck (if configured and token provided)
+    // Validate device with Apple DeviceCheck (mandatory when configured)
+    // iOS app v1.0.1+ includes DeviceCheck support
     if (isDeviceCheckConfigured(env)) {
       if (!deviceToken) {
         // DeviceCheck is configured but no token provided
-        // For now, allow requests without token for backward compatibility
-        // TODO: Make this required after iOS app update is widely deployed
-        console.warn(`Analysis request from ${deviceId} without DeviceCheck token`);
-      } else {
-        const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);
-        if (!deviceCheckResult.valid) {
-          console.warn(`DeviceCheck failed for ${deviceId}: ${deviceCheckResult.error}`);
-          return jsonResponse(
-            {
-              error: 'Device verification failed',
-              message: 'Unable to verify this device. Please ensure you are using a genuine iOS device.',
-              details: deviceCheckResult.error,
-            },
-            403
-          );
-        }
+        // This means the client is using an old app version (< 1.0.1) or not using the official app
+        console.warn(`Analysis request from ${deviceId} without DeviceCheck token - rejecting`);
+        return jsonResponse(
+          {
+            error: 'Device verification required',
+            message: 'Please update to the latest app version (1.0.1 or later) to continue using this service.',
+            code: 'DEVICE_CHECK_REQUIRED',
+          },
+          403
+        );
+      }
+
+      // Validate the DeviceCheck token
+      const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);
+      if (!deviceCheckResult.valid) {
+        console.warn(`DeviceCheck failed for ${deviceId}: ${deviceCheckResult.error}`);
+        return jsonResponse(
+          {
+            error: 'Device verification failed',
+            message: 'Unable to verify this device. Please ensure you are using a genuine iOS device.',
+            details: deviceCheckResult.error,
+            code: 'DEVICE_CHECK_FAILED',
+          },
+          403
+        );
+      }
+    } else {
+      // DeviceCheck not configured - allow requests but log warning
+      // This is for development/testing environments where DeviceCheck may not be set up
+      if (!deviceToken) {
+        console.warn(`DeviceCheck not configured and no token provided for ${deviceId}`);
       }
     }
 
