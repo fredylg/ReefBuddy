@@ -556,12 +556,18 @@ async function validateDeviceToken(
     return { valid: true };
   }
 
+  // Use the correct DeviceCheck API endpoint: query_two_bits
+  // This endpoint validates the device token by querying device state
   const apiUrl = isDevelopment
-    ? 'https://api.development.devicecheck.apple.com/v1/validate_device_token'
-    : 'https://api.devicecheck.apple.com/v1/validate_device_token';
+    ? 'https://api.development.devicecheck.apple.com/v1/query_two_bits'
+    : 'https://api.devicecheck.apple.com/v1/query_two_bits';
 
   try {
     const jwt = await generateAppleJWT(env);
+    const timestamp = Date.now();
+    const transactionId = crypto.randomUUID();
+
+    console.log(`🔐 DeviceCheck validation: Calling ${apiUrl} with transaction ${transactionId}`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -571,28 +577,58 @@ async function validateDeviceToken(
       },
       body: JSON.stringify({
         device_token: deviceToken,
-        timestamp: Date.now(),
-        transaction_id: crypto.randomUUID(),
+        timestamp: timestamp,
+        transaction_id: transactionId,
       }),
     });
 
+    // CRITICAL: Read response body for ALL status codes to properly validate
+    const responseText = await response.text();
+    let responseData: any = null;
+    
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      // Response is not JSON, use raw text
+      responseData = { raw: responseText };
+    }
+
+    console.log(`🔐 DeviceCheck response: Status ${response.status}, Body: ${JSON.stringify(responseData)}`);
+
+    // Handle all possible status codes
     if (response.status === 200) {
-      return { valid: true };
-    }
-
-    // Handle specific error codes
-    const errorText = await response.text();
-    console.error(`DeviceCheck validation failed: ${response.status} - ${errorText}`);
-
-    if (response.status === 400) {
-      return { valid: false, error: 'Invalid device token format' };
+      // Success - device token is valid and device is genuine
+      // Response should contain bit state information
+      if (responseData && (responseData.bit0 !== undefined || responseData.bit1 !== undefined || responseData.last_update_time !== undefined)) {
+        console.log(`✅ DeviceCheck validation successful for transaction ${transactionId}`);
+        return { valid: true };
+      } else {
+        // 200 but unexpected response format - log and reject for security
+        console.error(`⚠️ DeviceCheck returned 200 but with unexpected response format: ${responseText}`);
+        return { valid: false, error: 'Unexpected DeviceCheck response format' };
+      }
+    } else if (response.status === 400) {
+      // Bad request - invalid token format or missing parameters
+      const errorMsg = responseData?.reason || responseData?.raw || responseText || 'Invalid device token format';
+      console.error(`❌ DeviceCheck validation failed (400): ${errorMsg}`);
+      return { valid: false, error: `Invalid device token format: ${errorMsg}` };
     } else if (response.status === 401) {
-      return { valid: false, error: 'DeviceCheck authentication failed' };
+      // Unauthorized - JWT authentication failed
+      const errorMsg = responseData?.reason || responseData?.raw || responseText || 'DeviceCheck authentication failed';
+      console.error(`❌ DeviceCheck authentication failed (401): ${errorMsg}`);
+      return { valid: false, error: `DeviceCheck authentication failed: ${errorMsg}` };
+    } else if (response.status === 404) {
+      // Endpoint not found - this should never happen with correct endpoint
+      console.error(`❌ DeviceCheck endpoint not found (404): ${responseText}`);
+      return { valid: false, error: 'DeviceCheck endpoint not found - API configuration error' };
+    } else {
+      // Other error status codes
+      const errorMsg = responseData?.reason || responseData?.raw || responseText || `DeviceCheck returned ${response.status}`;
+      console.error(`❌ DeviceCheck validation failed (${response.status}): ${errorMsg}`);
+      return { valid: false, error: `DeviceCheck returned ${response.status}: ${errorMsg}` };
     }
-
-    return { valid: false, error: `DeviceCheck returned ${response.status}` };
   } catch (error) {
-    console.error('DeviceCheck validation error:', error);
+    console.error('❌ DeviceCheck validation error:', error);
     return { valid: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
