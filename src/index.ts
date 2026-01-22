@@ -597,10 +597,35 @@ async function validateDeviceToken(
 
     // Handle all possible status codes
     if (response.status === 200) {
+      // Check response body for error messages even with 200 status
+      // Apple may return 200 with error messages in some cases
+      const responseStr = typeof responseData === 'string' ? responseData.toLowerCase() : JSON.stringify(responseData).toLowerCase();
+      
+      // Check for specific error messages that indicate invalid tokens
+      // "Failed to find bit state" is OK (means bits haven't been set, but token is valid)
+      // But other errors indicate problems
+      const criticalErrors = [
+        'missing or incorrectly formatted device token',
+        'missing or badly formatted device token',
+        'invalid device token',
+        'unauthorized',
+        'forbidden',
+        'authentication failed',
+      ];
+      
+      const hasCriticalError = criticalErrors.some(error => responseStr.includes(error));
+      
+      if (hasCriticalError) {
+        // 200 status but critical error in response body - reject
+        const errorMsg = responseData?.reason || responseData?.data || responseData?.error || responseText || 'DeviceCheck returned error in response';
+        console.error(`❌ DeviceCheck returned 200 but with critical error: ${errorMsg}`);
+        return { valid: false, error: errorMsg };
+      }
+      
       // Success - device token is valid and device is genuine
       // A 200 status from Apple's DeviceCheck API means the token is valid
       // Note: bit0/bit1 may not exist if bits haven't been set yet (first query)
-      // This is normal and expected - we only care that Apple validated the token
+      // "Failed to find bit state" is acceptable - it just means bits haven't been set
       console.log(`✅ DeviceCheck validation successful for transaction ${transactionId}`);
       console.log(`🔐 DeviceCheck response data: ${JSON.stringify(responseData)}`);
       return { valid: true };
