@@ -296,11 +296,11 @@ struct SettingsView: View {
                 // About Section
                 settingsSection(title: "ABOUT", icon: "info.circle.fill") {
                     VStack(spacing: 0) {
-                        aboutRow(label: "Version", value: "1.0.0")
+                        aboutRow(label: "Version", value: "1.0.1")
                         Rectangle()
                             .fill(BrutalistTheme.Colors.text.opacity(0.1))
                             .frame(height: 1)
-                        aboutRow(label: "Build", value: "2026.01")
+                        aboutRow(label: "Build", value: "2026.02")
                     }
                 }
 
