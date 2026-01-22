@@ -143,6 +143,7 @@ const WaterParametersSchema = z.object({
   nitrate: z.number().optional().describe('Nitrate in ppm'),
   phosphate: z.number().optional().describe('Phosphate in ppm'),
   ammonia: z.number().optional().describe('Ammonia in ppm'),
+  notes: z.string().max(500).optional().describe('User observations about the tank'),
 });
 
 /**
@@ -419,6 +420,21 @@ function sanitizeNumericInput(value: number | undefined, maxLength: number = 10)
   // Only allow digits, decimal point, and negative sign
   const cleaned = str.replace(/[^\d.\-]/g, '');
   return cleaned.slice(0, maxLength);
+}
+
+/**
+ * Sanitize text input to prevent prompt injection
+ * Removes control characters, limits length, and escapes newlines
+ */
+function sanitizeTextInput(value: string | undefined, maxLength: number = 500): string {
+  if (!value) return '';
+  // Remove control characters except newlines and tabs
+  let cleaned = value.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  // Limit length
+  cleaned = cleaned.slice(0, maxLength);
+  // Escape excessive newlines (more than 2 consecutive)
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
 }
 
 /**
@@ -1538,7 +1554,31 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       );
     }
 
-    const body = await request.json();
+    // Log request body for debugging (including notes field)
+    console.log('🔬 Analysis request received from:', request.headers.get('User-Agent') || 'unknown');
+    let body;
+    try {
+      const text = await request.text();
+      console.log('🔬 Raw request body:', text);
+      body = JSON.parse(text);
+      console.log('🔬 Request body parsed successfully, keys:', Object.keys(body));
+      console.log('🔬 Full request body:', JSON.stringify(body, null, 2));
+      // Specifically log notes if present
+      if (body.parameters?.notes) {
+        console.log('🔬 Notes field present:', body.parameters.notes);
+      } else {
+        console.log('🔬 Notes field: not present or empty');
+      }
+    } catch (parseError) {
+      console.error('🔬 JSON parsing failed:', parseError);
+      return jsonResponse(
+        {
+          error: 'Invalid JSON',
+          message: 'Request body is not valid JSON',
+        },
+        400
+      );
+    }
 
     const validationResult = AnalysisRequestWithDeviceSchema.safeParse(body);
     if (!validationResult.success) {
@@ -1637,9 +1677,17 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     const sanitizedVolume = sanitizeNumericInput(tankVolume);
 
     const prompt = `Water parameters for ${sanitizedVolume} gallon tank:
-${paramLines.join('\n')}
+${paramLines.join('\n')}${parameters.notes ? `\n\nUser observations: ${sanitizeTextInput(parameters.notes)}` : ''}
 
 Please analyze these values and provide dosing recommendations.`;
+
+    // Log the prompt being sent to AI Gateway (for debugging)
+    console.log('🔬 Prompt being sent to AI Gateway:', prompt);
+    if (parameters.notes) {
+      console.log('🔬 Notes included in prompt:', sanitizeTextInput(parameters.notes));
+    } else {
+      console.log('🔬 No notes in prompt');
+    }
 
     const aiResponse = await callAIGateway(env, prompt);
 

@@ -330,10 +330,11 @@ struct AnalysisRequest: Codable {
         let nitrate: Double?
         let phosphate: Double?
         let ammonia: Double?
+        let notes: String?
 
         // Worker expects lowercase 'ph', not 'pH'
         enum CodingKeys: String, CodingKey {
-            case salinity, temperature, ph, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia
+            case salinity, temperature, ph, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia, notes
         }
     }
 
@@ -353,7 +354,8 @@ struct AnalysisRequest: Codable {
             magnesium: measurement.magnesium,
             nitrate: measurement.nitrate,
             phosphate: measurement.phosphate,
-            ammonia: measurement.ammonia
+            ammonia: measurement.ammonia,
+            notes: measurement.notes
         )
     }
 }

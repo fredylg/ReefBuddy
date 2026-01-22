@@ -175,7 +175,18 @@ actor APIClient {
             isDevelopment: isDebugBuild(),
             temperatureUnit: temperatureUnit
         )
+        
+        // Debug logging: Log the measurement notes before encoding
+        print("📝 Measurement notes: \(measurement.notes ?? "nil")")
+        print("📝 Request body parameters.notes: \(requestBody.parameters.notes ?? "nil")")
+        
         request.httpBody = try analysisEncoder.encode(requestBody)
+        
+        // Debug logging: Log the encoded JSON
+        if let jsonData = request.httpBody,
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            print("📤 Sending to Cloudflare: \(jsonString)")
+        }
 
         let (data, response) = try await session.data(for: request)
         try validateResponse(response)

@@ -430,6 +430,10 @@ struct MeasurementEntryView: View {
         }
 
         let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
+        
+        // Debug logging: Verify notes are captured from UI
+        print("📝 UI notes field: '\(measurement.notes)'")
+        print("📝 Measurement model notes: \(measurementModel.notes ?? "nil")")
 
         isAnalyzing = true
 
