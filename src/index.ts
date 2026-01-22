@@ -559,7 +559,7 @@ async function validateDeviceToken(
   // SECURITY FIX: Use update_two_bits instead of query_two_bits for validation
   // query_two_bits returns 200 with "Failed to find bit state" for both valid and invalid tokens
   // update_two_bits will only succeed (200) if the token is valid, and fail (400/401) if invalid
-  // We use bit 0 for validation (set to current value to avoid changing state)
+  // We set bits to 0,0 to validate - if token is invalid, this will fail
   const apiUrl = isDevelopment
     ? 'https://api.development.devicecheck.apple.com/v1/update_two_bits'
     : 'https://api.devicecheck.apple.com/v1/update_two_bits';
@@ -569,41 +569,11 @@ async function validateDeviceToken(
     const timestamp = Date.now();
     const transactionId = crypto.randomUUID();
 
-    // First, query current bit state to avoid changing it unnecessarily
-    const queryUrl = isDevelopment
-      ? 'https://api.development.devicecheck.apple.com/v1/query_two_bits'
-      : 'https://api.devicecheck.apple.com/v1/query_two_bits';
-    
-    const queryResponse = await fetch(queryUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        device_token: deviceToken,
-        timestamp: timestamp,
-        transaction_id: transactionId,
-      }),
-    });
+    console.log(`🔐 DeviceCheck validation: Attempting to update bits (bit0=0, bit1=0) with transaction ${transactionId}`);
 
-    const queryText = await queryResponse.text();
-    let currentBit0 = 0; // Default to 0 if bits haven't been set
-    let currentBit1 = 0;
-    
-    try {
-      const queryData = JSON.parse(queryText);
-      if (queryData.bit0 !== undefined) currentBit0 = queryData.bit0;
-      if (queryData.bit1 !== undefined) currentBit1 = queryData.bit1;
-    } catch {
-      // If query fails or returns "Failed to find bit state", bits are 0
-      // This is fine - we'll try to set them to validate the token
-    }
-
-    console.log(`🔐 DeviceCheck validation: Attempting to update bits (bit0=${currentBit0}, bit1=${currentBit1}) with transaction ${transactionId}`);
-
-    // Attempt to update the bits to their current values
-    // This validates the token without actually changing device state
+    // Attempt to update bits to 0,0 to validate the token
+    // If token is valid: returns 200 (success)
+    // If token is invalid: returns 400 or 401 (failure)
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -614,8 +584,8 @@ async function validateDeviceToken(
         device_token: deviceToken,
         timestamp: timestamp,
         transaction_id: transactionId,
-        bit0: currentBit0,
-        bit1: currentBit1,
+        bit0: 0,
+        bit1: 0,
       }),
     });
 
@@ -630,13 +600,15 @@ async function validateDeviceToken(
       responseData = { raw: responseText };
     }
 
-    console.log(`🔐 DeviceCheck response: Status ${response.status}, Body: ${JSON.stringify(responseData)}`);
+    console.log(`🔐 DeviceCheck UPDATE response: Status ${response.status}, Body: ${JSON.stringify(responseData)}`);
 
     // Handle all possible status codes
+    // CRITICAL: update_two_bits will only return 200 if the token is valid
+    // Invalid tokens will return 400 or 401
     if (response.status === 200) {
       // Success - device token is valid and device is genuine
-      // update_two_bits only returns 200 if the token is valid
-      console.log(`✅ DeviceCheck validation successful for transaction ${transactionId}`);
+      // update_two_bits only returns 200 if the token is valid and can be updated
+      console.log(`✅ DeviceCheck validation successful (update_two_bits returned 200) for transaction ${transactionId}`);
       return { valid: true };
     } else if (response.status === 400) {
       // Bad request - invalid token format or missing parameters
