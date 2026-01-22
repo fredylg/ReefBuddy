@@ -15,8 +15,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration - Use production URL
-WORKER_URL="https://reefbuddy-production.fredylg.workers.dev"
+# Configuration - Use main worker URL
+WORKER_URL="https://reefbuddy.fredylg.workers.dev"
 TEST_DEVICE_ID="test-device-12345"
 
 # Test counter

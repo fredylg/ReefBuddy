@@ -89,6 +89,7 @@ export interface Env {
 
   // Secrets (set via wrangler secret)
   ANTHROPIC_API_KEY: string;
+  CF_AI_GATEWAY_TOKEN?: string; // Optional: AI Gateway authentication token
 
   // Apple DeviceCheck secrets (optional - set via wrangler secret)
   APPLE_KEY_ID?: string;
@@ -599,6 +600,7 @@ async function validateDeviceToken(
 /**
  * Call AI Gateway for water chemistry analysis
  * Routes requests through Cloudflare AI Gateway for caching and analytics
+ * Includes retry logic for 529 (Service Unavailable) errors
  */
 async function callAIGateway(env: Env, prompt: string): Promise<string> {
   if (!env.ANTHROPIC_API_KEY || !env.CF_ACCOUNT_ID) {
@@ -612,41 +614,92 @@ async function callAIGateway(env: Env, prompt: string): Promise<string> {
 
   const gatewayUrl = `https://gateway.ai.cloudflare.com/v1/${env.CF_ACCOUNT_ID}/${env.AI_GATEWAY.gateway_id}/anthropic/v1/messages`;
 
-  try {
-    const response = await fetch(gatewayUrl, {
-      method: 'POST',
-      headers: {
+  // Retry configuration for 529 errors
+  const maxRetries = 3;
+  const baseDelay = 1000; // 1 second base delay
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Build headers object
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'x-api-key': env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 1024,
-        system: AI_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+        // Cloudflare AI Gateway retry headers
+        'cf-aig-max-attempts': '3',
+        'cf-aig-retry-delay': '1000',
+        'cf-aig-backoff': 'exponential',
+      };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`AI Gateway error: ${response.status} - ${errorText}`);
+      // Cloudflare AI Gateway authentication (optional - only if token is set)
+      if (env.CF_AI_GATEWAY_TOKEN) {
+        headers['cf-aig-authorization'] = `Bearer ${env.CF_AI_GATEWAY_TOKEN}`;
+      }
+
+      const response = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1024,
+          system: AI_SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const statusCode = response.status;
+
+        // Special handling for 529 (Service Unavailable) - retry with exponential backoff
+        if (statusCode === 529 && attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 1s, 2s, 4s
+          console.warn(`AI Gateway returned 529 (Service Unavailable), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry
+        }
+
+        // For other errors or final retry attempt, return error
+        console.error(`AI Gateway error: ${statusCode} - ${errorText}`);
+        return JSON.stringify({
+          status: 'error',
+          statusCode,
+          message: statusCode === 529 
+            ? 'AI service is temporarily unavailable. Please try again in a moment.'
+            : `AI Gateway returned ${statusCode}`,
+          details: errorText,
+          retryable: statusCode === 529,
+        });
+      }
+
+      // Success - parse and return response
+      const data = (await response.json()) as { content: Array<{ text: string }> };
+      return data.content[0].text;
+    } catch (error) {
+      // Network errors - retry if we have attempts left
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.warn(`AI Gateway network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      // Final attempt failed
+      console.error('AI Gateway fetch error:', error);
       return JSON.stringify({
         status: 'error',
-        message: `AI Gateway returned ${response.status}`,
-        details: errorText,
+        statusCode: 0,
+        message: error instanceof Error ? error.message : 'Unknown error calling AI Gateway',
+        retryable: true,
       });
     }
-
-    const data = (await response.json()) as { content: Array<{ text: string }> };
-    return data.content[0].text;
-  } catch (error) {
-    console.error('AI Gateway fetch error:', error);
-    return JSON.stringify({
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error calling AI Gateway',
-    });
   }
+
+  // Should never reach here, but TypeScript requires a return
+  return JSON.stringify({
+    status: 'error',
+    message: 'AI Gateway request failed after all retry attempts',
+  });
 }
 
 // =============================================================================
@@ -782,6 +835,42 @@ async function consumeDeviceCredit(env: Env, deviceId: string): Promise<boolean>
   } catch (error) {
     console.error('Error in consumeDeviceCredit:', error);
     throw error;
+  }
+}
+
+/**
+ * Refund one credit to device (prefer refunding free credit, otherwise add paid credit)
+ * Used when AI Gateway fails with retryable errors (e.g., 529)
+ */
+async function refundDeviceCredit(env: Env, deviceId: string): Promise<boolean> {
+  try {
+    const record = await getOrCreateDeviceCredits(env, deviceId);
+    const now = new Date().toISOString();
+
+    if (record.free_used > 0) {
+      // Refund a free credit (decrement free_used)
+      const updateResult = await env.DB.prepare(
+        'UPDATE device_credits SET free_used = free_used - 1, total_analyses = GREATEST(0, total_analyses - 1), updated_at = ? WHERE device_id = ? AND free_used > 0'
+      )
+        .bind(now, deviceId)
+        .run();
+      
+      if (updateResult.success && updateResult.meta.changes > 0) {
+        return true;
+      }
+    }
+
+    // If no free credits to refund, add a paid credit instead
+    const updateResult = await env.DB.prepare(
+      'UPDATE device_credits SET paid_credits = paid_credits + 1, total_analyses = GREATEST(0, total_analyses - 1), updated_at = ? WHERE device_id = ?'
+    )
+      .bind(now, deviceId)
+      .run();
+    
+    return updateResult.success;
+  } catch (error) {
+    console.error('Error in refundDeviceCredit:', error);
+    return false;
   }
 }
 
@@ -1617,15 +1706,15 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     }
 
     // Check device credits
-    const credits = await checkDeviceCredits(env, deviceId);
+    const creditCheck = await checkDeviceCredits(env, deviceId);
 
-    if (!credits.allowed) {
+    if (!creditCheck.allowed) {
       return jsonResponse(
         {
           error: 'No credits available',
           message: 'You have used all your free analyses. Purchase credits to continue.',
-          freeRemaining: credits.freeRemaining,
-          paidCredits: credits.paidCredits,
+          freeRemaining: creditCheck.freeRemaining,
+          paidCredits: creditCheck.paidCredits,
         },
         402
       );
@@ -1690,6 +1779,31 @@ Please analyze these values and provide dosing recommendations.`;
     }
 
     const aiResponse = await callAIGateway(env, prompt);
+
+    // Check if AI Gateway returned an error (especially 529)
+    let parsedResponse: { status?: string; statusCode?: number; retryable?: boolean; message?: string };
+    try {
+      parsedResponse = JSON.parse(aiResponse);
+    } catch {
+      parsedResponse = {};
+    }
+
+    // If we got a retryable error (like 529), refund the credit
+    if (parsedResponse.status === 'error' && parsedResponse.retryable) {
+      console.warn(`AI Gateway returned retryable error (${parsedResponse.statusCode}), refunding credit to device ${deviceId}`);
+      // Refund the credit
+      const refunded = await refundDeviceCredit(env, deviceId);
+      
+      return jsonResponse(
+        {
+          error: 'Service temporarily unavailable',
+          message: parsedResponse.message || 'The AI service is temporarily unavailable. Your credit has been refunded. Please try again in a moment.',
+          statusCode: parsedResponse.statusCode || 503,
+          creditsRefunded: refunded,
+        },
+        503
+      );
+    }
 
     // Get updated credit balance
     const updatedCredits = await checkDeviceCredits(env, deviceId);

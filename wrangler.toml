@@ -50,6 +50,11 @@ invocation_logs = true
 # REQUIRED:
 # - ANTHROPIC_API_KEY: API key for Claude AI Gateway
 #
+# OPTIONAL (AI Gateway Authentication):
+# - CF_AI_GATEWAY_TOKEN: Authentication token for Cloudflare AI Gateway
+#   Set this if you have enabled "Authenticated Gateway" in AI Gateway settings
+#   Command: wrangler secret put CF_AI_GATEWAY_TOKEN
+#
 # OPTIONAL (Apple DeviceCheck - for device attestation):
 # - APPLE_KEY_ID: Key ID from Apple Developer Console (DeviceCheck key)
 # - APPLE_PRIVATE_KEY: Private key in PKCS8 PEM format (DeviceCheck key)
@@ -63,6 +68,7 @@ invocation_logs = true
 #
 # Example commands:
 #   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put CF_AI_GATEWAY_TOKEN  # Optional: for AI Gateway authentication
 #   wrangler secret put APPLE_KEY_ID
 #   wrangler secret put APPLE_PRIVATE_KEY
 #   wrangler secret put APPLE_TEAM_ID
