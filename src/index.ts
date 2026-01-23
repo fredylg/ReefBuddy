@@ -569,7 +569,7 @@ async function validateDeviceToken(
     const timestamp = Date.now();
     const transactionId = crypto.randomUUID();
 
-    console.log(`🔐 DeviceCheck validation: Attempting to update bits (bit0=0, bit1=0) with transaction ${transactionId}`);
+    console.log(`🔐 DeviceCheck validation: Attempting to update bits (bit0=false, bit1=false) with transaction ${transactionId}`);
 
     // Attempt to update bits to 0,0 to validate the token
     // If token is valid: returns 200 (success)
@@ -584,8 +584,8 @@ async function validateDeviceToken(
         device_token: deviceToken,
         timestamp: timestamp,
         transaction_id: transactionId,
-        bit0: 0,
-        bit1: 0,
+        bit0: false,
+        bit1: false,
       }),
     });
 
