@@ -235,7 +235,9 @@ actor APIClient {
 
     /// Generate a DeviceCheck token for device attestation
     /// Returns nil if DeviceCheck is not supported on this device
-    private func generateDeviceToken() async -> String? {        guard isSupported else {            print("DeviceCheck not supported on this device")
+    private func generateDeviceToken() async -> String? {
+        guard DCDevice.current.isSupported else {
+            print("DeviceCheck not supported on this device")
             return nil
         }
 
@@ -313,6 +315,94 @@ actor APIClient {
 
         let responseWrapper = try decoder.decode(LivestockUpdateResponse.self, from: data)
         return convertDBRecordToLivestock(responseWrapper.livestock, tankId: livestock.tankId)
+    }
+    
+    /// Create a livestock log entry
+    func createLivestockLog(_ log: LivestockLog) async throws -> LivestockLog {
+        let url = baseURL.appendingPathComponent("api/livestock/\(log.livestockId.uuidString)/logs")
+        var request = makeRequest(url: url, method: "POST")
+        
+        // Map iOS healthStatus to backend logType
+        let logType: String
+        switch log.healthStatus {
+        case .deceased:
+            logType = "death"
+        case .critical, .declining:
+            logType = "treatment"
+        case .thriving, .healthy, .stressed:
+            logType = "observation"
+        }
+        
+        // Convert Date to ISO 8601 string
+        let formatter = ISO8601DateFormatter()
+        let loggedAtString = formatter.string(from: log.loggedAt)
+        
+        // Create request body
+        struct LivestockLogRequest: Codable {
+            let logType: String
+            let description: String?
+            let loggedAt: String
+        }
+        
+        let requestBody = LivestockLogRequest(
+            logType: logType,
+            description: log.notes,
+            loggedAt: loggedAtString
+        )
+        
+        let logEncoder = JSONEncoder()
+        logEncoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try logEncoder.encode(requestBody)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        // Parse response - backend returns {success: true, log: {...}} with snake_case keys
+        struct LivestockLogResponse: Codable {
+            let success: Bool
+            let log: LogRecord
+            
+            struct LogRecord: Codable {
+                let id: String
+                let livestockId: String
+                let logType: String
+                let description: String?
+                let loggedAt: String
+                let createdAt: String
+            }
+        }
+        
+        let logDecoder = JSONDecoder()
+        logDecoder.keyDecodingStrategy = .convertFromSnakeCase
+        logDecoder.dateDecodingStrategy = .iso8601
+        let responseWrapper = try logDecoder.decode(LivestockLogResponse.self, from: data)
+        let logRecord = responseWrapper.log
+        
+        // Convert back to iOS LivestockLog model
+        guard let logId = UUID(uuidString: logRecord.id),
+              let livestockId = UUID(uuidString: logRecord.livestockId),
+              let loggedAt = formatter.date(from: logRecord.loggedAt) else {
+            throw APIError.decodingError(NSError(domain: "LivestockLog", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse log response"]))
+        }
+        
+        // Map backend logType back to healthStatus (approximate)
+        let healthStatus: HealthStatus
+        switch logRecord.logType {
+        case "death":
+            healthStatus = .deceased
+        case "treatment":
+            healthStatus = log.healthStatus // Keep original if treatment
+        default:
+            healthStatus = log.healthStatus // Keep original for observation/feeding
+        }
+        
+        return LivestockLog(
+            id: logId,
+            livestockId: livestockId,
+            loggedAt: loggedAt,
+            healthStatus: healthStatus,
+            notes: logRecord.description
+        )
     }
     
     /// Convert backend DB record to iOS Livestock model

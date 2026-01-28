@@ -301,6 +301,7 @@ const LivestockCreateSchema = z.object({
   healthStatus: HealthStatusEnum.optional().default('healthy').describe('Current health status'),
   notes: z.string().max(2000).optional().describe('Additional notes or observations'),
   imageUrl: z.string().url().max(2048).optional().describe('URL to livestock image'),
+  id: z.string().uuid().optional().describe('Optional livestock ID (for retroactive compatibility with local-only livestock)'),
 });
 
 /**
@@ -1651,15 +1652,12 @@ async function handleCreateMeasurement(
   try {    let body;
     try {
       body = await request.json();
-      console.log('🔍 [DEBUG] request.json() succeeded', { hasTankId: !!body?.tank_id, tankId: body?.tank_id, bodyKeys: body ? Object.keys(body) : [] });
     } catch (jsonError) {
-      console.error('🔍 [DEBUG] request.json() failed', { error: jsonError instanceof Error ? jsonError.message : String(jsonError) });
       throw jsonError;
     }
 
     const validationResult = CreateMeasurementSchema.safeParse(body);
     if (!validationResult.success) {
-      console.log('🔍 [DEBUG] Validation failed', { errors: validationResult.error.flatten() });
       return jsonResponse(
         {
           error: 'Validation failed',
@@ -3682,7 +3680,20 @@ async function verifyLivestockOwnership(
     .first()) as LivestockRecord | null;
 
   if (!livestock) {
-    return errorResponse('Not found', 'Livestock not found or you do not have access', 404);
+    // Check if livestock exists at all (without user check) to provide better error message
+    const anyLivestock = (await env.DB.prepare(
+      `SELECT l.id, l.tank_id, t.user_id FROM livestock l
+       JOIN tanks t ON LOWER(l.tank_id) = LOWER(t.id)
+       WHERE LOWER(l.id) = ? AND l.deleted_at IS NULL`
+    )
+      .bind(normalizedLivestockId)
+      .first()) as { id: string; tank_id: string; user_id: string } | null;
+    
+    if (anyLivestock) {
+      return errorResponse('Forbidden', 'You do not have access to this livestock', 403);
+    } else {
+      return errorResponse('Not found', 'Livestock not found', 404);
+    }
   }
 
   return livestock;
@@ -3703,7 +3714,8 @@ async function handleCreateLivestock(
     if (tankResult instanceof Response) {      return tankResult;
     }
 
-    const body = await request.json();    const validationResult = LivestockCreateSchema.safeParse(body);
+    const body = await request.json();
+    const validationResult = LivestockCreateSchema.safeParse(body);
     if (!validationResult.success) {      return jsonResponse(
         {
           error: 'Validation failed',
@@ -3714,9 +3726,49 @@ async function handleCreateLivestock(
     }
 
     const data = validationResult.data;    // Create livestock
-    const livestockId = generateUUID().toLowerCase(); // Normalize to lowercase for consistency
+    // Use provided ID if available (for retroactive compatibility), otherwise generate new one
+    const livestockId = (data.id ? data.id.toLowerCase() : generateUUID().toLowerCase()); // Normalize to lowercase for consistency
     const normalizedTankId = tankId.toLowerCase(); // Normalize to match database format
-    const now = new Date().toISOString();    const insertResult = await env.DB.prepare(
+    
+    // Check if livestock with this ID already exists
+    const existing = (await env.DB.prepare('SELECT id FROM livestock WHERE LOWER(id) = ?')
+      .bind(livestockId)
+      .first()) as { id: string } | null;
+    
+    if (existing) {
+      // Return existing livestock instead of creating duplicate
+      const existingLivestock = (await env.DB.prepare(
+        `SELECT l.* FROM livestock l
+         JOIN tanks t ON LOWER(l.tank_id) = LOWER(t.id)
+         WHERE LOWER(l.id) = ? AND t.user_id = ? AND l.deleted_at IS NULL`
+      )
+        .bind(livestockId, auth.userId)
+        .first()) as LivestockRecord | null;
+      
+      if (existingLivestock) {
+        return jsonResponse({
+          success: true,
+          livestock: {
+            id: existingLivestock.id,
+            tank_id: existingLivestock.tank_id,
+            name: existingLivestock.common_name,
+            species: existingLivestock.species,
+            category: existingLivestock.category,
+            quantity: existingLivestock.quantity,
+            purchase_date: existingLivestock.purchase_date,
+            purchase_price: existingLivestock.purchase_price,
+            health_status: existingLivestock.health_status,
+            notes: existingLivestock.notes,
+            image_url: existingLivestock.image_url,
+            added_at: existingLivestock.added_at,
+          },
+        });
+      } else {
+        return errorResponse('Conflict', 'Livestock with this ID already exists but belongs to another user', 409);
+      }
+    }
+    const now = new Date().toISOString();
+    const insertResult = await env.DB.prepare(
       `INSERT INTO livestock (id, tank_id, common_name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
@@ -3734,7 +3786,8 @@ async function handleCreateLivestock(
         data.imageUrl ?? null,
         now
       )
-      .run();    return jsonResponse(
+      .run();
+    return jsonResponse(
       {
         success: true,
         livestock: {

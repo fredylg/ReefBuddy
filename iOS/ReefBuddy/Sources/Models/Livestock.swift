@@ -306,6 +306,7 @@ extension LivestockLog {
 
 /// Request body for creating new livestock via API
 struct CreateLivestockRequest: Codable {
+    let id: String? // Optional ID for retroactive compatibility (allows using local ID)
     let name: String
     let species: String?
     let category: String
@@ -317,6 +318,7 @@ struct CreateLivestockRequest: Codable {
     let imageUrl: String?
 
     init(from livestock: Livestock) {
+        self.id = livestock.id.uuidString // Send local ID for retroactive compatibility
         self.name = livestock.name
         self.species = livestock.scientificName
         // Convert iOS category to backend format (SPS, LPS, Soft, Fish, Invertebrate)
@@ -362,7 +364,23 @@ struct UpdateLivestockRequest: Codable {
     init(from livestock: Livestock) {
         self.name = livestock.name
         self.species = livestock.scientificName
-        self.category = livestock.category.rawValue
+        // Convert iOS category to backend format (SPS, LPS, Soft, Fish, Invertebrate)
+        switch livestock.category {
+        case .sps:
+            self.category = "SPS"
+        case .lps:
+            self.category = "LPS"
+        case .softCoral:
+            self.category = "Soft"
+        case .fish:
+            self.category = "Fish"
+        case .invertebrate:
+            self.category = "Invertebrate"
+        case .anemone:
+            self.category = "Invertebrate" // Map anemone to Invertebrate for backend
+        case .other:
+            self.category = "Invertebrate" // Map other to Invertebrate for backend
+        }
         self.quantity = livestock.quantity
         let formatter = ISO8601DateFormatter()
         self.purchaseDate = formatter.string(from: livestock.purchaseDate)

@@ -402,7 +402,25 @@ final class AppState: ObservableObject {
             if let index = livestock.firstIndex(where: { $0.id == savedLivestock.id }) {
                 livestock[index] = savedLivestock
             }
-        } catch {
+        } catch APIError.notFound {
+            // If update fails with 404, try creating the livestock (retroactive compatibility)
+            // This handles the case where livestock was created locally but never synced to server
+            print("⚠️ Livestock not found on server, attempting to create it");
+            do {
+                let createdLivestock = try await apiClient.createLivestock(updated, for: updated.tankId)
+                // Update local storage with server response
+                livestockStorage.save(createdLivestock)
+                if let index = livestock.firstIndex(where: { $0.id == createdLivestock.id }) {
+                    livestock[index] = createdLivestock
+                } else {
+                    // If ID changed, add the new one
+                    livestock.append(createdLivestock)
+                }
+            } catch let createError {
+                print("⚠️ Failed to create livestock on backend: \(createError.localizedDescription)")
+                errorMessage = "Updated locally, but failed to sync with server: \(createError.localizedDescription)"
+            }
+        } catch let error {
             print("⚠️ Failed to update livestock on backend: \(error.localizedDescription)")
             errorMessage = "Updated locally, but failed to sync with server: \(error.localizedDescription)"
         }
@@ -453,9 +471,8 @@ final class AppState: ObservableObject {
             }
         }
 
-        // Add the log
+        // Add the log to local storage first
         livestockLogs.insert(logToSave, at: 0)
-        // Save to local storage
         livestockStorage.saveLog(logToSave)
 
         // Update livestock health status
@@ -466,6 +483,19 @@ final class AppState: ObservableObject {
             livestock[index] = updated
             // Save updated livestock
             livestockStorage.save(updated)
+        }
+
+        // Call API to save to backend (retroactive to app 1.0.1 - uses device-based auth)
+        do {
+            let savedLog = try await apiClient.createLivestockLog(log)
+            // Update local storage with server response
+            livestockStorage.saveLog(savedLog)
+            if let index = livestockLogs.firstIndex(where: { $0.id == savedLog.id }) {
+                livestockLogs[index] = savedLog
+            }
+        } catch {
+            print("⚠️ Failed to save livestock log to backend: \(error.localizedDescription)")
+            errorMessage = "Saved locally, but failed to sync with server: \(error.localizedDescription)"
         }
 
         isLoading = false
