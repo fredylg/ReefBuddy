@@ -306,25 +306,135 @@ extension LivestockLog {
 
 /// Request body for creating new livestock via API
 struct CreateLivestockRequest: Codable {
-    let tankId: UUID
     let name: String
-    let scientificName: String?
+    let species: String?
     let category: String
-    let healthStatus: String
     let quantity: Int
-    let purchaseDate: Date
+    let purchaseDate: String?
     let purchasePrice: Double?
+    let healthStatus: String?
     let notes: String?
+    let imageUrl: String?
 
     init(from livestock: Livestock) {
-        self.tankId = livestock.tankId
         self.name = livestock.name
-        self.scientificName = livestock.scientificName
-        self.category = livestock.category.rawValue
-        self.healthStatus = livestock.healthStatus.rawValue
+        self.species = livestock.scientificName
+        // Convert iOS category to backend format (SPS, LPS, Soft, Fish, Invertebrate)
+        switch livestock.category {
+        case .sps:
+            self.category = "SPS"
+        case .lps:
+            self.category = "LPS"
+        case .softCoral:
+            self.category = "Soft"
+        case .fish:
+            self.category = "Fish"
+        case .invertebrate:
+            self.category = "Invertebrate"
+        case .anemone:
+            self.category = "Invertebrate" // Map anemone to Invertebrate for backend
+        case .other:
+            self.category = "Invertebrate" // Map other to Invertebrate for backend
+        }
         self.quantity = livestock.quantity
-        self.purchaseDate = livestock.purchaseDate
+        // Convert Date to ISO 8601 string
+        let formatter = ISO8601DateFormatter()
+        self.purchaseDate = formatter.string(from: livestock.purchaseDate)
         self.purchasePrice = livestock.purchasePrice
+        self.healthStatus = livestock.healthStatus.rawValue
         self.notes = livestock.notes
+        self.imageUrl = nil // Image upload handled separately if needed
+    }
+}
+
+/// Request body for updating livestock via API
+struct UpdateLivestockRequest: Codable {
+    let name: String?
+    let species: String?
+    let category: String?
+    let quantity: Int?
+    let purchaseDate: String?
+    let purchasePrice: Double?
+    let healthStatus: String?
+    let notes: String?
+    let imageUrl: String?
+
+    init(from livestock: Livestock) {
+        self.name = livestock.name
+        self.species = livestock.scientificName
+        self.category = livestock.category.rawValue
+        self.quantity = livestock.quantity
+        let formatter = ISO8601DateFormatter()
+        self.purchaseDate = formatter.string(from: livestock.purchaseDate)
+        self.purchasePrice = livestock.purchasePrice
+        self.healthStatus = livestock.healthStatus.rawValue
+        self.notes = livestock.notes
+        self.imageUrl = nil
+    }
+}
+
+/// Response from livestock creation endpoint
+struct LivestockCreateResponse: Codable {
+    let success: Bool
+    let livestock: LivestockDBRecord
+    
+    struct LivestockDBRecord: Codable {
+        let id: String
+        let tankId: String
+        let name: String
+        let species: String?
+        let category: String
+        let quantity: Int
+        let purchaseDate: String?
+        let purchasePrice: Double?
+        let healthStatus: String?
+        let notes: String?
+        let imageUrl: String?
+        let addedAt: String
+        let createdAt: String
+    }
+}
+
+/// Response from livestock list endpoint
+struct LivestockListResponse: Codable {
+    let success: Bool
+    let livestock: [LivestockDBRecord]
+    
+    struct LivestockDBRecord: Codable {
+        let id: String
+        let tankId: String
+        let name: String
+        let species: String?
+        let category: String?
+        let quantity: Int
+        let purchaseDate: String?
+        let purchasePrice: Double?
+        let healthStatus: String?
+        let notes: String?
+        let imageUrl: String?
+        let addedAt: String
+        let createdAt: String
+    }
+}
+
+/// Response from livestock update endpoint
+struct LivestockUpdateResponse: Codable {
+    let success: Bool
+    let livestock: LivestockDBRecord
+    
+    struct LivestockDBRecord: Codable {
+        let id: String
+        let tankId: String
+        let name: String
+        let species: String?
+        let category: String?
+        let quantity: Int
+        let purchaseDate: String?
+        let purchasePrice: Double?
+        let healthStatus: String?
+        let notes: String?
+        let imageUrl: String?
+        let addedAt: String
+        let createdAt: String
     }
 }

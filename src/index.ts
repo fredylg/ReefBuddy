@@ -1392,10 +1392,12 @@ async function handleGetTank(
   tankId: string
 ): Promise<Response> {
   try {
+    // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+    const normalizedTankId = tankId.toLowerCase();
     const tank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM tanks WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
     )
-      .bind(tankId, auth.userId)
+      .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
 
     if (!tank) {
@@ -1514,11 +1516,13 @@ async function handleUpdateTank(
   tankId: string
 ): Promise<Response> {
   try {
+    // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+    const normalizedTankId = tankId.toLowerCase();
     // Verify tank exists and belongs to user
     const existingTank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM tanks WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
     )
-      .bind(tankId, auth.userId)
+      .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
 
     if (!existingTank) {
@@ -1557,15 +1561,15 @@ async function handleUpdateTank(
       values.push(data.tank_type);
     }
 
-    values.push(tankId);
+    values.push(normalizedTankId);
 
-    await env.DB.prepare(`UPDATE tanks SET ${updates.join(', ')} WHERE id = ?`)
+    await env.DB.prepare(`UPDATE tanks SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
       .bind(...values)
       .run();
 
     // Fetch updated record
-    const updated = (await env.DB.prepare('SELECT * FROM tanks WHERE id = ?')
-      .bind(tankId)
+    const updated = (await env.DB.prepare('SELECT * FROM tanks WHERE LOWER(id) = ?')
+      .bind(normalizedTankId)
       .first()) as TankRecord;
 
     return jsonResponse({
@@ -1600,11 +1604,13 @@ async function handleDeleteTank(
   tankId: string
 ): Promise<Response> {
   try {
+    // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+    const normalizedTankId = tankId.toLowerCase();
     // Verify tank exists and belongs to user
     const existingTank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM tanks WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
     )
-      .bind(tankId, auth.userId)
+      .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
 
     if (!existingTank) {
@@ -1613,7 +1619,7 @@ async function handleDeleteTank(
 
     // Soft delete the tank
     const now = new Date().toISOString();
-    await env.DB.prepare('UPDATE tanks SET deleted_at = ? WHERE id = ?').bind(now, tankId).run();
+    await env.DB.prepare('UPDATE tanks SET deleted_at = ? WHERE LOWER(id) = ?').bind(now, normalizedTankId).run();
 
     return jsonResponse({
       success: true,
@@ -1642,10 +1648,7 @@ async function handleCreateMeasurement(
   env: Env,
   auth: AuthenticatedContext
 ): Promise<Response> {
-  try {
-    console.log('🔍 [DEBUG] handleCreateMeasurement entry', { userId: auth.userId });
-    
-    let body;
+  try {    let body;
     try {
       body = await request.json();
       console.log('🔍 [DEBUG] request.json() succeeded', { hasTankId: !!body?.tank_id, tankId: body?.tank_id, bodyKeys: body ? Object.keys(body) : [] });
@@ -1669,56 +1672,19 @@ async function handleCreateMeasurement(
     const data = validationResult.data;
     
     // Normalize tank_id to lowercase for case-insensitive lookup (iOS sends uppercase UUIDs)
-    const normalizedTankId = data.tank_id.toLowerCase();
-    console.log('🔍 [DEBUG] Before tank lookup', { 
-      originalTankId: data.tank_id, 
-      normalizedTankId, 
-      userId: auth.userId 
-    });
-
-    // Verify the tank belongs to the authenticated user (case-insensitive lookup)
+    const normalizedTankId = data.tank_id.toLowerCase();    // Verify the tank belongs to the authenticated user (case-insensitive lookup)
     const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE LOWER(id) = ? AND deleted_at IS NULL')
       .bind(normalizedTankId)
-      .first()) as { id: string; user_id: string; name: string } | null;
-
-    console.log('🔍 [DEBUG] Tank lookup result', { 
-      tankFound: !!tank, 
-      tankId: tank?.id || null,
-      tankUserId: tank?.user_id || null, 
-      requestUserId: auth.userId, 
-      usersMatch: tank?.user_id === auth.userId 
-    });
-
-    if (!tank) {
-      console.log('🔍 [DEBUG] Tank not found - returning 404', { 
-        originalTankId: data.tank_id, 
-        normalizedTankId, 
-        userId: auth.userId 
-      });
-      return errorResponse('Not found', 'Tank not found', 404);
+      .first()) as { id: string; user_id: string; name: string } | null;    if (!tank) {      return errorResponse('Not found', 'Tank not found', 404);
     }
 
-    if (tank.user_id !== auth.userId) {
-      console.log('🔍 [DEBUG] Tank belongs to different user - returning 403', {
-        tankUserId: tank.user_id,
-        requestUserId: auth.userId
-      });
-      return errorResponse('Forbidden', 'You do not have access to this tank', 403);
+    if (tank.user_id !== auth.userId) {      return errorResponse('Forbidden', 'You do not have access to this tank', 403);
     }
 
     // Create measurement
     // Use the actual tank.id from the database (lowercase) to satisfy foreign key constraint
     const measurementId = generateUUID();
-    const measuredAt = data.measured_at || new Date().toISOString();
-
-    console.log('🔍 [DEBUG] Inserting measurement', { 
-      measurementId, 
-      tankId: tank.id, 
-      originalTankId: data.tank_id,
-      measuredAt 
-    });
-
-    await env.DB.prepare(
+    const measuredAt = data.measured_at || new Date().toISOString();    await env.DB.prepare(
       `INSERT INTO measurements (id, tank_id, measured_at, ph, alkalinity, calcium, magnesium, nitrate, phosphate, salinity, temperature, ammonia, nitrite, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
@@ -1738,11 +1704,7 @@ async function handleCreateMeasurement(
         data.nitrite ?? null,
         data.notes ?? null
       )
-      .run();
-    
-    console.log('🔍 [DEBUG] Measurement inserted successfully', { measurementId });
-
-    // Check for parameter alerts and send notifications
+      .run();    // Check for parameter alerts and send notifications
     let alerts: Array<{
       parameter: string;
       value: number;
@@ -1798,11 +1760,7 @@ async function handleCreateMeasurement(
       },
       201
     );
-  } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1774',message:'handleCreateMeasurement error caught',data:{errorMessage:error instanceof Error?error.message:String(error),errorName:error instanceof Error?error.name:'Unknown',errorStack:error instanceof Error?error.stack:null},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'J'})}).catch(()=>{});
-    // #endregion
-    console.error('Create measurement error:', error);
+  } catch (error) {    console.error('Create measurement error:', error);
     return errorResponse(
       'Internal server error',
       error instanceof Error ? error.message : 'Unknown error',
@@ -1899,23 +1857,8 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     // 2. Development workers subdomain (if using wrangler dev with --remote)
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
     const isDevWorker = hostname.endsWith('.workers.dev') && (hostname.includes('dev') || hostname.includes('staging'));
-    const isServerDevelopment = isLocalhost || isDevWorker;
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1846',message:'URL-based development detection',data:{hostname,isLocalhost,isDevWorker,isServerDevelopment,clientIsDevelopment:isDevelopment,hasDeviceToken:!!deviceToken},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1840',message:'DeviceCheck validation entry',data:{deviceId,hasDeviceToken:!!deviceToken,deviceTokenLength:deviceToken?.length||0,isDevelopment,isDeviceCheckConfigured:isDeviceCheckConfigured(env),hostname:requestUrl.hostname,isServerDevelopment},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
-    if (isDeviceCheckConfigured(env)) {
-      if (!deviceToken) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1851',message:'DeviceCheck missing token check',data:{deviceId,clientIsDevelopment:isDevelopment,serverIsDevelopment:isServerDevelopment,hostname:requestUrl.hostname,willAllow:isServerDevelopment,reason:isServerDevelopment?'Localhost/development server - DeviceCheck not available in simulator':'Production requires DeviceCheck'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        
-        // SECURITY: Only allow bypass in actual development environments (server-side check)
+    const isServerDevelopment = isLocalhost || isDevWorker;    if (isDeviceCheckConfigured(env)) {
+      if (!deviceToken) {        // SECURITY: Only allow bypass in actual development environments (server-side check)
         // DeviceCheck doesn't work in iOS Simulator, so this is expected for local development
         // But production must always require DeviceCheck token regardless of client flag
         if (isServerDevelopment) {
@@ -1941,11 +1884,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       if (deviceToken) {
         // Use client's isDevelopment flag only for DeviceCheck API selection (sandbox vs production API)
         // This doesn't affect security - it just tells DeviceCheck which API endpoint to use
-        const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1876',message:'DeviceCheck validation result',data:{deviceId,clientIsDevelopment:isDevelopment,serverIsDevelopment:isServerDevelopment,valid:deviceCheckResult.valid,error:deviceCheckResult.error},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-        if (!deviceCheckResult.valid) {
+        const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);        if (!deviceCheckResult.valid) {
           console.warn(`DeviceCheck failed for ${deviceId}: ${deviceCheckResult.error}`);
           return jsonResponse(
             {
@@ -1957,11 +1896,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
             403
           );
         }
-      } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1893',message:'Skipping DeviceCheck validation - no token',data:{deviceId,clientIsDevelopment:isDevelopment,serverIsDevelopment:isServerDevelopment,hostname:requestUrl.hostname,reason:isServerDevelopment?'Localhost/development server - simulator':'Should not reach here in production'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
-      }
+      } else {      }
     } else {
       // DeviceCheck not configured
       // SECURITY: In production, DeviceCheck must be configured to prevent abuse
@@ -2865,10 +2800,7 @@ async function handleJWSPurchase(
     );
   }
 
-  // TEMPORARY: Skip JWS verification for debugging
-  console.log(`🔍 TEMPORARILY SKIPPING JWS VERIFICATION FOR DEBUGGING`);
-
-  // Parse JWS payload first to check environment
+  // TEMPORARY: Skip JWS verification for debugging  // Parse JWS payload first to check environment
   let jwsPayload: JWSTransactionPayload;
   try {
     const parts = jwsRepresentation.split('.');
@@ -3088,19 +3020,16 @@ async function verifyTankOwnership(
   env: Env,
   tankId: string,
   userId: string
-): Promise<{ id: string; user_id: string; name: string } | Response> {
+): Promise<{ id: string; user_id: string; name: string } | Response> {  // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+  const normalizedTankId = tankId.toLowerCase();
   const tank = (await env.DB.prepare(
-    'SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL'
+    'SELECT id, user_id, name FROM tanks WHERE LOWER(id) = ? AND deleted_at IS NULL'
   )
-    .bind(tankId)
-    .first()) as { id: string; user_id: string; name: string } | null;
-
-  if (!tank) {
-    return errorResponse('Not found', 'Tank not found', 404);
+    .bind(normalizedTankId)
+    .first()) as { id: string; user_id: string; name: string } | null;  if (!tank) {    return errorResponse('Not found', 'Tank not found', 404);
   }
 
-  if (tank.user_id !== userId) {
-    return errorResponse('Forbidden', 'You do not have access to this tank', 403);
+  if (tank.user_id !== userId) {    return errorResponse('Forbidden', 'You do not have access to this tank', 403);
   }
 
   return tank;
@@ -3708,7 +3637,7 @@ async function handleMarkNotificationsRead(
 interface LivestockRecord {
   id: string;
   tank_id: string;
-  name: string;
+  common_name: string; // Database uses common_name, not name
   species: string | null;
   category: string | null;
   quantity: number;
@@ -3718,7 +3647,6 @@ interface LivestockRecord {
   notes: string | null;
   image_url: string | null;
   added_at: string;
-  created_at: string;
   deleted_at: string | null;
 }
 
@@ -3743,12 +3671,14 @@ async function verifyLivestockOwnership(
   livestockId: string,
   userId: string
 ): Promise<LivestockRecord | Response> {
+  // Normalize livestockId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+  const normalizedLivestockId = livestockId.toLowerCase();
   const livestock = (await env.DB.prepare(
     `SELECT l.* FROM livestock l
-     JOIN tanks t ON l.tank_id = t.id
-     WHERE l.id = ? AND t.user_id = ? AND l.deleted_at IS NULL AND t.deleted_at IS NULL`
+     JOIN tanks t ON LOWER(l.tank_id) = LOWER(t.id)
+     WHERE LOWER(l.id) = ? AND t.user_id = ? AND l.deleted_at IS NULL AND t.deleted_at IS NULL`
   )
-    .bind(livestockId, userId)
+    .bind(normalizedLivestockId, userId)
     .first()) as LivestockRecord | null;
 
   if (!livestock) {
@@ -3767,19 +3697,14 @@ async function handleCreateLivestock(
   env: Env,
   auth: AuthenticatedContext,
   tankId: string
-): Promise<Response> {
-  try {
+): Promise<Response> {  try {
     // Verify tank ownership
     const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
-    if (tankResult instanceof Response) {
-      return tankResult;
+    if (tankResult instanceof Response) {      return tankResult;
     }
 
-    const body = await request.json();
-
-    const validationResult = LivestockCreateSchema.safeParse(body);
-    if (!validationResult.success) {
-      return jsonResponse(
+    const body = await request.json();    const validationResult = LivestockCreateSchema.safeParse(body);
+    if (!validationResult.success) {      return jsonResponse(
         {
           error: 'Validation failed',
           details: validationResult.error.flatten(),
@@ -3788,21 +3713,18 @@ async function handleCreateLivestock(
       );
     }
 
-    const data = validationResult.data;
-
-    // Create livestock
-    const livestockId = generateUUID();
-    const now = new Date().toISOString();
-
-    await env.DB.prepare(
-      `INSERT INTO livestock (id, tank_id, name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    const data = validationResult.data;    // Create livestock
+    const livestockId = generateUUID().toLowerCase(); // Normalize to lowercase for consistency
+    const normalizedTankId = tankId.toLowerCase(); // Normalize to match database format
+    const now = new Date().toISOString();    const insertResult = await env.DB.prepare(
+      `INSERT INTO livestock (id, tank_id, common_name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         livestockId,
-        tankId,
+        normalizedTankId,
         data.name,
-        data.species ?? null,
+        data.species ?? data.name, // Use name as fallback if species not provided (database requires NOT NULL)
         data.category,
         data.quantity,
         data.purchaseDate ?? null,
@@ -3810,18 +3732,15 @@ async function handleCreateLivestock(
         data.healthStatus ?? 'healthy',
         data.notes ?? null,
         data.imageUrl ?? null,
-        now,
         now
       )
-      .run();
-
-    return jsonResponse(
+      .run();    return jsonResponse(
       {
         success: true,
         livestock: {
           id: livestockId,
-          tank_id: tankId,
-          name: data.name,
+          tank_id: normalizedTankId,
+          name: data.name, // API response uses 'name', maps from common_name
           species: data.species ?? null,
           category: data.category,
           quantity: data.quantity,
@@ -3831,7 +3750,6 @@ async function handleCreateLivestock(
           notes: data.notes ?? null,
           image_url: data.imageUrl ?? null,
           added_at: now,
-          created_at: now,
         },
       },
       201
@@ -3855,18 +3773,18 @@ async function handleListLivestock(
   auth: AuthenticatedContext,
   tankId: string
 ): Promise<Response> {
-  try {
-    // Verify tank ownership
-    const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
-    if (tankResult instanceof Response) {
+  try {    // Verify tank ownership
+    const tankResult = await verifyTankOwnership(env, tankId, auth.userId);    if (tankResult instanceof Response) {
       return tankResult;
     }
 
     // Get all non-deleted livestock for this tank
+    // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+    const normalizedTankId = tankId.toLowerCase();
     const result = await env.DB.prepare(
-      `SELECT * FROM livestock WHERE tank_id = ? AND deleted_at IS NULL ORDER BY added_at DESC`
+      `SELECT * FROM livestock WHERE LOWER(tank_id) = ? AND deleted_at IS NULL ORDER BY added_at DESC`
     )
-      .bind(tankId)
+      .bind(normalizedTankId)
       .all();
 
     const livestock = result.results as LivestockRecord[];
@@ -3879,7 +3797,7 @@ async function handleListLivestock(
       livestock: livestock.map((item) => ({
         id: item.id,
         tank_id: item.tank_id,
-        name: item.name,
+        name: item.common_name, // Map common_name to name in API response
         species: item.species,
         category: item.category,
         quantity: item.quantity,
@@ -3889,7 +3807,6 @@ async function handleListLivestock(
         notes: item.notes,
         image_url: item.image_url,
         added_at: item.added_at,
-        created_at: item.created_at,
       })),
     });
   } catch (error) {
@@ -3939,7 +3856,7 @@ async function handleUpdateLivestock(
     const values: (string | number | null)[] = [];
 
     if (data.name !== undefined) {
-      updates.push('name = ?');
+      updates.push('common_name = ?');
       values.push(data.name);
     }
     if (data.species !== undefined) {
@@ -3985,34 +3902,35 @@ async function handleUpdateLivestock(
       );
     }
 
-    values.push(livestockId);
+    // Normalize livestockId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+    const normalizedLivestockId = livestockId.toLowerCase();
+    values.push(normalizedLivestockId);
 
-    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE id = ?`)
+    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
       .bind(...values)
       .run();
 
     // Fetch updated record
-    const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE id = ?')
-      .bind(livestockId)
+    const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE LOWER(id) = ?')
+      .bind(normalizedLivestockId)
       .first()) as LivestockRecord;
 
     return jsonResponse({
       success: true,
-      livestock: {
-        id: updated.id,
-        tank_id: updated.tank_id,
-        name: updated.name,
-        species: updated.species,
-        category: updated.category,
-        quantity: updated.quantity,
-        purchase_date: updated.purchase_date,
-        purchase_price: updated.purchase_price,
-        health_status: updated.health_status,
-        notes: updated.notes,
-        image_url: updated.image_url,
-        added_at: updated.added_at,
-        created_at: updated.created_at,
-      },
+        livestock: {
+          id: updated.id,
+          tank_id: updated.tank_id,
+          name: updated.common_name, // Map common_name to name in API response
+          species: updated.species,
+          category: updated.category,
+          quantity: updated.quantity,
+          purchase_date: updated.purchase_date,
+          purchase_price: updated.purchase_price,
+          health_status: updated.health_status,
+          notes: updated.notes,
+          image_url: updated.image_url,
+          added_at: updated.added_at,
+        },
     });
   } catch (error) {
     console.error('Update livestock error:', error);
@@ -4040,10 +3958,11 @@ async function handleDeleteLivestock(
       return livestockResult;
     }
 
-    // Soft delete the livestock
+    // Soft delete the livestock (normalize livestockId for case-insensitive matching)
+    const normalizedLivestockId = livestockId.toLowerCase();
     const now = new Date().toISOString();
-    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE id = ?')
-      .bind(now, livestockId)
+    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE LOWER(id) = ?')
+      .bind(now, normalizedLivestockId)
       .run();
 
     return jsonResponse({
@@ -4094,6 +4013,9 @@ async function handleCreateLivestockLog(
 
     const data = validationResult.data;
 
+    // Normalize livestockId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+    const normalizedLivestockId = livestockId.toLowerCase();
+
     // Create log entry
     const logId = generateUUID();
     const loggedAt = data.loggedAt || new Date().toISOString();
@@ -4103,13 +4025,13 @@ async function handleCreateLivestockLog(
       `INSERT INTO livestock_logs (id, livestock_id, log_type, description, logged_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
-      .bind(logId, livestockId, data.logType, data.description ?? null, loggedAt, now)
+      .bind(logId, normalizedLivestockId, data.logType, data.description ?? null, loggedAt, now)
       .run();
 
     // If log type is 'death', update livestock health_status to 'deceased'
     if (data.logType === 'death') {
-      await env.DB.prepare('UPDATE livestock SET health_status = ? WHERE id = ?')
-        .bind('deceased', livestockId)
+      await env.DB.prepare('UPDATE livestock SET health_status = ? WHERE LOWER(id) = ?')
+        .bind('deceased', normalizedLivestockId)
         .run();
     }
 
@@ -4153,11 +4075,12 @@ async function handleGetLivestockLogs(
       return livestockResult;
     }
 
-    // Get all logs for this livestock
+    // Get all logs for this livestock (normalize livestockId for case-insensitive matching)
+    const normalizedLivestockId = livestockId.toLowerCase();
     const result = await env.DB.prepare(
-      `SELECT * FROM livestock_logs WHERE livestock_id = ? ORDER BY logged_at DESC`
+      `SELECT * FROM livestock_logs WHERE LOWER(livestock_id) = ? ORDER BY logged_at DESC`
     )
-      .bind(livestockId)
+      .bind(normalizedLivestockId)
       .all();
 
     const logs = result.results as LivestockLogRecord[];
@@ -4165,7 +4088,7 @@ async function handleGetLivestockLogs(
     return jsonResponse({
       success: true,
       livestock_id: livestockId,
-      livestock_name: livestockResult.name,
+      livestock_name: livestockResult.common_name,
       count: logs.length,
       logs: logs.map((log) => ({
         id: log.id,
@@ -4196,11 +4119,7 @@ export default {
     const { pathname } = url;
     const method = request.method;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4145',message:'Fetch handler entry',data:{pathname,method,url:request.url},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-
-    // Log all incoming requests for debugging
+    // Log all incoming requests
     console.log(`🌐 ${method} ${pathname} - ${new Date().toISOString()}`);
 
     // Validate request origin for CORS
@@ -4223,10 +4142,6 @@ export default {
     }
 
     let response: Response;
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4171',message:'Before switch statement',data:{pathname,method,willMatchMeasurements:(pathname === '/measurements' || pathname === '/api/measurements') && method === 'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     switch (true) {
       // Root endpoint
@@ -4312,6 +4227,43 @@ export default {
         break;
       }
 
+      // LIVESTOCK ROUTES - Must come BEFORE /api/tanks/:id routes to avoid regex conflicts
+      // Pattern: POST /api/tanks/:tankId/livestock - Create livestock (with /api prefix for iOS compatibility)
+      case pathname.match(/^\/api\/tanks\/([A-Fa-f0-9-]+)\/livestock$/) !== null && method === 'POST': {
+        const match = pathname.match(/^\/api\/tanks\/([A-Fa-f0-9-]+)\/livestock$/);
+        const tankId = match![1];
+        // Try authentication first (backward compatible with v1.0.1+)
+        const authResult = await tryAuthenticateRequest(request, env);
+        // Extract device ID for fallback (v1.0.2+)
+        const deviceId = request.headers.get('X-Device-ID');        if (authResult) {          response = await handleCreateLivestock(request, env, authResult, tankId);
+        } else if (deviceId) {          // Create device-based user and session for backward compatibility
+          const userId = await getOrCreateDeviceUser(env, deviceId);          const deviceAuth: AuthenticatedContext = { userId, sessionToken: null };
+          response = await handleCreateLivestock(request, env, deviceAuth, tankId);        } else {          response = errorResponse('Unauthorized', 'Missing authentication or device ID', 401);
+        }
+        break;
+      }
+      
+      // Pattern: GET /api/tanks/:tankId/livestock - List livestock (with /api prefix for iOS compatibility)
+      case pathname.match(/^\/api\/tanks\/([A-Fa-f0-9-]+)\/livestock$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/api\/tanks\/([A-Fa-f0-9-]+)\/livestock$/);
+        const tankId = match![1];
+        // Try authentication first (backward compatible with v1.0.1+)
+        const authResult = await tryAuthenticateRequest(request, env);
+        // Extract device ID for fallback (v1.0.2+)
+        const deviceId = request.headers.get('X-Device-ID');
+        if (authResult) {
+          response = await handleListLivestock(env, authResult, tankId);
+        } else if (deviceId) {
+          // Create device-based user and session for backward compatibility
+          const userId = await getOrCreateDeviceUser(env, deviceId);
+          const deviceAuth: AuthenticatedContext = { userId, sessionToken: null };
+          response = await handleListLivestock(env, deviceAuth, tankId);
+        } else {
+          response = errorResponse('Unauthorized', 'Missing authentication or device ID', 401);
+        }
+        break;
+      }
+
       // GET /api/tanks/:id - Get a specific tank
       case pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/) !== null && method === 'GET': {
         const match = pathname.match(/^\/api\/tanks\/([a-f0-9-]+)$/);
@@ -4353,36 +4305,19 @@ export default {
 
       // Measurements endpoint (supports both authenticated and device-based access)
       // Support both /measurements and /api/measurements for backward compatibility
-      case (pathname === '/measurements' || pathname === '/api/measurements') && method === 'POST': {
-        console.log('🔍 [DEBUG] Measurements endpoint - CASE MATCHED', { pathname, method });
-        
-        // Try authentication first (for logged-in users)
-        let authResult = await tryAuthenticateRequest(request, env);
-        console.log('🔍 [DEBUG] Auth result:', { hasAuth: !!authResult, userId: authResult?.userId });
-        
-        // If authentication failed, fall back to device-based user (for existing app versions without login)
+      case (pathname === '/measurements' || pathname === '/api/measurements') && method === 'POST': {        // Try authentication first (for logged-in users)
+        let authResult = await tryAuthenticateRequest(request, env);        // If authentication failed, fall back to device-based user (for existing app versions without login)
         if (!authResult) {
-          const deviceId = request.headers.get('X-Device-ID');
-          console.log('🔍 [DEBUG] Device-based auth fallback', { hasDeviceId: !!deviceId, deviceId });
-          
-          if (!deviceId) {
+          const deviceId = request.headers.get('X-Device-ID');          if (!deviceId) {
             return errorResponse('Unauthorized', 'Missing or invalid Authorization header and X-Device-ID header', 401);
           }
           
           // Get or create device-based user
-          const deviceUserId = await getOrCreateDeviceUser(env, deviceId);
-          console.log('🔍 [DEBUG] Device user created/retrieved', { deviceId, deviceUserId });
-          
-          authResult = {
+          const deviceUserId = await getOrCreateDeviceUser(env, deviceId);          authResult = {
             userId: deviceUserId,
             sessionToken: null,
           };
-        }
-        
-        console.log('🔍 [DEBUG] Calling handleCreateMeasurement', { userId: authResult.userId });
-        response = await handleCreateMeasurement(request, env, authResult);
-        console.log('🔍 [DEBUG] handleCreateMeasurement returned', { status: response.status });
-        break;
+        }        response = await handleCreateMeasurement(request, env, authResult);        break;
       }
 
       // Analysis endpoint (public, rate-limited)
@@ -4459,21 +4394,21 @@ export default {
 
       // Livestock endpoints (requires authentication)
       // Pattern: POST /tanks/:tankId/livestock - Create livestock
-      case pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/) !== null && method === 'POST': {
-        const match = pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/);
+      case pathname.match(/^\/tanks\/([A-Fa-f0-9-]+)\/livestock$/) !== null && method === 'POST': {        const match = pathname.match(/^\/tanks\/([A-Fa-f0-9-]+)\/livestock$/);
         const tankId = match![1];
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
+        const authResult = await authenticateRequest(request, env);        if (authResult instanceof Response) {
           response = authResult;
         } else {
           response = await handleCreateLivestock(request, env, authResult, tankId);
         }
         break;
       }
+      
+      // DUPLICATE REMOVED - This route is now earlier in the switch statement (line ~4338)
 
       // Pattern: GET /tanks/:tankId/livestock - List livestock
-      case pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/) !== null && method === 'GET': {
-        const match = pathname.match(/^\/tanks\/([a-f0-9-]+)\/livestock$/);
+      case pathname.match(/^\/tanks\/([A-Fa-f0-9-]+)\/livestock$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/tanks\/([A-Fa-f0-9-]+)\/livestock$/);
         const tankId = match![1];
         const authResult = await authenticateRequest(request, env);
         if (authResult instanceof Response) {
@@ -4483,10 +4418,12 @@ export default {
         }
         break;
       }
+      
+      // DUPLICATE REMOVED - This route is now earlier in the switch statement (line ~4365)
 
       // Pattern: PUT /livestock/:id - Update livestock
-      case pathname.match(/^\/livestock\/([a-f0-9-]+)$/) !== null && method === 'PUT': {
-        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)$/);
+      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
+        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/);
         const livestockId = match![1];
         const authResult = await authenticateRequest(request, env);
         if (authResult instanceof Response) {
@@ -4496,16 +4433,52 @@ export default {
         }
         break;
       }
+      
+      // Pattern: PUT /api/livestock/:id - Update livestock (with /api prefix for iOS compatibility)
+      case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
+        const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/);
+        const livestockId = match![1];
+        const authResult = await tryAuthenticateRequest(request, env);
+        const deviceId = request.headers.get('X-Device-ID');
+        if (authResult) {
+          response = await handleUpdateLivestock(request, env, authResult, livestockId);
+        } else if (deviceId) {
+          const userId = await getOrCreateDeviceUser(env, deviceId);
+          const deviceAuth: AuthenticatedContext = { userId, sessionToken: null };
+          response = await handleUpdateLivestock(request, env, deviceAuth, livestockId);
+        } else {
+          response = errorResponse('Unauthorized', 'Missing authentication or device ID', 401);
+        }
+        break;
+      }
 
       // Pattern: DELETE /livestock/:id - Delete livestock
-      case pathname.match(/^\/livestock\/([a-f0-9-]+)$/) !== null && method === 'DELETE': {
-        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)$/);
+      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'DELETE': {
+        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/);
         const livestockId = match![1];
         const authResult = await authenticateRequest(request, env);
         if (authResult instanceof Response) {
           response = authResult;
         } else {
           response = await handleDeleteLivestock(env, authResult, livestockId);
+        }
+        break;
+      }
+      
+      // Pattern: DELETE /api/livestock/:id - Delete livestock (with /api prefix for iOS compatibility)
+      case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'DELETE': {
+        const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/);
+        const livestockId = match![1];
+        const authResult = await tryAuthenticateRequest(request, env);
+        const deviceId = request.headers.get('X-Device-ID');
+        if (authResult) {
+          response = await handleDeleteLivestock(env, authResult, livestockId);
+        } else if (deviceId) {
+          const userId = await getOrCreateDeviceUser(env, deviceId);
+          const deviceAuth: AuthenticatedContext = { userId, sessionToken: null };
+          response = await handleDeleteLivestock(env, deviceAuth, livestockId);
+        } else {
+          response = errorResponse('Unauthorized', 'Missing authentication or device ID', 401);
         }
         break;
       }
@@ -4605,9 +4578,6 @@ export default {
 
       // 404 for unknown routes
       default:
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4563',message:'404 default case hit',data:{pathname,method,pathnameMatchesMeasurements:pathname === '/measurements' || pathname === '/api/measurements',methodIsPost:method === 'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         response = errorResponse('Not found', `Route ${method} ${pathname} does not exist`, 404);
     }
 

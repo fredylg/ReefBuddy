@@ -168,14 +168,7 @@ actor APIClient {
         var request = makeRequest(url: url, method: "POST")
 
         // Generate DeviceCheck token for device attestation
-        let deviceToken = await generateDeviceToken()
-        
-        // #region agent log
-        let isDebug = isDebugBuild()
-        print("🔍 [DEBUG] DeviceCheck token generation: hasToken=\(deviceToken != nil), isDebug=\(isDebug), isSupported=\(DCDevice.current.isSupported)")
-        // #endregion
-
-        // Use a plain JSON encoder for this endpoint (Worker expects camelCase, not snake_case)
+        let deviceToken = await generateDeviceToken()        // Use a plain JSON encoder for this endpoint (Worker expects camelCase, not snake_case)
         let analysisEncoder = JSONEncoder()
         analysisEncoder.dateEncodingStrategy = .iso8601
 
@@ -242,33 +235,12 @@ actor APIClient {
 
     /// Generate a DeviceCheck token for device attestation
     /// Returns nil if DeviceCheck is not supported on this device
-    private func generateDeviceToken() async -> String? {
-        // #region agent log
-        let isSupported = DCDevice.current.isSupported
-        print("🔍 [DEBUG] generateDeviceToken entry: isSupported=\(isSupported)")
-        // #endregion
-        
-        guard isSupported else {
-            // #region agent log
-            print("🔍 [DEBUG] DeviceCheck not supported - returning nil")
-            // #endregion
-            print("DeviceCheck not supported on this device")
+    private func generateDeviceToken() async -> String? {        guard isSupported else {            print("DeviceCheck not supported on this device")
             return nil
         }
 
         return await withCheckedContinuation { continuation in
-            DCDevice.current.generateToken { data, error in
-                // #region agent log
-                if let error = error {
-                    print("🔍 [DEBUG] DeviceCheck token generation error: \(error.localizedDescription)")
-                } else if let data = data {
-                    print("🔍 [DEBUG] DeviceCheck token generated successfully: length=\(data.count)")
-                } else {
-                    print("🔍 [DEBUG] DeviceCheck token generation returned nil data")
-                }
-                // #endregion
-                
-                if let error = error {
+            DCDevice.current.generateToken { data, error in                if let error = error {
                     print("DeviceCheck token generation failed: \(error.localizedDescription)")
                     continuation.resume(returning: nil)
                 } else if let data = data {
@@ -287,6 +259,197 @@ actor APIClient {
         #else
         return false
         #endif
+    }
+
+    // MARK: - Livestock Endpoints
+
+    /// Create new livestock for a tank
+    func createLivestock(_ livestock: Livestock, for tankId: UUID) async throws -> Livestock {
+        let url = baseURL.appendingPathComponent("api/tanks/\(tankId.uuidString)/livestock")
+        var request = makeRequest(url: url, method: "POST")
+        
+        // Use camelCase for livestock creation (backend expects camelCase, not snake_case)
+        let livestockEncoder = JSONEncoder()
+        livestockEncoder.dateEncodingStrategy = .iso8601
+        // Note: No keyEncodingStrategy set, so it uses camelCase by default
+        
+        let requestBody = CreateLivestockRequest(from: livestock)
+        request.httpBody = try livestockEncoder.encode(requestBody)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        // Parse response - backend returns {success: true, livestock: {...}} with snake_case keys
+        let responseWrapper = try decoder.decode(LivestockCreateResponse.self, from: data)
+        return convertDBRecordToLivestock(responseWrapper.livestock, tankId: tankId)
+    }
+
+    /// Get all livestock for a tank
+    func getLivestock(for tankId: UUID) async throws -> [Livestock] {
+        let url = baseURL.appendingPathComponent("api/tanks/\(tankId.uuidString)/livestock")
+        let request = makeRequest(url: url, method: "GET")
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        let apiResponse = try decoder.decode(LivestockListResponse.self, from: data)
+        return apiResponse.livestock.map { convertDBRecordToLivestock($0, tankId: tankId) }
+    }
+
+    /// Update existing livestock
+    func updateLivestock(_ livestock: Livestock) async throws -> Livestock {
+        let url = baseURL.appendingPathComponent("api/livestock/\(livestock.id.uuidString)")
+        var request = makeRequest(url: url, method: "PUT")
+        
+        // Use camelCase for livestock update
+        let livestockEncoder = JSONEncoder()
+        livestockEncoder.dateEncodingStrategy = .iso8601
+        
+        let requestBody = UpdateLivestockRequest(from: livestock)
+        request.httpBody = try livestockEncoder.encode(requestBody)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        let responseWrapper = try decoder.decode(LivestockUpdateResponse.self, from: data)
+        return convertDBRecordToLivestock(responseWrapper.livestock, tankId: livestock.tankId)
+    }
+    
+    /// Convert backend DB record to iOS Livestock model
+    private func convertDBRecordToLivestock(_ record: LivestockCreateResponse.LivestockDBRecord, tankId: UUID) -> Livestock {
+        return convertDBRecordToLivestockGeneric(
+            id: record.id,
+            tankId: record.tankId,
+            name: record.name,
+            species: record.species,
+            category: record.category,
+            quantity: record.quantity,
+            purchaseDate: record.purchaseDate,
+            purchasePrice: record.purchasePrice,
+            healthStatus: record.healthStatus,
+            notes: record.notes,
+            addedAt: record.addedAt,
+            createdAt: record.createdAt,
+            fallbackTankId: tankId
+        )
+    }
+    
+    /// Convert backend DB record to iOS Livestock model (for list responses)
+    private func convertDBRecordToLivestock(_ record: LivestockListResponse.LivestockDBRecord, tankId: UUID) -> Livestock {
+        return convertDBRecordToLivestockGeneric(
+            id: record.id,
+            tankId: record.tankId,
+            name: record.name,
+            species: record.species,
+            category: record.category,
+            quantity: record.quantity,
+            purchaseDate: record.purchaseDate,
+            purchasePrice: record.purchasePrice,
+            healthStatus: record.healthStatus,
+            notes: record.notes,
+            addedAt: record.addedAt,
+            createdAt: record.createdAt,
+            fallbackTankId: tankId
+        )
+    }
+    
+    /// Convert backend DB record to iOS Livestock model (for update response)
+    private func convertDBRecordToLivestock(_ record: LivestockUpdateResponse.LivestockDBRecord, tankId: UUID) -> Livestock {
+        return convertDBRecordToLivestockGeneric(
+            id: record.id,
+            tankId: record.tankId,
+            name: record.name,
+            species: record.species,
+            category: record.category,
+            quantity: record.quantity,
+            purchaseDate: record.purchaseDate,
+            purchasePrice: record.purchasePrice,
+            healthStatus: record.healthStatus,
+            notes: record.notes,
+            addedAt: record.addedAt,
+            createdAt: record.createdAt,
+            fallbackTankId: tankId
+        )
+    }
+    
+    /// Generic conversion function for all DB record types
+    private func convertDBRecordToLivestockGeneric(
+        id: String,
+        tankId: String,
+        name: String,
+        species: String?,
+        category: String?,
+        quantity: Int,
+        purchaseDate: String?,
+        purchasePrice: Double?,
+        healthStatus: String?,
+        notes: String?,
+        addedAt: String,
+        createdAt: String,
+        fallbackTankId: UUID
+    ) -> Livestock {
+        let formatter = ISO8601DateFormatter()
+        let purchaseDateValue = purchaseDate.flatMap { formatter.date(from: $0) } ?? Date()
+        let createdAtValue = formatter.date(from: createdAt) ?? Date()
+        
+        // Convert backend category (SPS, LPS, Soft, Fish, Invertebrate) to iOS enum
+        let categoryValue: LivestockCategory
+        switch category?.uppercased() {
+        case "SPS":
+            categoryValue = .sps
+        case "LPS":
+            categoryValue = .lps
+        case "SOFT":
+            categoryValue = .softCoral
+        case "FISH":
+            categoryValue = .fish
+        case "INVERTEBRATE":
+            categoryValue = .invertebrate
+        default:
+            categoryValue = .other
+        }
+        
+        // Convert backend health status to iOS enum
+        // Backend: healthy, sick, deceased, quarantine
+        // iOS: thriving, healthy, stressed, declining, critical, deceased
+        let healthStatusValue: HealthStatus
+        switch healthStatus?.lowercased() {
+        case "healthy":
+            healthStatusValue = .healthy
+        case "sick":
+            healthStatusValue = .stressed  // Map "sick" to "stressed" (closest match)
+        case "deceased":
+            healthStatusValue = .deceased
+        case "quarantine":
+            healthStatusValue = .stressed  // Map "quarantine" to "stressed" (closest match)
+        default:
+            healthStatusValue = .healthy
+        }
+        
+        return Livestock(
+            id: UUID(uuidString: id) ?? UUID(),
+            tankId: UUID(uuidString: tankId) ?? fallbackTankId,
+            name: name,
+            scientificName: species,
+            category: categoryValue,
+            healthStatus: healthStatusValue,
+            quantity: quantity,
+            purchaseDate: purchaseDateValue,
+            purchasePrice: purchasePrice,
+            photoData: nil,
+            notes: notes,
+            createdAt: createdAtValue,
+            updatedAt: createdAtValue
+        )
+    }
+
+    /// Delete livestock
+    func deleteLivestock(_ id: UUID) async throws {
+        let url = baseURL.appendingPathComponent("api/livestock/\(id.uuidString)")
+        let request = makeRequest(url: url, method: "DELETE")
+
+        let (_, response) = try await session.data(for: request)
+        try validateResponse(response)
     }
 
     // MARK: - Credits Endpoints

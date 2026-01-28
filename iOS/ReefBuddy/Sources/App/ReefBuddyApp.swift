@@ -318,16 +318,26 @@ final class AppState: ObservableObject {
         // Load from local storage first
         livestock = livestockStorage.livestock(for: tank.id)
         
-        // TODO: In production, fetch from API and merge with local storage
-        // For now, we use local storage only
+        // Fetch from API and merge with local storage (retroactive to app 1.0.1 - uses device-based auth)
+        do {
+            let serverLivestock = try await apiClient.getLivestock(for: tank.id)
+            // Merge server data with local storage
+            for serverItem in serverLivestock {
+                livestockStorage.save(serverItem)
+            }
+            // Reload from storage to get merged data
+            livestock = livestockStorage.livestock(for: tank.id)
+        } catch {
+            print("⚠️ Failed to fetch livestock from backend: \(error.localizedDescription)")
+            // Continue with local storage only
+        }
         
         isLoading = false
     }
 
     /// Add new livestock
     /// Saves to local storage and handles images
-    func addLivestock(_ newLivestock: Livestock) async {
-        isLoading = true
+    func addLivestock(_ newLivestock: Livestock) async {        isLoading = true
         errorMessage = nil
 
         var livestockToSave = newLivestock
@@ -341,14 +351,21 @@ final class AppState: ObservableObject {
         }
 
         // Save to local storage first
-        livestockStorage.save(livestockToSave)
-        
-        // Reload from storage to ensure sync (important for TestFlight/persistence)
+        livestockStorage.save(livestockToSave)        // Reload from storage to ensure sync (important for TestFlight/persistence)
         if let tank = selectedTank {
             livestock = livestockStorage.livestock(for: tank.id)
         }
 
-        // TODO: In production, call API to save to backend
+        // Call API to save to backend (retroactive to app 1.0.1 - uses device-based auth)
+        do {            let savedLivestock = try await apiClient.createLivestock(newLivestock, for: newLivestock.tankId)            // Update local storage with server response (in case server generated different ID)
+            livestockStorage.save(savedLivestock)
+            if let tank = selectedTank {
+                livestock = livestockStorage.livestock(for: tank.id)
+            }
+        } catch {            // Log error but don't fail - local storage already saved
+            print("⚠️ Failed to save livestock to backend: \(error.localizedDescription)")
+            errorMessage = "Saved locally, but failed to sync with server: \(error.localizedDescription)"
+        }
 
         isLoading = false
     }
@@ -377,7 +394,18 @@ final class AppState: ObservableObject {
         // Save to local storage
         livestockStorage.save(updated)
 
-        // TODO: In production, call API to update on backend
+        // Call API to update on backend (retroactive to app 1.0.1 - uses device-based auth)
+        do {
+            let savedLivestock = try await apiClient.updateLivestock(updated)
+            // Update local storage with server response
+            livestockStorage.save(savedLivestock)
+            if let index = livestock.firstIndex(where: { $0.id == savedLivestock.id }) {
+                livestock[index] = savedLivestock
+            }
+        } catch {
+            print("⚠️ Failed to update livestock on backend: \(error.localizedDescription)")
+            errorMessage = "Updated locally, but failed to sync with server: \(error.localizedDescription)"
+        }
 
         isLoading = false
     }
@@ -399,7 +427,13 @@ final class AppState: ObservableObject {
         // Remove from local storage
         livestockStorage.deleteLivestock(livestockToDelete.id)
 
-        // TODO: In production, call API to delete on backend
+        // Call API to delete on backend (retroactive to app 1.0.1 - uses device-based auth)
+        do {
+            try await apiClient.deleteLivestock(livestockToDelete.id)
+        } catch {
+            print("⚠️ Failed to delete livestock on backend: \(error.localizedDescription)")
+            errorMessage = "Deleted locally, but failed to sync with server: \(error.localizedDescription)"
+        }
 
         isLoading = false
     }
