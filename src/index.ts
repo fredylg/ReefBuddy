@@ -115,7 +115,7 @@ interface SessionData {
  */
 interface AuthenticatedContext {
   userId: string;
-  sessionToken: string;
+  sessionToken: string | null; // null for device-based users (no session)
 }
 
 // =============================================================================
@@ -174,19 +174,21 @@ const LoginRequestSchema = z.object({
 
 /**
  * Schema for creating a measurement
+ * Uses z.coerce.number() to handle both string and number inputs
+ * This fixes issues where iOS might send numeric strings due to decimal formatting
  */
 const CreateMeasurementSchema = z.object({
   tank_id: z.string().uuid(),
-  ph: z.number().optional(),
-  alkalinity: z.number().optional(),
-  calcium: z.number().optional(),
-  magnesium: z.number().optional(),
-  nitrate: z.number().optional(),
-  phosphate: z.number().optional(),
-  salinity: z.number().optional(),
-  temperature: z.number().optional(),
-  ammonia: z.number().optional(),
-  nitrite: z.number().optional(),
+  ph: z.coerce.number().optional(),
+  alkalinity: z.coerce.number().optional(),
+  calcium: z.coerce.number().optional(),
+  magnesium: z.coerce.number().optional(),
+  nitrate: z.coerce.number().optional(),
+  phosphate: z.coerce.number().optional(),
+  salinity: z.coerce.number().optional(),
+  temperature: z.coerce.number().optional(),
+  ammonia: z.coerce.number().optional(),
+  nitrite: z.coerce.number().optional(),
   measured_at: z.string().datetime().optional(),
   notes: z.string().optional(),
 });
@@ -1641,10 +1643,20 @@ async function handleCreateMeasurement(
   auth: AuthenticatedContext
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    console.log('🔍 [DEBUG] handleCreateMeasurement entry', { userId: auth.userId });
+    
+    let body;
+    try {
+      body = await request.json();
+      console.log('🔍 [DEBUG] request.json() succeeded', { hasTankId: !!body?.tank_id, tankId: body?.tank_id, bodyKeys: body ? Object.keys(body) : [] });
+    } catch (jsonError) {
+      console.error('🔍 [DEBUG] request.json() failed', { error: jsonError instanceof Error ? jsonError.message : String(jsonError) });
+      throw jsonError;
+    }
 
     const validationResult = CreateMeasurementSchema.safeParse(body);
     if (!validationResult.success) {
+      console.log('🔍 [DEBUG] Validation failed', { errors: validationResult.error.flatten() });
       return jsonResponse(
         {
           error: 'Validation failed',
@@ -1655,23 +1667,56 @@ async function handleCreateMeasurement(
     }
 
     const data = validationResult.data;
+    
+    // Normalize tank_id to lowercase for case-insensitive lookup (iOS sends uppercase UUIDs)
+    const normalizedTankId = data.tank_id.toLowerCase();
+    console.log('🔍 [DEBUG] Before tank lookup', { 
+      originalTankId: data.tank_id, 
+      normalizedTankId, 
+      userId: auth.userId 
+    });
 
-    // Verify the tank belongs to the authenticated user
-    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL')
-      .bind(data.tank_id)
+    // Verify the tank belongs to the authenticated user (case-insensitive lookup)
+    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE LOWER(id) = ? AND deleted_at IS NULL')
+      .bind(normalizedTankId)
       .first()) as { id: string; user_id: string; name: string } | null;
 
+    console.log('🔍 [DEBUG] Tank lookup result', { 
+      tankFound: !!tank, 
+      tankId: tank?.id || null,
+      tankUserId: tank?.user_id || null, 
+      requestUserId: auth.userId, 
+      usersMatch: tank?.user_id === auth.userId 
+    });
+
     if (!tank) {
+      console.log('🔍 [DEBUG] Tank not found - returning 404', { 
+        originalTankId: data.tank_id, 
+        normalizedTankId, 
+        userId: auth.userId 
+      });
       return errorResponse('Not found', 'Tank not found', 404);
     }
 
     if (tank.user_id !== auth.userId) {
+      console.log('🔍 [DEBUG] Tank belongs to different user - returning 403', {
+        tankUserId: tank.user_id,
+        requestUserId: auth.userId
+      });
       return errorResponse('Forbidden', 'You do not have access to this tank', 403);
     }
 
     // Create measurement
+    // Use the actual tank.id from the database (lowercase) to satisfy foreign key constraint
     const measurementId = generateUUID();
     const measuredAt = data.measured_at || new Date().toISOString();
+
+    console.log('🔍 [DEBUG] Inserting measurement', { 
+      measurementId, 
+      tankId: tank.id, 
+      originalTankId: data.tank_id,
+      measuredAt 
+    });
 
     await env.DB.prepare(
       `INSERT INTO measurements (id, tank_id, measured_at, ph, alkalinity, calcium, magnesium, nitrate, phosphate, salinity, temperature, ammonia, nitrite, notes)
@@ -1679,7 +1724,7 @@ async function handleCreateMeasurement(
     )
       .bind(
         measurementId,
-        data.tank_id,
+        tank.id, // Use the actual tank.id from database (lowercase) instead of data.tank_id (uppercase)
         measuredAt,
         data.ph ?? null,
         data.alkalinity ?? null,
@@ -1694,6 +1739,8 @@ async function handleCreateMeasurement(
         data.notes ?? null
       )
       .run();
+    
+    console.log('🔍 [DEBUG] Measurement inserted successfully', { measurementId });
 
     // Check for parameter alerts and send notifications
     let alerts: Array<{
@@ -1710,7 +1757,7 @@ async function handleCreateMeasurement(
         auth.userId,
         {
           id: measurementId,
-          tank_id: data.tank_id,
+          tank_id: tank.id, // Use the actual tank.id from database (lowercase)
           ph: data.ph,
           alkalinity: data.alkalinity,
           calcium: data.calcium,
@@ -1733,7 +1780,7 @@ async function handleCreateMeasurement(
         success: true,
         data: {
           id: measurementId,
-          tank_id: data.tank_id,
+          tank_id: tank.id, // Return the actual tank.id from database (lowercase) for consistency
           measured_at: measuredAt,
           ph: data.ph ?? null,
           alkalinity: data.alkalinity ?? null,
@@ -1752,6 +1799,9 @@ async function handleCreateMeasurement(
       201
     );
   } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1774',message:'handleCreateMeasurement error caught',data:{errorMessage:error instanceof Error?error.message:String(error),errorName:error instanceof Error?error.name:'Unknown',errorStack:error instanceof Error?error.stack:null},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'J'})}).catch(()=>{});
+    // #endregion
     console.error('Create measurement error:', error);
     return errorResponse(
       'Internal server error',
@@ -4146,6 +4196,10 @@ export default {
     const { pathname } = url;
     const method = request.method;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4145',message:'Fetch handler entry',data:{pathname,method,url:request.url},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     // Log all incoming requests for debugging
     console.log(`🌐 ${method} ${pathname} - ${new Date().toISOString()}`);
 
@@ -4169,6 +4223,10 @@ export default {
     }
 
     let response: Response;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4171',message:'Before switch statement',data:{pathname,method,willMatchMeasurements:(pathname === '/measurements' || pathname === '/api/measurements') && method === 'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     switch (true) {
       // Root endpoint
@@ -4293,15 +4351,37 @@ export default {
         break;
       }
 
-      // Measurements endpoint (requires authentication)
+      // Measurements endpoint (supports both authenticated and device-based access)
       // Support both /measurements and /api/measurements for backward compatibility
       case (pathname === '/measurements' || pathname === '/api/measurements') && method === 'POST': {
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleCreateMeasurement(request, env, authResult);
+        console.log('🔍 [DEBUG] Measurements endpoint - CASE MATCHED', { pathname, method });
+        
+        // Try authentication first (for logged-in users)
+        let authResult = await tryAuthenticateRequest(request, env);
+        console.log('🔍 [DEBUG] Auth result:', { hasAuth: !!authResult, userId: authResult?.userId });
+        
+        // If authentication failed, fall back to device-based user (for existing app versions without login)
+        if (!authResult) {
+          const deviceId = request.headers.get('X-Device-ID');
+          console.log('🔍 [DEBUG] Device-based auth fallback', { hasDeviceId: !!deviceId, deviceId });
+          
+          if (!deviceId) {
+            return errorResponse('Unauthorized', 'Missing or invalid Authorization header and X-Device-ID header', 401);
+          }
+          
+          // Get or create device-based user
+          const deviceUserId = await getOrCreateDeviceUser(env, deviceId);
+          console.log('🔍 [DEBUG] Device user created/retrieved', { deviceId, deviceUserId });
+          
+          authResult = {
+            userId: deviceUserId,
+            sessionToken: null,
+          };
         }
+        
+        console.log('🔍 [DEBUG] Calling handleCreateMeasurement', { userId: authResult.userId });
+        response = await handleCreateMeasurement(request, env, authResult);
+        console.log('🔍 [DEBUG] handleCreateMeasurement returned', { status: response.status });
         break;
       }
 
@@ -4525,6 +4605,9 @@ export default {
 
       // 404 for unknown routes
       default:
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4563',message:'404 default case hit',data:{pathname,method,pathnameMatchesMeasurements:pathname === '/measurements' || pathname === '/api/measurements',methodIsPost:method === 'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'404-debug',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         response = errorResponse('Not found', `Route ${method} ${pathname} does not exist`, 404);
     }
 

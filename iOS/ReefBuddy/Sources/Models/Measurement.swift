@@ -249,6 +249,22 @@ struct CreateMeasurementRequest: Codable {
     let nitrite: Double?
     let notes: String?
 
+    // Backend expects lowercase 'ph', not 'p_h' (from snake_case conversion)
+    enum CodingKeys: String, CodingKey {
+        case tankId = "tank_id"
+        case temperature
+        case salinity
+        case pH = "ph"  // Map pH to ph (lowercase)
+        case alkalinity
+        case calcium
+        case magnesium
+        case nitrate
+        case phosphate
+        case ammonia
+        case nitrite
+        case notes
+    }
+
     init(from measurement: Measurement) {
         self.tankId = measurement.tankId
         self.temperature = measurement.temperature
