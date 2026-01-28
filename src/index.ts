@@ -4434,6 +4434,69 @@ export default {
         break;
       }
       
+      // LIVESTOCK LOG ROUTES - Must come BEFORE /api/livestock/:id routes to avoid regex conflicts
+      // Pattern: POST /api/livestock/:id/logs - Create livestock log (with /api prefix for iOS compatibility)
+      case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/) !== null && method === 'POST': {
+        const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+        const livestockId = match![1];
+        const authResult = await tryAuthenticateRequest(request, env);
+        const deviceId = request.headers.get('X-Device-ID');
+        if (authResult) {
+          response = await handleCreateLivestockLog(request, env, authResult, livestockId);
+        } else if (deviceId) {
+          const userId = await getOrCreateDeviceUser(env, deviceId);
+          const deviceAuth: AuthenticatedContext = { userId, sessionToken: null };
+          response = await handleCreateLivestockLog(request, env, deviceAuth, livestockId);
+        } else {
+          response = errorResponse('Unauthorized', 'Missing authentication or device ID', 401);
+        }
+        break;
+      }
+
+      // Pattern: GET /api/livestock/:id/logs - Get livestock logs (with /api prefix for iOS compatibility)
+      case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+        const livestockId = match![1];
+        const authResult = await tryAuthenticateRequest(request, env);
+        const deviceId = request.headers.get('X-Device-ID');
+        if (authResult) {
+          response = await handleGetLivestockLogs(env, authResult, livestockId);
+        } else if (deviceId) {
+          const userId = await getOrCreateDeviceUser(env, deviceId);
+          const deviceAuth: AuthenticatedContext = { userId, sessionToken: null };
+          response = await handleGetLivestockLogs(env, deviceAuth, livestockId);
+        } else {
+          response = errorResponse('Unauthorized', 'Missing authentication or device ID', 401);
+        }
+        break;
+      }
+
+      // Pattern: POST /livestock/:id/logs - Create livestock log
+      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)\/logs$/) !== null && method === 'POST': {
+        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+        const livestockId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleCreateLivestockLog(request, env, authResult, livestockId);
+        }
+        break;
+      }
+
+      // Pattern: GET /livestock/:id/logs - Get livestock logs
+      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)\/logs$/) !== null && method === 'GET': {
+        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+        const livestockId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleGetLivestockLogs(env, authResult, livestockId);
+        }
+        break;
+      }
+
       // Pattern: PUT /api/livestock/:id - Update livestock (with /api prefix for iOS compatibility)
       case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
         const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/);
@@ -4452,19 +4515,6 @@ export default {
         break;
       }
 
-      // Pattern: DELETE /livestock/:id - Delete livestock
-      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'DELETE': {
-        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/);
-        const livestockId = match![1];
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleDeleteLivestock(env, authResult, livestockId);
-        }
-        break;
-      }
-      
       // Pattern: DELETE /api/livestock/:id - Delete livestock (with /api prefix for iOS compatibility)
       case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'DELETE': {
         const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/);
@@ -4483,28 +4533,28 @@ export default {
         break;
       }
 
-      // Pattern: POST /livestock/:id/logs - Create livestock log
-      case pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/) !== null && method === 'POST': {
-        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/);
+      // Pattern: PUT /livestock/:id - Update livestock
+      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
+        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/);
         const livestockId = match![1];
         const authResult = await authenticateRequest(request, env);
         if (authResult instanceof Response) {
           response = authResult;
         } else {
-          response = await handleCreateLivestockLog(request, env, authResult, livestockId);
+          response = await handleUpdateLivestock(request, env, authResult, livestockId);
         }
         break;
       }
 
-      // Pattern: GET /livestock/:id/logs - Get livestock logs
-      case pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/) !== null && method === 'GET': {
-        const match = pathname.match(/^\/livestock\/([a-f0-9-]+)\/logs$/);
+      // Pattern: DELETE /livestock/:id - Delete livestock
+      case pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'DELETE': {
+        const match = pathname.match(/^\/livestock\/([A-Fa-f0-9-]+)$/);
         const livestockId = match![1];
         const authResult = await authenticateRequest(request, env);
         if (authResult instanceof Response) {
           response = authResult;
         } else {
-          response = await handleGetLivestockLogs(env, authResult, livestockId);
+          response = await handleDeleteLivestock(env, authResult, livestockId);
         }
         break;
       }
