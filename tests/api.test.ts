@@ -95,7 +95,7 @@ describe("GET /", () => {
       endpoints: Record<string, string>;
     };
     expect(data.service).toBe("ReefBuddy API");
-    expect(data.version).toBe("1.0.0");
+    expect(data.version).toBe("1.0.2");
     expect(data.endpoints).toBeDefined();
   });
 

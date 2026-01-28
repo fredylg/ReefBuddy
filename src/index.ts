@@ -1078,6 +1078,65 @@ async function authenticateRequest(
   };
 }
 
+/**
+ * Try to authenticate request, but return null instead of error if auth fails
+ * Used for endpoints that support both authenticated and device-based access
+ */
+async function tryAuthenticateRequest(
+  request: Request,
+  env: Env
+): Promise<AuthenticatedContext | null> {
+  const token = extractSessionToken(request);
+  if (!token) {
+    return null;
+  }
+
+  const session = await validateSession(env, token);
+  if (!session) {
+    return null;
+  }
+
+  return {
+    userId: session.user_id,
+    sessionToken: token,
+  };
+}
+
+/**
+ * Get or create a device-based user for unauthenticated requests
+ * Creates a user with email format: device_${deviceId}@reefbuddy.device
+ * This allows device-based tank creation without requiring authentication
+ */
+async function getOrCreateDeviceUser(
+  env: Env,
+  deviceId: string
+): Promise<string> {
+  const deviceEmail = `device_${deviceId}@reefbuddy.device`;
+
+  // Try to find existing device user
+  const existingUser = (await env.DB.prepare(
+    'SELECT id FROM users WHERE email = ?'
+  )
+    .bind(deviceEmail)
+    .first()) as { id: string } | null;
+
+  if (existingUser) {
+    return existingUser.id;
+  }
+
+  // Create new device user
+  const userId = generateUUID();
+  const now = new Date().toISOString();
+
+  await env.DB.prepare(
+    'INSERT INTO users (id, email, subscription_tier, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(userId, deviceEmail, 'free', now, now)
+    .run();
+
+  return userId;
+}
+
 // =============================================================================
 // AUTH HANDLERS
 // =============================================================================
@@ -1264,15 +1323,37 @@ interface TankRecord {
 }
 
 /**
- * Handle listing all tanks for the authenticated user
- * GET /api/tanks (authenticated)
+ * Handle listing all tanks for the authenticated user or device
+ * GET /api/tanks (authenticated or device-based)
+ * Supports both authenticated requests (v1.0.1+) and device-based requests (v1.0.2+)
  */
-async function handleListTanks(env: Env, auth: AuthenticatedContext): Promise<Response> {
+async function handleListTanks(
+  env: Env,
+  auth: AuthenticatedContext | null,
+  deviceId: string | null
+): Promise<Response> {
   try {
+    // Determine user ID: use authenticated user if available, otherwise use device-based user
+    let userId: string;
+    if (auth) {
+      // Authenticated request (backward compatible with v1.0.1+)
+      userId = auth.userId;
+    } else if (deviceId) {
+      // Device-based request (v1.0.2+)
+      userId = await getOrCreateDeviceUser(env, deviceId);
+    } else {
+      // Neither auth nor device ID provided
+      return errorResponse(
+        'Unauthorized',
+        'Either authentication token or device ID is required',
+        401
+      );
+    }
+
     const result = await env.DB.prepare(
       'SELECT * FROM tanks WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
-      .bind(auth.userId)
+      .bind(userId)
       .all();
 
     const tanks = result.results as TankRecord[];
@@ -1343,12 +1424,14 @@ async function handleGetTank(
 
 /**
  * Handle creating a new tank
- * POST /api/tanks (authenticated)
+ * POST /api/tanks (authenticated or device-based)
+ * Supports both authenticated requests (v1.0.1+) and device-based requests (v1.0.2+)
  */
 async function handleCreateTank(
   request: Request,
   env: Env,
-  auth: AuthenticatedContext
+  auth: AuthenticatedContext | null,
+  deviceId: string | null
 ): Promise<Response> {
   try {
     const body = await request.json();
@@ -1366,6 +1449,23 @@ async function handleCreateTank(
 
     const data = validationResult.data;
 
+    // Determine user ID: use authenticated user if available, otherwise use device-based user
+    let userId: string;
+    if (auth) {
+      // Authenticated request (backward compatible with v1.0.1+)
+      userId = auth.userId;
+    } else if (deviceId) {
+      // Device-based request (v1.0.2+)
+      userId = await getOrCreateDeviceUser(env, deviceId);
+    } else {
+      // Neither auth nor device ID provided
+      return errorResponse(
+        'Unauthorized',
+        'Either authentication token or device ID is required',
+        401
+      );
+    }
+
     const tankId = generateUUID();
     const now = new Date().toISOString();
 
@@ -1373,7 +1473,7 @@ async function handleCreateTank(
       `INSERT INTO tanks (id, user_id, name, volume_gallons, tank_type, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-      .bind(tankId, auth.userId, data.name, data.volume_gallons, data.tank_type ?? null, now, now)
+      .bind(tankId, userId, data.name, data.volume_gallons, data.tank_type ?? null, now, now)
       .run();
 
     return jsonResponse(
@@ -1381,7 +1481,7 @@ async function handleCreateTank(
         success: true,
         data: {
           id: tankId,
-          user_id: auth.userId,
+          user_id: userId,
           name: data.name,
           volume_gallons: data.volume_gallons,
           tank_type: data.tank_type ?? null,
@@ -1739,16 +1839,16 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     const { deviceId, deviceToken, isDevelopment, tankId, parameters, tankVolume, temperatureUnit } = validationResult.data;
 
     // Validate device with Apple DeviceCheck (mandatory when configured)
-    // iOS app v1.0.1+ includes DeviceCheck support
+    // iOS app v1.0.2+ includes DeviceCheck support
     if (isDeviceCheckConfigured(env)) {
       if (!deviceToken) {
         // DeviceCheck is configured but no token provided
-        // This means the client is using an old app version (< 1.0.1) or not using the official app
+        // This means the client is using an old app version (< 1.0.2) or not using the official app
         console.warn(`Analysis request from ${deviceId} without DeviceCheck token - rejecting`);
         return jsonResponse(
           {
             error: 'Device verification required',
-            message: 'Please update to the latest app version (1.0.1 or later) to continue using this service.',
+            message: 'Please update to the latest app version (1.0.2 or later) to continue using this service.',
             code: 'DEVICE_CHECK_REQUIRED',
           },
           403
@@ -1930,7 +2030,7 @@ function handleHealth(env: Env): Response {
   return jsonResponse({
     status: 'healthy',
     service: 'ReefBuddy API',
-    version: '1.0.0',
+    version: '1.0.2',
     environment: env.ENVIRONMENT || 'unknown',
     timestamp: new Date().toISOString(),
   });
@@ -4032,7 +4132,7 @@ export default {
       case pathname === '/' && method === 'GET':
         response = jsonResponse({
           service: 'ReefBuddy API',
-          version: '1.0.0',
+          version: '1.0.2',
           description: 'Water chemistry analysis for saltwater aquariums',
           endpoints: {
             'GET /': 'This information',
@@ -4040,8 +4140,8 @@ export default {
             'POST /auth/signup': 'Create a new user account',
             'POST /auth/login': 'Login and get session token',
             'POST /auth/logout': 'Logout and invalidate session (requires auth)',
-            'GET /api/tanks': 'List all tanks (requires auth)',
-            'POST /api/tanks': 'Create a new tank (requires auth)',
+            'GET /api/tanks': 'List all tanks (auth or device-based)',
+            'POST /api/tanks': 'Create a new tank (auth or device-based)',
             'GET /api/tanks/:id': 'Get a specific tank (requires auth)',
             'PUT /api/tanks/:id': 'Update a tank (requires auth)',
             'DELETE /api/tanks/:id': 'Delete a tank (requires auth)',
@@ -4091,25 +4191,23 @@ export default {
       }
 
       // Tank CRUD endpoints (requires authentication)
-      // GET /api/tanks - List all tanks
+      // GET /api/tanks - List all tanks (authenticated or device-based)
       case pathname === '/api/tanks' && method === 'GET': {
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleListTanks(env, authResult);
-        }
+        // Try authentication first (backward compatible with v1.0.1+)
+        const authResult = await tryAuthenticateRequest(request, env);
+        // Extract device ID for fallback (v1.0.2+)
+        const deviceId = request.headers.get('X-Device-ID');
+        response = await handleListTanks(env, authResult, deviceId);
         break;
       }
 
-      // POST /api/tanks - Create a new tank
+      // POST /api/tanks - Create a new tank (authenticated or device-based)
       case pathname === '/api/tanks' && method === 'POST': {
-        const authResult = await authenticateRequest(request, env);
-        if (authResult instanceof Response) {
-          response = authResult;
-        } else {
-          response = await handleCreateTank(request, env, authResult);
-        }
+        // Try authentication first (backward compatible with v1.0.1+)
+        const authResult = await tryAuthenticateRequest(request, env);
+        // Extract device ID for fallback (v1.0.2+)
+        const deviceId = request.headers.get('X-Device-ID');
+        response = await handleCreateTank(request, env, authResult, deviceId);
         break;
       }
 
