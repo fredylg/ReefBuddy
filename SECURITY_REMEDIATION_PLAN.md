@@ -769,7 +769,7 @@ import Security
 final class KeychainManager {
     static let shared = KeychainManager()
 
-    private let service = "com.reefbuddy.app"
+    private let service = "au.com.aethers.reefbuddy"
 
     private init() {}
 

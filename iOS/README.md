@@ -116,4 +116,4 @@ ReefBuddy uses a New Brutalist design:
 
 - **Platform:** iOS 18.0+
 - **Device:** iPhone only
-- **Bundle ID:** com.reefbuddy.app
+- **Bundle ID:** au.com.aethers.reefbuddy

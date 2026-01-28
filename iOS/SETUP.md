@@ -71,7 +71,7 @@ The following files were missing from the Xcode project and have been added:
 - **Platform**: iOS 18.0+
 - **Language**: Swift 5.0
 - **Architecture**: iPhone only (portrait orientation)
-- **Bundle ID**: com.reefbuddy.app
+- **Bundle ID**: au.com.aethers.reefbuddy
 - **Design System**: New Brutalist (high contrast, sharp edges, bold typography)
 
 ## Key Features

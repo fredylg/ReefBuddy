@@ -556,6 +556,22 @@ async function validateDeviceToken(
     return { valid: true };
   }
 
+  // Basic token format validation
+  // DeviceCheck tokens are base64-encoded and typically 1000+ characters
+  if (!deviceToken || deviceToken.length < 500) {
+    console.error(`❌ DeviceCheck token too short (${deviceToken?.length || 0} chars) - likely invalid`);
+    return { valid: false, error: 'Invalid device token format - token too short' };
+  }
+  
+  // Check if token is valid base64
+  try {
+    // Try to decode base64 (DeviceCheck tokens are base64-encoded)
+    atob(deviceToken.substring(0, 100)); // Test first 100 chars
+  } catch {
+    console.error(`❌ DeviceCheck token is not valid base64 - likely invalid`);
+    return { valid: false, error: 'Invalid device token format - not valid base64' };
+  }
+
   // SECURITY FIX: Use update_two_bits instead of query_two_bits for validation
   // query_two_bits returns 200 with "Failed to find bit state" for both valid and invalid tokens
   // update_two_bits will only succeed (200) if the token is valid, and fail (400/401) if invalid
@@ -603,11 +619,12 @@ async function validateDeviceToken(
     console.log(`🔐 DeviceCheck UPDATE response: Status ${response.status}, Body: ${JSON.stringify(responseData)}`);
 
     // Handle all possible status codes
-    // CRITICAL: update_two_bits will only return 200 if the token is valid
-    // Invalid tokens will return 400 or 401
+    // NOTE: update_two_bits may return 200 for both valid and invalid tokens (Apple API limitation)
+    // We rely on status codes: 200 = accepted, 400/401 = rejected
+    // This is not perfect but is the best we can do with Apple's API
     if (response.status === 200) {
-      // Success - device token is valid and device is genuine
-      // update_two_bits only returns 200 if the token is valid and can be updated
+      // Success - Apple accepted the update request
+      // Note: This doesn't guarantee the token is from a genuine device, but it's the best validation available
       console.log(`✅ DeviceCheck validation successful (update_two_bits returned 200) for transaction ${transactionId}`);
       return { valid: true };
     } else if (response.status === 400) {

@@ -37,7 +37,7 @@
   ],
   "settings" : {
     "distribution" : "Available for Testing",
-    "distributionBundleID" : "com.reefbuddy.app",
+    "distributionBundleID" : "au.com.aethers.reefbuddy",
     "distributionTeamID" : ""
   },
   "subscriptionGroups" : [
