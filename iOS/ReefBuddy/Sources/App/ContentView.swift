@@ -48,7 +48,7 @@ struct ContentView: View {
 
                 Text(selectedTab.subtitle)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    .foregroundColor(subtitleColor)
             }
 
             Spacer()
@@ -82,6 +82,18 @@ struct ContentView: View {
         .padding(.vertical, BrutalistTheme.Spacing.xs)
         .background(BrutalistTheme.Colors.background)
         .brutalistBorder(width: 2)
+    }
+    
+    /// Color for the subtitle text based on environment
+    /// Black for production, green for local/other environments
+    private var subtitleColor: Color {
+        if APIClient.isUsingProduction() {
+            // Production: black (with opacity)
+            return BrutalistTheme.Colors.text.opacity(0.6)
+        } else {
+            // Local/other environment: green
+            return Color.green
+        }
     }
 
     // MARK: - Tab Content

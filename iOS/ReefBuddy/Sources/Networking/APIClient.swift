@@ -11,10 +11,29 @@ actor APIClient {
     // MARK: - Configuration
 
     /// Production API URL (Cloudflare Worker)
-    private static let productionURL = "https://reefbuddy.fredylg.workers.dev"
+    static let productionURL = "https://reefbuddy.fredylg.workers.dev"
     
     /// Local development API URL (for wrangler dev)
     private static let localDevURL = "http://localhost:8787"
+    
+    /// Check if the app is configured to use production URL
+    /// Returns true if production, false if localhost or other environment
+    static func isUsingProduction() -> Bool {
+        #if DEBUG
+        // In DEBUG builds, check environment variable or default to localhost
+        if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
+           let url = URL(string: envURL) {
+            // Check if the environment URL matches production
+            return url.absoluteString == productionURL
+        } else {
+            // Default to localhost in DEBUG
+            return false
+        }
+        #else
+        // In RELEASE builds, always production
+        return true
+        #endif
+    }
 
     /// Base URL for the API (Cloudflare Worker)
     private let baseURL: URL
@@ -31,17 +50,21 @@ actor APIClient {
     // MARK: - Initialization
 
     init(baseURL: URL? = nil) {
-        // Priority: 1) Passed URL, 2) Environment variable, 3) Debug build uses localhost, 4) Production URL
+        // Priority: 1) Passed URL, 2) Environment variable (only in DEBUG), 3) Debug build uses localhost, 4) Production URL
         if let baseURL = baseURL {
             self.baseURL = baseURL
-        } else if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
-                  let url = URL(string: envURL) {
-            self.baseURL = url
         } else {
-            // Use localhost for debug builds (simulator testing), production URL for release builds
             #if DEBUG
-            self.baseURL = URL(string: Self.localDevURL)!
+            // In DEBUG builds, allow environment variable override or use localhost
+            if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
+               let url = URL(string: envURL) {
+                self.baseURL = url
+            } else {
+                self.baseURL = URL(string: Self.localDevURL)!
+            }
             #else
+            // In RELEASE builds (Archive/TestFlight), ALWAYS use production URL
+            // Ignore environment variables to prevent accidental localhost in production
             self.baseURL = URL(string: Self.productionURL)!
             #endif
         }

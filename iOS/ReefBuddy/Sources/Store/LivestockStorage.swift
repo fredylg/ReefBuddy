@@ -101,12 +101,12 @@ class LivestockStorage: ObservableObject {
     }
     
     /// Add or update a log entry
+    /// Ensures no duplicates by ID - if a log with the same ID exists, it's updated; otherwise inserted
     func saveLog(_ log: LivestockLog) {
-        if let index = livestockLogs.firstIndex(where: { $0.id == log.id }) {
-            livestockLogs[index] = log
-        } else {
-            livestockLogs.insert(log, at: 0) // Newest first
-        }
+        // Remove any existing log with the same ID to prevent duplicates
+        livestockLogs.removeAll { $0.id == log.id }
+        // Insert the log at the beginning (newest first)
+        livestockLogs.insert(log, at: 0)
         persistLogs()
     }
     

@@ -3708,15 +3708,30 @@ async function handleCreateLivestock(
   env: Env,
   auth: AuthenticatedContext,
   tankId: string
-): Promise<Response> {  try {
+): Promise<Response> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3706',message:'handleCreateLivestock entry',data:{tankId,authUserId:auth.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  try {
     // Verify tank ownership
     const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
-    if (tankResult instanceof Response) {      return tankResult;
+    if (tankResult instanceof Response) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3713',message:'Tank ownership verification failed',data:{tankId,status:tankResult.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return tankResult;
     }
 
     const body = await request.json();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3717',message:'handleCreateLivestock request body parsed',data:{bodyKeys:Object.keys(body),hasId:!!body.id,hasName:!!body.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     const validationResult = LivestockCreateSchema.safeParse(body);
-    if (!validationResult.success) {      return jsonResponse(
+    if (!validationResult.success) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3719',message:'handleCreateLivestock validation failed',data:{errors:validationResult.error.flatten()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return jsonResponse(
         {
           error: 'Validation failed',
           details: validationResult.error.flatten(),
@@ -3736,6 +3751,9 @@ async function handleCreateLivestock(
       .first()) as { id: string } | null;
     
     if (existing) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3738',message:'Livestock already exists, returning existing',data:{livestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       // Return existing livestock instead of creating duplicate
       const existingLivestock = (await env.DB.prepare(
         `SELECT l.* FROM livestock l
@@ -3768,6 +3786,9 @@ async function handleCreateLivestock(
       }
     }
     const now = new Date().toISOString();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3771',message:'Before INSERT into livestock',data:{livestockId,normalizedTankId,name:data.name,category:data.category},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     const insertResult = await env.DB.prepare(
       `INSERT INTO livestock (id, tank_id, common_name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -3787,6 +3808,9 @@ async function handleCreateLivestock(
         now
       )
       .run();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3789',message:'After INSERT into livestock',data:{livestockId,success:insertResult.success,meta:insertResult.meta},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     return jsonResponse(
       {
         success: true,
@@ -3808,6 +3832,9 @@ async function handleCreateLivestock(
       201
     );
   } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3810',message:'handleCreateLivestock error',data:{errorMessage:error instanceof Error ? error.message : 'Unknown error',errorStack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     console.error('Create livestock error:', error);
     return errorResponse(
       'Internal server error',
@@ -3882,10 +3909,16 @@ async function handleUpdateLivestock(
   auth: AuthenticatedContext,
   livestockId: string
 ): Promise<Response> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3906',message:'handleUpdateLivestock entry',data:{livestockId,authUserId:auth.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
   try {
     // Verify livestock ownership
     const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
     if (livestockResult instanceof Response) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3915',message:'Livestock ownership verification failed in update',data:{livestockId,status:livestockResult.status,statusText:livestockResult.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return livestockResult;
     }
 
@@ -3959,14 +3992,31 @@ async function handleUpdateLivestock(
     const normalizedLivestockId = livestockId.toLowerCase();
     values.push(normalizedLivestockId);
 
-    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3995',message:'Before UPDATE livestock',data:{normalizedLivestockId,updatesCount:updates.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    const updateResult = await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
       .bind(...values)
       .run();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3997',message:'After UPDATE livestock',data:{normalizedLivestockId,success:updateResult.success,changes:updateResult.meta?.changes},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
 
     // Fetch updated record
     const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE LOWER(id) = ?')
       .bind(normalizedLivestockId)
-      .first()) as LivestockRecord;
+      .first()) as LivestockRecord | null;
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4002',message:'Fetched updated record',data:{normalizedLivestockId,found:!!updated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    if (!updated) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4004',message:'Updated record not found after UPDATE',data:{normalizedLivestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      return errorResponse('Not found', 'Livestock not found after update', 404);
+    }
 
     return jsonResponse({
       success: true,
@@ -4044,17 +4094,29 @@ async function handleCreateLivestockLog(
   auth: AuthenticatedContext,
   livestockId: string
 ): Promise<Response> {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4041',message:'handleCreateLivestockLog entry',data:{livestockId,authUserId:auth.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   try {
     // Verify livestock ownership
     const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
     if (livestockResult instanceof Response) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4050',message:'Livestock ownership verification failed',data:{livestockId,status:livestockResult.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       return livestockResult;
     }
 
     const body = await request.json();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4054',message:'Request body parsed',data:{bodyKeys:Object.keys(body),logType:body.logType,hasDescription:!!body.description},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     const validationResult = LivestockLogSchema.safeParse(body);
     if (!validationResult.success) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4057',message:'Validation failed',data:{errors:validationResult.error.flatten()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       return jsonResponse(
         {
           error: 'Validation failed',
@@ -4074,12 +4136,18 @@ async function handleCreateLivestockLog(
     const loggedAt = data.loggedAt || new Date().toISOString();
     const now = new Date().toISOString();
 
-    await env.DB.prepare(
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4077',message:'Before INSERT into livestock_logs',data:{logId,normalizedLivestockId,logType:data.logType,description:data.description,loggedAt,now},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    const insertResult = await env.DB.prepare(
       `INSERT INTO livestock_logs (id, livestock_id, log_type, description, logged_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
       .bind(logId, normalizedLivestockId, data.logType, data.description ?? null, loggedAt, now)
       .run();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4082',message:'After INSERT into livestock_logs',data:{logId,success:insertResult.success,meta:insertResult.meta},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     // If log type is 'death', update livestock health_status to 'deceased'
     if (data.logType === 'death') {
@@ -4088,6 +4156,9 @@ async function handleCreateLivestockLog(
         .run();
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4091',message:'handleCreateLivestockLog success exit',data:{logId,livestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     return jsonResponse(
       {
         success: true,
@@ -4103,6 +4174,9 @@ async function handleCreateLivestockLog(
       201
     );
   } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4105',message:'handleCreateLivestockLog error',data:{errorMessage:error instanceof Error ? error.message : 'Unknown error',errorStack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     console.error('Create livestock log error:', error);
     return errorResponse(
       'Internal server error',
@@ -4174,6 +4248,13 @@ export default {
 
     // Log all incoming requests
     console.log(`🌐 ${method} ${pathname} - ${new Date().toISOString()}`);
+    
+    // #region agent log
+    if (pathname.includes('/livestock')) {
+      const logsMatch = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4221',message:'Incoming livestock request',data:{method,pathname,isLogsRoute:pathname.includes('/logs'),isApiRoute:pathname.startsWith('/api'),logsMatchResult:logsMatch !== null,logsMatchValue:logsMatch?.[1]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    }
+    // #endregion
 
     // Validate request origin for CORS
     const requestOrigin = request.headers.get('Origin');
@@ -4195,6 +4276,13 @@ export default {
     }
 
     let response: Response;
+
+    // #region agent log
+    if (pathname.includes('/livestock') && method === 'POST') {
+      const testMatch = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4256',message:'Before switch - testing POST livestock route',data:{pathname,method,testMatchResult:testMatch !== null,testMatchValue:testMatch?.[1],regexPattern:'^/api/livestock/([A-Fa-f0-9-]+)/logs$'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    }
+    // #endregion
 
     switch (true) {
       // Root endpoint
@@ -4490,10 +4578,20 @@ export default {
       // LIVESTOCK LOG ROUTES - Must come BEFORE /api/livestock/:id routes to avoid regex conflicts
       // Pattern: POST /api/livestock/:id/logs - Create livestock log (with /api prefix for iOS compatibility)
       case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/) !== null && method === 'POST': {
+        // #region agent log
+        const caseMatch = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4557',message:'Route matched: POST /api/livestock/:id/logs',data:{pathname,method,livestockId:caseMatch?.[1],caseMatched:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
         const livestockId = match![1];
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4563',message:'About to authenticate for livestock log',data:{livestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const authResult = await tryAuthenticateRequest(request, env);
         const deviceId = request.headers.get('X-Device-ID');
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4566',message:'Auth result for livestock log',data:{hasAuth:!!authResult,hasDeviceId:!!deviceId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         if (authResult) {
           response = await handleCreateLivestockLog(request, env, authResult, livestockId);
         } else if (deviceId) {
@@ -4552,10 +4650,16 @@ export default {
 
       // Pattern: PUT /api/livestock/:id - Update livestock (with /api prefix for iOS compatibility)
       case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4649',message:'Route matched: PUT /api/livestock/:id',data:{pathname,method,livestockId:pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/)?.[1]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/);
         const livestockId = match![1];
         const authResult = await tryAuthenticateRequest(request, env);
         const deviceId = request.headers.get('X-Device-ID');
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4655',message:'About to call handleUpdateLivestock',data:{livestockId,hasAuth:!!authResult,hasDeviceId:!!deviceId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         if (authResult) {
           response = await handleUpdateLivestock(request, env, authResult, livestockId);
         } else if (deviceId) {

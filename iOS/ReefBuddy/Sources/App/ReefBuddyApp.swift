@@ -471,9 +471,9 @@ final class AppState: ObservableObject {
             }
         }
 
-        // Add the log to local storage first
+        // Add the log to local array first (optimistic update)
         livestockLogs.insert(logToSave, at: 0)
-        livestockStorage.saveLog(logToSave)
+        // Don't save to storage yet - wait for server response to avoid duplicates
 
         // Update livestock health status
         if let index = livestock.firstIndex(where: { $0.id == log.livestockId }) {
@@ -488,12 +488,24 @@ final class AppState: ObservableObject {
         // Call API to save to backend (retroactive to app 1.0.1 - uses device-based auth)
         do {
             let savedLog = try await apiClient.createLivestockLog(log)
-            // Update local storage with server response
-            livestockStorage.saveLog(savedLog)
+            // Remove the old log from array and storage if ID changed
+            if savedLog.id != log.id {
+                livestockLogs.removeAll { $0.id == log.id }
+                // Also remove from storage to prevent duplicates
+                livestockStorage.deleteLog(log.id)
+            }
+            // Update or insert the saved log in array
             if let index = livestockLogs.firstIndex(where: { $0.id == savedLog.id }) {
                 livestockLogs[index] = savedLog
+            } else {
+                // If not found, insert at the beginning (newest first)
+                livestockLogs.insert(savedLog, at: 0)
             }
+            // Now save to storage with the server response (single source of truth)
+            livestockStorage.saveLog(savedLog)
         } catch {
+            // If API call fails, save the local log to storage as fallback
+            livestockStorage.saveLog(logToSave)
             print("⚠️ Failed to save livestock log to backend: \(error.localizedDescription)")
             errorMessage = "Saved locally, but failed to sync with server: \(error.localizedDescription)"
         }
