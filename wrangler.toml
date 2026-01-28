@@ -22,8 +22,9 @@ binding = "REEF_KV"
 id = "b971329ac04e4171a65cfb907da0b08f"
 
 # Environment Variables
+# Default vars (used for local development with `npx wrangler dev`)
 [vars]
-ENVIRONMENT = "production"
+ENVIRONMENT = "development"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
 
@@ -76,6 +77,29 @@ invocation_logs = true
 # Note: DeviceCheck is optional. If not configured, device verification
 # will be skipped for backward compatibility.
 # =============================================================================
+
+# Production environment (deploy with: npx wrangler deploy --env production)
+[env.production]
+name = "reefbuddy"
+
+# D1 Database Binding (same as top-level)
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "reef-db"
+database_id = "5171dac0-7584-49a2-956b-971f2516e0cd"
+
+# KV Namespace Binding (same as top-level)
+[[env.production.kv_namespaces]]
+binding = "REEF_KV"
+id = "b971329ac04e4171a65cfb907da0b08f"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+FREE_ANALYSIS_LIMIT = "3"
+CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
+
+[env.production.vars.AI_GATEWAY]
+gateway_id = "reefbuddy-ai-gateway"
 
 # Development settings
 [dev]

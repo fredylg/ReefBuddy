@@ -12,6 +12,9 @@ actor APIClient {
 
     /// Production API URL (Cloudflare Worker)
     private static let productionURL = "https://reefbuddy.fredylg.workers.dev"
+    
+    /// Local development API URL (for wrangler dev)
+    private static let localDevURL = "http://localhost:8787"
 
     /// Base URL for the API (Cloudflare Worker)
     private let baseURL: URL
@@ -28,15 +31,19 @@ actor APIClient {
     // MARK: - Initialization
 
     init(baseURL: URL? = nil) {
-        // Priority: 1) Passed URL, 2) Environment variable, 3) Production URL (always)
+        // Priority: 1) Passed URL, 2) Environment variable, 3) Debug build uses localhost, 4) Production URL
         if let baseURL = baseURL {
             self.baseURL = baseURL
         } else if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
                   let url = URL(string: envURL) {
             self.baseURL = url
         } else {
-            // Always use production Cloudflare Worker
+            // Use localhost for debug builds (simulator testing), production URL for release builds
+            #if DEBUG
+            self.baseURL = URL(string: Self.localDevURL)!
+            #else
             self.baseURL = URL(string: Self.productionURL)!
+            #endif
         }
 
         // Configure URL session
@@ -162,6 +169,11 @@ actor APIClient {
 
         // Generate DeviceCheck token for device attestation
         let deviceToken = await generateDeviceToken()
+        
+        // #region agent log
+        let isDebug = isDebugBuild()
+        print("🔍 [DEBUG] DeviceCheck token generation: hasToken=\(deviceToken != nil), isDebug=\(isDebug), isSupported=\(DCDevice.current.isSupported)")
+        // #endregion
 
         // Use a plain JSON encoder for this endpoint (Worker expects camelCase, not snake_case)
         let analysisEncoder = JSONEncoder()
@@ -231,13 +243,31 @@ actor APIClient {
     /// Generate a DeviceCheck token for device attestation
     /// Returns nil if DeviceCheck is not supported on this device
     private func generateDeviceToken() async -> String? {
-        guard DCDevice.current.isSupported else {
+        // #region agent log
+        let isSupported = DCDevice.current.isSupported
+        print("🔍 [DEBUG] generateDeviceToken entry: isSupported=\(isSupported)")
+        // #endregion
+        
+        guard isSupported else {
+            // #region agent log
+            print("🔍 [DEBUG] DeviceCheck not supported - returning nil")
+            // #endregion
             print("DeviceCheck not supported on this device")
             return nil
         }
 
         return await withCheckedContinuation { continuation in
             DCDevice.current.generateToken { data, error in
+                // #region agent log
+                if let error = error {
+                    print("🔍 [DEBUG] DeviceCheck token generation error: \(error.localizedDescription)")
+                } else if let data = data {
+                    print("🔍 [DEBUG] DeviceCheck token generated successfully: length=\(data.count)")
+                } else {
+                    print("🔍 [DEBUG] DeviceCheck token generation returned nil data")
+                }
+                // #endregion
+                
                 if let error = error {
                     print("DeviceCheck token generation failed: \(error.localizedDescription)")
                     continuation.resume(returning: nil)

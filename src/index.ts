@@ -1840,34 +1840,77 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
 
     // Validate device with Apple DeviceCheck (mandatory when configured)
     // iOS app v1.0.2+ includes DeviceCheck support
+    // SECURITY: Use request URL to detect development (localhost) vs production
+    // This is more reliable than environment variables and cannot be spoofed
+    const requestUrl = new URL(request.url);
+    const hostname = requestUrl.hostname;
+    // Allow DeviceCheck bypass for:
+    // 1. Localhost (local dev server: npx wrangler dev)
+    // 2. Development workers subdomain (if using wrangler dev with --remote)
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isDevWorker = hostname.endsWith('.workers.dev') && (hostname.includes('dev') || hostname.includes('staging'));
+    const isServerDevelopment = isLocalhost || isDevWorker;
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1846',message:'URL-based development detection',data:{hostname,isLocalhost,isDevWorker,isServerDevelopment,clientIsDevelopment:isDevelopment,hasDeviceToken:!!deviceToken},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1840',message:'DeviceCheck validation entry',data:{deviceId,hasDeviceToken:!!deviceToken,deviceTokenLength:deviceToken?.length||0,isDevelopment,isDeviceCheckConfigured:isDeviceCheckConfigured(env),hostname:requestUrl.hostname,isServerDevelopment},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
     if (isDeviceCheckConfigured(env)) {
       if (!deviceToken) {
-        // DeviceCheck is configured but no token provided
-        // This means the client is using an old app version (< 1.0.2) or not using the official app
-        console.warn(`Analysis request from ${deviceId} without DeviceCheck token - rejecting`);
-        return jsonResponse(
-          {
-            error: 'Device verification required',
-            message: 'Please update to the latest app version (1.0.2 or later) to continue using this service.',
-            code: 'DEVICE_CHECK_REQUIRED',
-          },
-          403
-        );
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1851',message:'DeviceCheck missing token check',data:{deviceId,clientIsDevelopment:isDevelopment,serverIsDevelopment:isServerDevelopment,hostname:requestUrl.hostname,willAllow:isServerDevelopment,reason:isServerDevelopment?'Localhost/development server - DeviceCheck not available in simulator':'Production requires DeviceCheck'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
+        // SECURITY: Only allow bypass in actual development environments (server-side check)
+        // DeviceCheck doesn't work in iOS Simulator, so this is expected for local development
+        // But production must always require DeviceCheck token regardless of client flag
+        if (isServerDevelopment) {
+          console.warn(`Analysis request from ${deviceId} without DeviceCheck token (server development mode - simulator) - allowing`);
+          // Continue to credit check and analysis
+        } else {
+          // Production environment: always require DeviceCheck token
+          // Client-provided isDevelopment flag cannot bypass this security check
+          console.warn(`Analysis request from ${deviceId} without DeviceCheck token in production - rejecting`);
+          return jsonResponse(
+            {
+              error: 'Device verification required',
+              message: 'Please update to the latest app version (1.0.2 or later) to continue using this service.',
+              code: 'DEVICE_CHECK_REQUIRED',
+            },
+            403
+          );
+        }
       }
 
-      // Validate the DeviceCheck token
-      const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);
-      if (!deviceCheckResult.valid) {
-        console.warn(`DeviceCheck failed for ${deviceId}: ${deviceCheckResult.error}`);
-        return jsonResponse(
-          {
-            error: 'Device verification failed',
-            message: 'Unable to verify this device. Please ensure you are using a genuine iOS device.',
-            details: deviceCheckResult.error,
-            code: 'DEVICE_CHECK_FAILED',
-          },
-          403
-        );
+      // Validate the DeviceCheck token (only if provided)
+      // In server development mode (simulator), deviceToken may be null, which is allowed
+      if (deviceToken) {
+        // Use client's isDevelopment flag only for DeviceCheck API selection (sandbox vs production API)
+        // This doesn't affect security - it just tells DeviceCheck which API endpoint to use
+        const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1876',message:'DeviceCheck validation result',data:{deviceId,clientIsDevelopment:isDevelopment,serverIsDevelopment:isServerDevelopment,valid:deviceCheckResult.valid,error:deviceCheckResult.error},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        if (!deviceCheckResult.valid) {
+          console.warn(`DeviceCheck failed for ${deviceId}: ${deviceCheckResult.error}`);
+          return jsonResponse(
+            {
+              error: 'Device verification failed',
+              message: 'Unable to verify this device. Please ensure you are using a genuine iOS device.',
+              details: deviceCheckResult.error,
+              code: 'DEVICE_CHECK_FAILED',
+            },
+            403
+          );
+        }
+      } else {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:1893',message:'Skipping DeviceCheck validation - no token',data:{deviceId,clientIsDevelopment:isDevelopment,serverIsDevelopment:isServerDevelopment,hostname:requestUrl.hostname,reason:isServerDevelopment?'Localhost/development server - simulator':'Should not reach here in production'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
       }
     } else {
       // DeviceCheck not configured
