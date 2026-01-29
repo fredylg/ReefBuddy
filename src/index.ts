@@ -134,18 +134,29 @@ const BCRYPT_SALT_ROUNDS = 10;
  * All values are in standard aquarium measurement units
  * Validation is relaxed to allow any numeric values - AI will analyze and provide feedback
  */
-const WaterParametersSchema = z.object({
-  salinity: z.number().optional().describe('Specific gravity'),
-  temperature: z.number().optional().describe('Temperature in Fahrenheit'),
-  ph: z.number().optional().describe('pH level'),
-  alkalinity: z.number().optional().describe('Alkalinity in dKH'),
-  calcium: z.number().optional().describe('Calcium in ppm'),
-  magnesium: z.number().optional().describe('Magnesium in ppm'),
-  nitrate: z.number().optional().describe('Nitrate in ppm'),
-  phosphate: z.number().optional().describe('Phosphate in ppm'),
-  ammonia: z.number().optional().describe('Ammonia in ppm'),
-  notes: z.string().max(500).optional().describe('User observations about the tank'),
-});
+const WaterParametersSchema = z
+  .object({
+    salinity: z.number().optional().describe('Salinity value (SG or PPT per salinity_unit)'),
+    salinity_unit: z.enum(['SG', 'PPT']).optional().describe('Salinity unit: SG (specific gravity) or PPT (parts per thousand)'),
+    temperature: z.number().optional().describe('Temperature in Fahrenheit'),
+    ph: z.number().optional().describe('pH level'),
+    alkalinity: z.number().optional().describe('Alkalinity in dKH'),
+    calcium: z.number().optional().describe('Calcium in ppm'),
+    magnesium: z.number().optional().describe('Magnesium in ppm'),
+    nitrate: z.number().optional().describe('Nitrate in ppm'),
+    phosphate: z.number().optional().describe('Phosphate in ppm'),
+    ammonia: z.number().optional().describe('Ammonia in ppm'),
+    notes: z.string().max(500).optional().describe('User observations about the tank'),
+  })
+  .refine(
+    (data) => {
+      if (data.salinity == null || data.salinity === undefined) return true;
+      const unit = data.salinity_unit ?? 'SG';
+      if (unit === 'PPT') return data.salinity > 30 && data.salinity < 40;
+      return data.salinity > 0.5 && data.salinity < 2;
+    },
+    { message: 'Salinity out of range: SG must be between 0.5 and 2, PPT between 30 and 40', path: ['salinity'] }
+  );
 
 /**
  * Schema for analysis request
@@ -177,21 +188,32 @@ const LoginRequestSchema = z.object({
  * Uses z.coerce.number() to handle both string and number inputs
  * This fixes issues where iOS might send numeric strings due to decimal formatting
  */
-const CreateMeasurementSchema = z.object({
-  tank_id: z.string().uuid(),
-  ph: z.coerce.number().optional(),
-  alkalinity: z.coerce.number().optional(),
-  calcium: z.coerce.number().optional(),
-  magnesium: z.coerce.number().optional(),
-  nitrate: z.coerce.number().optional(),
-  phosphate: z.coerce.number().optional(),
-  salinity: z.coerce.number().optional(),
-  temperature: z.coerce.number().optional(),
-  ammonia: z.coerce.number().optional(),
-  nitrite: z.coerce.number().optional(),
-  measured_at: z.string().datetime().optional(),
-  notes: z.string().optional(),
-});
+const CreateMeasurementSchema = z
+  .object({
+    tank_id: z.string().uuid(),
+    ph: z.coerce.number().optional(),
+    alkalinity: z.coerce.number().optional(),
+    calcium: z.coerce.number().optional(),
+    magnesium: z.coerce.number().optional(),
+    nitrate: z.coerce.number().optional(),
+    phosphate: z.coerce.number().optional(),
+    salinity: z.coerce.number().optional(),
+    salinity_unit: z.enum(['SG', 'PPT']).optional(),
+    temperature: z.coerce.number().optional(),
+    ammonia: z.coerce.number().optional(),
+    nitrite: z.coerce.number().optional(),
+    measured_at: z.string().datetime().optional(),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.salinity == null || data.salinity === undefined) return true;
+      const unit = data.salinity_unit ?? 'SG';
+      if (unit === 'PPT') return data.salinity > 30 && data.salinity < 40;
+      return data.salinity > 0.5 && data.salinity < 2;
+    },
+    { message: 'Salinity out of range: SG must be between 0.5 and 2, PPT between 30 and 40', path: ['salinity'] }
+  );
 
 /**
  * Schema for creating a tank (iOS sends snake_case)
@@ -1680,15 +1702,19 @@ async function handleCreateMeasurement(
     }
 
     // Create measurement
-    // Use the actual tank.id from the database (lowercase) to satisfy foreign key constraint
+    // Use the actual tank.id from database (lowercase) to satisfy foreign key constraint
+    // Backward compatibility: if salinity is sent without salinity_unit, treat as SG (all legacy apps used SG only)
+    const salinityUnit = data.salinity_unit ?? (data.salinity != null ? 'SG' : null);
+
     const measurementId = generateUUID();
-    const measuredAt = data.measured_at || new Date().toISOString();    await env.DB.prepare(
-      `INSERT INTO measurements (id, tank_id, measured_at, ph, alkalinity, calcium, magnesium, nitrate, phosphate, salinity, temperature, ammonia, nitrite, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    const measuredAt = data.measured_at || new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO measurements (id, tank_id, measured_at, ph, alkalinity, calcium, magnesium, nitrate, phosphate, salinity, salinity_unit, temperature, ammonia, nitrite, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         measurementId,
-        tank.id, // Use the actual tank.id from database (lowercase) instead of data.tank_id (uppercase)
+        tank.id,
         measuredAt,
         data.ph ?? null,
         data.alkalinity ?? null,
@@ -1697,12 +1723,14 @@ async function handleCreateMeasurement(
         data.nitrate ?? null,
         data.phosphate ?? null,
         data.salinity ?? null,
+        salinityUnit,
         data.temperature ?? null,
         data.ammonia ?? null,
         data.nitrite ?? null,
         data.notes ?? null
       )
-      .run();    // Check for parameter alerts and send notifications
+      .run();
+    // Check for parameter alerts and send notifications
     let alerts: Array<{
       parameter: string;
       value: number;
@@ -1749,6 +1777,7 @@ async function handleCreateMeasurement(
           nitrate: data.nitrate ?? null,
           phosphate: data.phosphate ?? null,
           salinity: data.salinity ?? null,
+          salinity_unit: salinityUnit ?? null,
           temperature: data.temperature ?? null,
           ammonia: data.ammonia ?? null,
           nitrite: data.nitrite ?? null,
@@ -1869,7 +1898,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
           return jsonResponse(
             {
               error: 'Device verification required',
-              message: 'Please update to the latest app version (1.0.2 or later) to continue using this service.',
+              message: 'Please update to the latest app version (1.0.3 or later) to continue using this service.',
               code: 'DEVICE_CHECK_REQUIRED',
             },
             403
@@ -1937,7 +1966,11 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
 
     // Build parameter list dynamically with sanitized values to prevent prompt injection
     const paramLines: string[] = [];
-    if (parameters.salinity !== undefined) paramLines.push(`- Salinity: ${sanitizeNumericInput(parameters.salinity)}`);
+    if (parameters.salinity !== undefined) {
+      // Backward compatibility: no salinity_unit means legacy app → value is in SG
+      const unit = parameters.salinity_unit === 'PPT' ? ' ppt' : ' SG';
+      paramLines.push(`- Salinity: ${sanitizeNumericInput(parameters.salinity)}${unit}`);
+    }
     if (parameters.temperature !== undefined) {
       // Convert temperature back to original unit if needed (temperature is always sent in Fahrenheit)
       let tempValue = parameters.temperature;
@@ -2056,7 +2089,7 @@ function handleHealth(env: Env): Response {
   return jsonResponse({
     status: 'healthy',
     service: 'ReefBuddy API',
-    version: '1.0.2',
+    version: '1.0.3',
     environment: env.ENVIRONMENT || 'unknown',
     timestamp: new Date().toISOString(),
   });
@@ -4289,7 +4322,7 @@ export default {
       case pathname === '/' && method === 'GET':
         response = jsonResponse({
           service: 'ReefBuddy API',
-          version: '1.0.2',
+          version: '1.0.3',
           description: 'Water chemistry analysis for saltwater aquariums',
           endpoints: {
             'GET /': 'This information',

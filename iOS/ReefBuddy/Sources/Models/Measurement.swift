@@ -21,8 +21,11 @@ struct Measurement: Identifiable, Codable, Equatable {
     /// Temperature in Fahrenheit
     var temperature: Double?
 
-    /// Salinity as specific gravity (e.g., 1.025)
+    /// Salinity value in the unit given by salinityUnit (SG or PPT)
     var salinity: Double?
+
+    /// Salinity unit: "SG" (specific gravity) or "PPT" (parts per thousand). Nil for legacy data.
+    var salinityUnit: String?
 
     /// pH level (typically 7.8-8.4)
     var pH: Double?
@@ -59,6 +62,7 @@ struct Measurement: Identifiable, Codable, Equatable {
         measuredAt: Date = Date(),
         temperature: Double? = nil,
         salinity: Double? = nil,
+        salinityUnit: String? = nil,
         pH: Double? = nil,
         alkalinity: Double? = nil,
         calcium: Double? = nil,
@@ -74,6 +78,7 @@ struct Measurement: Identifiable, Codable, Equatable {
         self.measuredAt = measuredAt
         self.temperature = temperature
         self.salinity = salinity
+        self.salinityUnit = salinityUnit
         self.pH = pH
         self.alkalinity = alkalinity
         self.calcium = calcium
@@ -239,6 +244,7 @@ struct CreateMeasurementRequest: Codable {
     let tankId: UUID
     let temperature: Double?
     let salinity: Double?
+    let salinityUnit: String?
     let pH: Double?
     let alkalinity: Double?
     let calcium: Double?
@@ -249,12 +255,12 @@ struct CreateMeasurementRequest: Codable {
     let nitrite: Double?
     let notes: String?
 
-    // Backend expects lowercase 'ph', not 'p_h' (from snake_case conversion)
     enum CodingKeys: String, CodingKey {
         case tankId = "tank_id"
         case temperature
         case salinity
-        case pH = "ph"  // Map pH to ph (lowercase)
+        case salinityUnit = "salinity_unit"
+        case pH = "ph"
         case alkalinity
         case calcium
         case magnesium
@@ -269,6 +275,7 @@ struct CreateMeasurementRequest: Codable {
         self.tankId = measurement.tankId
         self.temperature = measurement.temperature
         self.salinity = measurement.salinity
+        self.salinityUnit = measurement.salinityUnit
         self.pH = measurement.pH
         self.alkalinity = measurement.alkalinity
         self.calcium = measurement.calcium
@@ -338,6 +345,7 @@ struct AnalysisRequest: Codable {
 
     struct WaterParameters: Codable {
         let salinity: Double?
+        let salinityUnit: String?
         let temperature: Double?
         let ph: Double?
         let alkalinity: Double?
@@ -348,9 +356,18 @@ struct AnalysisRequest: Codable {
         let ammonia: Double?
         let notes: String?
 
-        // Worker expects lowercase 'ph', not 'pH'
         enum CodingKeys: String, CodingKey {
-            case salinity, temperature, ph, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia, notes
+            case salinity
+            case salinityUnit = "salinity_unit"
+            case temperature
+            case ph
+            case alkalinity
+            case calcium
+            case magnesium
+            case nitrate
+            case phosphate
+            case ammonia
+            case notes
         }
     }
 
@@ -363,6 +380,7 @@ struct AnalysisRequest: Codable {
         self.temperatureUnit = temperatureUnit
         self.parameters = WaterParameters(
             salinity: measurement.salinity,
+            salinityUnit: measurement.salinityUnit,
             temperature: measurement.temperature,
             ph: measurement.pH,
             alkalinity: measurement.alkalinity,

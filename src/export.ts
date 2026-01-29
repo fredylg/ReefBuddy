@@ -57,7 +57,8 @@ const CSV_HEADERS = [
   'Magnesium (ppm)',
   'Nitrate (ppm)',
   'Phosphate (ppm)',
-  'Salinity (SG)',
+  'Salinity',
+  'Salinity unit',
   'Temperature (F)',
   'Ammonia (ppm)',
 ];
@@ -102,6 +103,7 @@ function measurementToCSVRow(measurement: Measurement): string {
     measurement.nitrate,
     measurement.phosphate,
     measurement.salinity,
+    measurement.salinity_unit ?? '',
     measurement.temperature,
     measurement.ammonia,
   ];

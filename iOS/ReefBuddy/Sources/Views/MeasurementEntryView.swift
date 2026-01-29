@@ -23,6 +23,7 @@ struct MeasurementEntryView: View {
     @State private var errorMessage = ""
     @State private var isAnalyzing = false
     @State private var temperatureUnit: TemperatureUnit = .celsius
+    @State private var salinityUnit: SalinityUnit = .sg
     @State private var showingPurchaseCredits = false
 
     // MARK: - Body
@@ -59,7 +60,7 @@ struct MeasurementEntryView: View {
                 AnalysisResultSheet(
                     analysis: analysis,
                     tank: tank,
-                    parameters: measurement.toAnalyzedParameters(temperatureUnit: temperatureUnit)
+                    parameters: measurement.toAnalyzedParameters(temperatureUnit: temperatureUnit, salinityUnit: salinityUnit)
                 )
             }
         }
@@ -117,23 +118,16 @@ struct MeasurementEntryView: View {
                 // Temperature with unit toggle
                 temperatureFieldWithToggle
 
-                HStack(spacing: BrutalistTheme.Spacing.md) {
-                    parameterField(
-                        label: "SALINITY",
-                        value: $measurement.salinity,
-                        unit: "SG",
-                        range: ParameterRange.salinity.range,
-                        placeholder: "1.025"
-                    )
+                // Salinity with unit toggle
+                salinityFieldWithToggle
 
-                    parameterField(
-                        label: "pH",
-                        value: $measurement.pH,
-                        unit: "",
-                        range: ParameterRange.pH.range,
-                        placeholder: "8.2"
-                    )
-                }
+                parameterField(
+                    label: "pH",
+                    value: $measurement.pH,
+                    unit: "",
+                    range: ParameterRange.pH.range,
+                    placeholder: "8.2"
+                )
             }
         }
     }
@@ -204,6 +198,90 @@ struct MeasurementEntryView: View {
                     .foregroundColor(temperatureUnit == .fahrenheit ? BrutalistTheme.Colors.background : BrutalistTheme.Colors.text)
                     .frame(width: 36, height: 28)
                     .background(temperatureUnit == .fahrenheit ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.background)
+            }
+        }
+        .brutalistBorder(width: 2, color: BrutalistTheme.Colors.text)
+    }
+
+    // MARK: - Salinity Field with Unit Toggle
+
+    private var salinityFieldWithToggle: some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
+            HStack {
+                Text("SALINITY")
+                    .font(BrutalistTheme.Typography.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+
+                Spacer()
+
+                salinityUnitToggle
+            }
+
+            HStack(spacing: BrutalistTheme.Spacing.sm) {
+                TextField(salinityUnit.placeholder, text: $measurement.salinity)
+                    .font(BrutalistTheme.Typography.body)
+                    .keyboardType(.decimalPad)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+
+                Text(salinityUnit.symbol)
+                    .font(BrutalistTheme.Typography.bodyBold)
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+            }
+            .padding(BrutalistTheme.Spacing.md)
+            .background(BrutalistTheme.Colors.background)
+            .brutalistCard(
+                borderColor: salinityBorderColor
+            )
+
+            Text("Target: \(salinityUnit.targetRange)")
+                .font(.system(size: 10))
+                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+
+            if let msg = salinityValidationMessage {
+                Text(msg)
+                    .font(.system(size: 10))
+                    .foregroundColor(BrutalistTheme.Colors.warning)
+            }
+        }
+    }
+
+    private var salinityBorderColor: Color {
+        if measurement.salinity.isEmpty { return BrutalistTheme.Colors.text }
+        guard Double(measurement.salinity.trimmingCharacters(in: .whitespaces)) != nil else { return BrutalistTheme.Colors.warning }
+        return isSalinityValid ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning
+    }
+
+    private var salinityUnitToggle: some View {
+        HStack(spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    if salinityUnit == .ppt, let ppt = Double(measurement.salinity) {
+                        measurement.salinity = String(format: "%.3f", SalinityUnit.ppt.toSG(ppt))
+                    }
+                    salinityUnit = .sg
+                }
+            } label: {
+                Text("SG")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundColor(salinityUnit == .sg ? BrutalistTheme.Colors.background : BrutalistTheme.Colors.text)
+                    .frame(width: 36, height: 28)
+                    .background(salinityUnit == .sg ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.background)
+            }
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    if salinityUnit == .sg, let sg = Double(measurement.salinity) {
+                        measurement.salinity = String(format: "%.1f", SalinityUnit.ppt.fromSG(sg))
+                    }
+                    salinityUnit = .ppt
+                }
+            } label: {
+                Text("ppt")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundColor(salinityUnit == .ppt ? BrutalistTheme.Colors.background : BrutalistTheme.Colors.text)
+                    .frame(width: 36, height: 28)
+                    .background(salinityUnit == .ppt ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.background)
             }
         }
         .brutalistBorder(width: 2, color: BrutalistTheme.Colors.text)
@@ -406,6 +484,17 @@ struct MeasurementEntryView: View {
 
     // MARK: - Computed Properties
 
+    /// Salinity is valid when empty or when numeric and within unit range (SG: 0.5–2, PPT: 30–40)
+    private var isSalinityValid: Bool {
+        guard let val = Double(measurement.salinity.trimmingCharacters(in: .whitespaces)), !measurement.salinity.isEmpty else { return true }
+        return salinityUnit.isValidRange(val)
+    }
+
+    private var salinityValidationMessage: String? {
+        guard let val = Double(measurement.salinity.trimmingCharacters(in: .whitespaces)), !measurement.salinity.isEmpty else { return nil }
+        return salinityUnit.validationMessage(for: val)
+    }
+
     private var hasAnyValue: Bool {
         !measurement.temperature.isEmpty ||
         !measurement.salinity.isEmpty ||
@@ -423,13 +512,18 @@ struct MeasurementEntryView: View {
         // Dismiss keyboard
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
+        if !measurement.salinity.isEmpty && !isSalinityValid {
+            errorMessage = salinityValidationMessage ?? "Salinity out of range"
+            showingError = true
+            return
+        }
         // Check if user has credits before starting analysis
         guard storeManager.hasCredits else {
             showingPurchaseCredits = true
             return
         }
 
-        let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
+        let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit, salinityUnit: salinityUnit)
         
         // Debug logging: Verify notes are captured from UI
         print("📝 UI notes field: '\(measurement.notes)'")
@@ -491,7 +585,12 @@ struct MeasurementEntryView: View {
         // Dismiss keyboard
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
-        let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit)
+        if !measurement.salinity.isEmpty && !isSalinityValid {
+            errorMessage = salinityValidationMessage ?? "Salinity out of range"
+            showingError = true
+            return
+        }
+        let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit, salinityUnit: salinityUnit)
 
         Task {
             await appState.submitMeasurement(measurementModel)
@@ -540,6 +639,69 @@ enum TemperatureUnit {
     }
 }
 
+// MARK: - Salinity Unit
+
+/// Salinity unit selection for user input (SG = specific gravity, PPT = parts per thousand)
+enum SalinityUnit {
+    case sg
+    case ppt
+
+    var symbol: String {
+        switch self {
+        case .sg: return "SG"
+        case .ppt: return "ppt"
+        }
+    }
+
+    var placeholder: String {
+        switch self {
+        case .sg: return "1.025"
+        case .ppt: return "35"
+        }
+    }
+
+    var targetRange: String {
+        switch self {
+        case .sg: return "1.023 - 1.026"
+        case .ppt: return "31 - 35"
+        }
+    }
+
+    /// Valid range for input validation: SG 0.5–2, PPT 30–40
+    func isValidRange(_ value: Double) -> Bool {
+        switch self {
+        case .sg: return value > 0.5 && value < 2
+        case .ppt: return value > 30 && value < 40
+        }
+    }
+
+    func validationMessage(for value: Double) -> String? {
+        switch self {
+        case .sg where value <= 0.5 || value >= 2:
+            return "SG must be between 0.5 and 2"
+        case .ppt where value <= 30 || value >= 40:
+            return "PPT must be between 30 and 40"
+        default: return nil
+        }
+    }
+
+    /// Convert value in this unit to SG (API/storage standard). 35 ppt ≈ 1.026 SG. Rounded to 4 decimal places.
+    func toSG(_ value: Double) -> Double {
+        switch self {
+        case .sg: return (value * 10000).rounded() / 10000
+        case .ppt: return ((1 + (value / 1326)) * 10000).rounded() / 10000
+        }
+    }
+
+    /// Convert SG to value in this unit for display. Rounded to 4 decimal places.
+    func fromSG(_ sg: Double) -> Double {
+        switch self {
+        case .sg: return (sg * 10000).rounded() / 10000
+        case .ppt: return ((sg - 1) * 1326 * 10000).rounded() / 10000
+        }
+    }
+}
+
 // MARK: - Measurement Draft
 
 /// A draft measurement with string values for form editing
@@ -556,17 +718,22 @@ struct MeasurementDraft {
     var nitrite: String = ""
     var notes: String = ""
 
-    func toMeasurement(tankId: UUID, temperatureUnit: TemperatureUnit = .celsius) -> Measurement {
+    func toMeasurement(tankId: UUID, temperatureUnit: TemperatureUnit = .celsius, salinityUnit: SalinityUnit = .sg) -> Measurement {
         // Convert temperature to Fahrenheit if entered in Celsius
         let tempInFahrenheit: Double? = {
             guard let temp = Double(temperature) else { return nil }
             return temperatureUnit.toFahrenheit(temp)
         }()
 
+        // Store salinity in the unit the user entered (SG or PPT); backend and prompt use salinity + salinity_unit
+        let salinityValue: Double? = Double(salinity)
+        let salinityUnitString: String? = salinityValue != nil ? (salinityUnit == .sg ? "SG" : "PPT") : nil
+
         return Measurement(
             tankId: tankId,
             temperature: tempInFahrenheit,
-            salinity: Double(salinity),
+            salinity: salinityValue,
+            salinityUnit: salinityUnitString,
             pH: Double(pH),
             alkalinity: Double(alkalinity),
             calcium: Double(calcium),
@@ -580,14 +747,21 @@ struct MeasurementDraft {
     }
     
     /// Convert to AnalyzedParameters for saving with analysis
-    func toAnalyzedParameters(temperatureUnit: TemperatureUnit = .celsius) -> AnalyzedParameters {
+    func toAnalyzedParameters(temperatureUnit: TemperatureUnit = .celsius, salinityUnit: SalinityUnit = .sg) -> AnalyzedParameters {
         let tempInFahrenheit: Double? = {
             guard let temp = Double(temperature) else { return nil }
             return temperatureUnit.toFahrenheit(temp)
         }()
+
+        // Convert salinity to SG if entered in PPT; round to 4 decimal places for API
+        let salinityInSG: Double? = {
+            guard let val = Double(salinity) else { return nil }
+            let sg = salinityUnit.toSG(val)
+            return (sg * 10000).rounded() / 10000
+        }()
         
         return AnalyzedParameters(
-            salinity: Double(salinity),
+            salinity: salinityInSG,
             temperature: tempInFahrenheit,
             ph: Double(pH),
             alkalinity: Double(alkalinity),

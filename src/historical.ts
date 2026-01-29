@@ -23,6 +23,7 @@ export interface Measurement {
   nitrate: number | null;
   phosphate: number | null;
   salinity: number | null;
+  salinity_unit: string | null;
   temperature: number | null;
   ammonia: number | null;
 }
@@ -143,7 +144,7 @@ export async function getMeasurementHistory(
   const query = `
     SELECT
       id, tank_id, measured_at, ph, alkalinity, calcium,
-      magnesium, nitrate, phosphate, salinity, temperature, ammonia
+      magnesium, nitrate, phosphate, salinity, salinity_unit, temperature, ammonia
     FROM measurements
     WHERE tank_id = ?
       AND measured_at >= ?
