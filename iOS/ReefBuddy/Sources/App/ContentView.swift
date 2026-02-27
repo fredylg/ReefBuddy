@@ -15,26 +15,18 @@ struct ContentView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Main Content
-            VStack(spacing: 0) {
-                // Header
-                headerView
+        VStack(spacing: 0) {
+            // Header
+            headerView
 
-                // Tab Content
-                tabContent
-                    .frame(maxHeight: .infinity)
-
-                // Spacer for tab bar
-                Color.clear
-                    .frame(height: 80)
-            }
-
-            // Custom Tab Bar
-            brutalistTabBar
+            // Tab Content
+            tabContent
+                .frame(maxHeight: .infinity)
         }
         .background(BrutalistTheme.Colors.background)
-        .ignoresSafeArea(.container, edges: .bottom)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            brutalistTabBar
+        }
     }
 
     // MARK: - Header
@@ -160,32 +152,43 @@ struct ContentView: View {
                 tabButton(for: tab)
             }
         }
-        .background(BrutalistTheme.Colors.background)
+        .padding(.vertical, 8)
+        .background(
+            BrutalistTheme.Colors.background
+                .ignoresSafeArea(edges: .bottom)
+        )
         .overlay(
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
                 .frame(height: BrutalistTheme.Borders.heavy),
             alignment: .top
         )
-        .padding(.bottom, 20) // Safe area padding
     }
 
     private func tabButton(for tab: Tab) -> some View {
         Button(action: {
             selectedTab = tab
         }) {
-            VStack(spacing: BrutalistTheme.Spacing.xs) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 22, weight: .bold))
+            VStack(spacing: 4) {
+                ZStack {
+                    Circle()
+                        .fill(selectedTab == tab ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text.opacity(0.08))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.45))
+                }
 
                 Text(tab.title)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.4))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            .foregroundColor(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.4))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, BrutalistTheme.Spacing.md)
-            .background(selectedTab == tab ? BrutalistTheme.Colors.action : Color.clear)
         }
+        .buttonStyle(.plain)
     }
 }
 
