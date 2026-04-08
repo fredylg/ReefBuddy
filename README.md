@@ -2,6 +2,18 @@
 
 A high-contrast, New Brutalist iOS app for saltwater aquarium hobbyists, powered by Cloudflare Workers and AI.
 
+## ✨ Features
+
+- **AI water chemistry analysis**: Parameter interpretation + dosing recommendations (`POST /analyze`)
+- **Credits model**: 3 free analyses per device + paid credit packs via IAP
+- **Tanks**: Create/list/update/delete tanks (`/api/tanks…`) with auth or device-based access (for onboarding)
+- **Measurements**: Record parameters + notes, server-side validation, alert evaluation (`POST /measurements`)
+- **History & charts**: Trends/averages/history endpoints for charting (`/tanks/:tankId/history|trends|averages`)
+- **Export**: CSV export of measurements (`GET /tanks/:tankId/export`)
+- **Livestock**: Manage livestock per tank + health logs (`/tanks/:tankId/livestock`, `/livestock/:id/logs`)
+- **Notifications**: Push token registration + per-parameter alert settings + notification history (`/notifications/*`)
+- **Saved analyses (iOS)**: Save AI results locally for later reference
+
 ## 🚨 Critical: Xcode Project Protection
 
 This project includes multiple layers of protection against Xcode crashes caused by UUID collisions and project file corruption:
@@ -32,6 +44,12 @@ This project includes multiple layers of protection against Xcode crashes caused
 - **Database:** Cloudflare D1 (SQLite)
 - **AI:** Claude 3.5 Sonnet via Cloudflare AI Gateway
 - **Auth:** Session-based with KV storage
+
+## 📱 iOS App Info
+
+- **Marketing version**: 1.0.4
+- **Deployment target**: iOS 17.0
+- **Bundle ID**: `au.com.aethers.reefbuddy`
 
 ## 🚀 Quick Start
 
@@ -89,7 +107,11 @@ See [`PLAN.md`](PLAN.md) for detailed development roadmap and current status.
 - Device-based credit tracking (3 free analyses, then IAP)
 - Input validation with Zod schemas
 - AI Gateway for LLM call caching
-- Apple receipt validation for purchases
+- **StoreKit 2 transaction verification** via signed transaction JWS (preferred)
+  - **Legacy receipt verification** is still present for backward compatibility but is deprecated
+- **Apple DeviceCheck** support for device attestation
+  - Optional in development
+  - Expected to be configured in production (backend rejects analysis if DeviceCheck isn’t configured)
 
 ## 💰 Pricing Model (In-App Purchase)
 

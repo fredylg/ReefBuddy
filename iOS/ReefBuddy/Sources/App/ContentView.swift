@@ -11,6 +11,7 @@ struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var storeManager: StoreManager
     @State private var selectedTab: Tab = .tanks
+    @State private var showingMaintenanceActions = false
 
     // MARK: - Body
 
@@ -26,6 +27,27 @@ struct ContentView: View {
         .background(BrutalistTheme.Colors.background)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             brutalistTabBar
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .maintenanceNotificationTapped)) { note in
+            let userInfo = note.userInfo ?? [:]
+            appState.handleMaintenanceNotification(userInfo: userInfo)
+            handleMaintenanceDeepLinkIfPossible()
+        }
+        .onChange(of: appState.maintenanceDeepLink) { _, _ in
+            handleMaintenanceDeepLinkIfPossible()
+        }
+        .sheet(isPresented: $showingMaintenanceActions) {
+            MaintenanceQuickActionsSheet(
+                deepLink: appState.maintenanceDeepLink,
+                onClose: {
+                    appState.maintenanceDeepLink = nil
+                    showingMaintenanceActions = false
+                },
+                onGoToMeasure: {
+                    selectedTab = .measure
+                    showingMaintenanceActions = false
+                }
+            )
         }
     }
 
@@ -118,7 +140,7 @@ struct ContentView: View {
             }
 
         case .settings:
-            SettingsView()
+            NavigationStack { SettingsView() }
         }
     }
 
@@ -189,6 +211,82 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Maintenance Quick Actions
+
+private extension ContentView {
+    func handleMaintenanceDeepLinkIfPossible() {
+        guard let link = appState.maintenanceDeepLink else { return }
+        if let tank = appState.tanks.first(where: { $0.id == link.tankId }) {
+            appState.selectTank(tank)
+        }
+        // Bring user into tank context and show actions
+        selectedTab = .measure
+        showingMaintenanceActions = true
+    }
+}
+
+private struct MaintenanceQuickActionsSheet: View {
+    let deepLink: MaintenanceDeepLink?
+    let onClose: () -> Void
+    let onGoToMeasure: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.lg) {
+            HStack {
+                Text("MAINTENANCE")
+                    .font(BrutalistTheme.Typography.headerMedium)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+                Spacer()
+                Button("CLOSE") { onClose() }
+                    .font(BrutalistTheme.Typography.button)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+            }
+
+            Text(subtitle)
+                .font(BrutalistTheme.Typography.body)
+                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+
+            BrutalistButton.primary(primaryActionTitle, isFullWidth: true) {
+                onGoToMeasure()
+            }
+
+            BrutalistButton.secondary("RUN AI ANALYSIS", isFullWidth: true) {
+                onGoToMeasure()
+            }
+
+            BrutalistButton.secondary("LOG WATER CHANGE", isFullWidth: true) {
+                onGoToMeasure()
+            }
+        }
+        .padding(BrutalistTheme.Spacing.lg)
+        .background(BrutalistTheme.Colors.background)
+    }
+
+    private var subtitle: String {
+        guard let deepLink else { return "Quick actions for your reminder." }
+        switch deepLink.type {
+        case .testing:
+            return "Time to test your water."
+        case .waterChange:
+            return "Time for a water change."
+        case .filter:
+            return "Time to service your filter."
+        }
+    }
+
+    private var primaryActionTitle: String {
+        guard let deepLink else { return "OPEN TANK" }
+        switch deepLink.type {
+        case .testing:
+            return "ENTER TEST RESULTS"
+        case .waterChange:
+            return "OPEN TANK"
+        case .filter:
+            return "OPEN TANK"
+        }
     }
 }
 
@@ -285,6 +383,16 @@ struct SettingsView: View {
                     }
                 }
 
+                // Maintenance Section
+                settingsSection(title: "MAINTENANCE", icon: "calendar.badge.checkmark") {
+                    settingsNavigationRow(
+                        icon: "calendar.badge.checkmark",
+                        title: "Maintenance Schedules",
+                        subtitle: "Local reminders on this device",
+                        destination: MaintenanceSchedulesListView()
+                    )
+                }
+
                 // Data Section
                 settingsSection(title: "DATA", icon: "externaldrive.fill") {
                     settingsRow(
@@ -311,7 +419,7 @@ struct SettingsView: View {
                 // About Section
                 settingsSection(title: "ABOUT", icon: "info.circle.fill") {
                     VStack(spacing: 0) {
-                        aboutRow(label: "Version", value: "1.0.3")
+                        aboutRow(label: "Version", value: "1.0.4")
                         Rectangle()
                             .fill(BrutalistTheme.Colors.text.opacity(0.1))
                             .frame(height: 1)
@@ -409,6 +517,40 @@ struct SettingsView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
+            HStack(spacing: BrutalistTheme.Spacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(BrutalistTheme.Typography.bodyBold)
+                        .foregroundColor(BrutalistTheme.Colors.text)
+
+                    Text(subtitle)
+                        .font(BrutalistTheme.Typography.caption)
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+            }
+            .padding(BrutalistTheme.Spacing.md)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func settingsNavigationRow<Destination: View>(
+        icon: String,
+        title: String,
+        subtitle: String,
+        destination: Destination
+    ) -> some View {
+        NavigationLink(destination: destination) {
             HStack(spacing: BrutalistTheme.Spacing.md) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .bold))

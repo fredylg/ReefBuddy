@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 // MARK: - ReefBuddy App
 
@@ -10,8 +11,10 @@ struct ReefBuddyApp: App {
 
     // MARK: - State
 
+    @UIApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @StateObject private var storeManager = StoreManager()
     @StateObject private var analysisStorage = AnalysisStorage()
+    @StateObject private var scheduleStore = MaintenanceScheduleStore()
     @StateObject private var appState: AppState
 
     init() {
@@ -26,8 +29,46 @@ struct ReefBuddyApp: App {
                 .environmentObject(appState)
                 .environmentObject(storeManager)
                 .environmentObject(analysisStorage)
+                .environmentObject(scheduleStore)
+                .onAppear {
+                    appDelegate.configureNotifications()
+                    Task {
+                        await MaintenanceNotificationService.shared.scheduleAll(scheduleStore.activeSchedules)
+                        await scheduleStore.syncPendingBestEffort()
+                    }
+                }
         }
     }
+}
+
+// MARK: - App Delegate (Notifications)
+
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func configureNotifications() {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        NotificationCenter.default.post(
+            name: .maintenanceNotificationTapped,
+            object: nil,
+            userInfo: response.notification.request.content.userInfo
+        )
+    }
+}
+
+extension Notification.Name {
+    static let maintenanceNotificationTapped = Notification.Name("MaintenanceNotificationTapped")
 }
 
 // MARK: - App State
@@ -61,6 +102,9 @@ final class AppState: ObservableObject {
 
     /// Show purchase credits sheet when user runs out of credits
     @Published var showPurchaseCredits: Bool = false
+
+    /// Deep link from maintenance reminder notification
+    @Published var maintenanceDeepLink: MaintenanceDeepLink?
 
     // MARK: - Dependencies
 
@@ -114,6 +158,19 @@ final class AppState: ObservableObject {
             if let tank = selectedTank {
                 measurementStorage.save(measurements, for: tank.id)
             }
+
+    func handleMaintenanceNotification(userInfo: [AnyHashable: Any]) {
+        guard let kind = userInfo["kind"] as? String, kind == "maintenance" else { return }
+        guard let scheduleIdStr = userInfo["scheduleId"] as? String,
+              let tankIdStr = userInfo["tankId"] as? String,
+              let typeStr = userInfo["type"] as? String,
+              let scheduleId = UUID(uuidString: scheduleIdStr),
+              let tankId = UUID(uuidString: tankIdStr),
+              let type = MaintenanceSchedule.ScheduleType(rawValue: typeStr)
+        else { return }
+
+        maintenanceDeepLink = MaintenanceDeepLink(scheduleId: scheduleId, tankId: tankId, type: type)
+    }
         }
         #endif
     }

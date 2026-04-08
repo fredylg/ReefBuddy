@@ -146,6 +146,54 @@ actor APIClient {
         try validateResponse(response)
     }
 
+    // MARK: - Maintenance Schedules (config sync only)
+
+    func createMaintenanceSchedule(_ schedule: MaintenanceSchedule) async throws -> MaintenanceSchedule {
+        let url = baseURL.appendingPathComponent("maintenance/schedules")
+        var request = makeRequest(url: url, method: "POST")
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+
+        let body = MaintenanceScheduleUpsertRequest(schedule: schedule, includeId: true)
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let wrapper = try decoder.decode(MaintenanceScheduleUpsertResponse.self, from: data)
+        return wrapper.schedule
+    }
+
+    func updateMaintenanceSchedule(_ schedule: MaintenanceSchedule) async throws -> MaintenanceSchedule {
+        let url = baseURL.appendingPathComponent("maintenance/schedules/\(schedule.id.uuidString)")
+        var request = makeRequest(url: url, method: "PUT")
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+
+        let body = MaintenanceScheduleUpsertRequest(schedule: schedule, includeId: false)
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let wrapper = try decoder.decode(MaintenanceScheduleUpsertResponse.self, from: data)
+        return wrapper.schedule
+    }
+
+    func deleteMaintenanceSchedule(id: UUID) async throws {
+        let url = baseURL.appendingPathComponent("maintenance/schedules/\(id.uuidString)")
+        let request = makeRequest(url: url, method: "DELETE")
+
+        let (_, response) = try await session.data(for: request)
+        try validateResponse(response)
+    }
+
     // MARK: - Measurement Endpoints
 
     /// Fetch all measurements for a tank
@@ -668,6 +716,39 @@ struct APIResponse<T: Decodable>: Decodable {
     let success: Bool
     let data: T
     let message: String?
+}
+
+// MARK: - Maintenance Schedule API Models
+
+private struct MaintenanceScheduleUpsertRequest: Codable {
+    var id: String?
+    let tankId: String
+    let type: String
+    let enabled: Bool
+    let scheduleKind: String
+    let intervalDays: Int?
+    let weekdays: [Int]?
+    let timeLocal: String
+    let timezone: String
+    let notes: String?
+
+    init(schedule: MaintenanceSchedule, includeId: Bool) {
+        self.id = includeId ? schedule.id.uuidString : nil
+        self.tankId = schedule.tankId.uuidString
+        self.type = schedule.type.rawValue
+        self.enabled = schedule.enabled
+        self.scheduleKind = schedule.scheduleKind.rawValue
+        self.intervalDays = schedule.intervalDays
+        self.weekdays = schedule.weekdays
+        self.timeLocal = schedule.timeLocal
+        self.timezone = schedule.timezone
+        self.notes = schedule.notes
+    }
+}
+
+private struct MaintenanceScheduleUpsertResponse: Codable {
+    let success: Bool
+    let schedule: MaintenanceSchedule
 }
 
 // MARK: - Credits Models

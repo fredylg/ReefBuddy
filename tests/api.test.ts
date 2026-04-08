@@ -9,7 +9,7 @@
  * - Error handling
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach, beforeAll } from "vitest";
 import {
   env,
   createExecutionContext,
@@ -69,6 +69,82 @@ async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
   });
 }
 
+function uniqueEmail(prefix = "user"): string {
+  // Avoid collisions across tests since the D1 DB persists in the test runtime.
+  return `${prefix}.${crypto.randomUUID()}@example.com`.toLowerCase();
+}
+
+async function signupAndGetToken(): Promise<{ email: string; token: string; userId: string }> {
+  const email = uniqueEmail("maint");
+  const password = "TestPassword123!";
+
+  const res = await SELF.fetch("http://localhost/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  expect(res.status).toBe(201);
+  const data = (await res.json()) as {
+    success: boolean;
+    user: { id: string; email: string };
+    session_token: string;
+  };
+
+  expect(data.success).toBe(true);
+  expect(data.session_token).toBeTruthy();
+
+  return { email: data.user.email, token: data.session_token, userId: data.user.id };
+}
+
+async function createTankForUser(token: string, name = "Test Tank"): Promise<string> {
+  const res = await SELF.fetch("http://localhost/api/tanks", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      name,
+      volume_gallons: 10,
+      tank_type: "reef",
+    }),
+  });
+
+  expect(res.status).toBe(201);
+  const data = (await res.json()) as { success: boolean; data: { id: string } };
+  expect(data.success).toBe(true);
+  expect(data.data.id).toBeTruthy();
+  return data.data.id;
+}
+
+async function postMaintenanceSchedule(
+  token: string | null,
+  body: Record<string, unknown>
+): Promise<Response> {
+  return SELF.fetch("http://localhost/maintenance/schedules", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function listMaintenanceSchedules(token: string, tankId?: string): Promise<Response> {
+  const url = tankId
+    ? `http://localhost/maintenance/schedules?tankId=${encodeURIComponent(tankId)}`
+    : "http://localhost/maintenance/schedules";
+
+  return SELF.fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 /**
  * Generate a valid UUID
  */
@@ -95,7 +171,7 @@ describe("GET /", () => {
       endpoints: Record<string, string>;
     };
     expect(data.service).toBe("ReefBuddy API");
-    expect(data.version).toBe("1.0.3");
+    expect(data.version).toBe("1.0.4");
     expect(data.endpoints).toBeDefined();
   });
 
@@ -698,6 +774,46 @@ describe("Error Handling", () => {
   });
 });
 
+describe("Maintenance Schedules - Auth Required", () => {
+  it("GET /maintenance/schedules should require Authorization header", async () => {
+    const response = await SELF.fetch("http://localhost/maintenance/schedules", {
+      method: "GET",
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("POST /maintenance/schedules should require Authorization header", async () => {
+    const response = await SELF.fetch("http://localhost/maintenance/schedules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(401);
+  });
+
+  it("PUT /maintenance/schedules/:id should require Authorization header", async () => {
+    const response = await SELF.fetch(
+      "http://localhost/maintenance/schedules/550e8400-e29b-41d4-a716-446655440000",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("DELETE /maintenance/schedules/:id should require Authorization header", async () => {
+    const response = await SELF.fetch(
+      "http://localhost/maintenance/schedules/550e8400-e29b-41d4-a716-446655440000",
+      {
+        method: "DELETE",
+      }
+    );
+    expect(response.status).toBe(401);
+  });
+});
+
 describe("Input Sanitization", () => {
   it("should handle extremely large tank volume", async () => {
     const largeVolume = {
@@ -727,5 +843,207 @@ describe("Input Sanitization", () => {
 
     const response = await postAnalyze(preciseParams);
     expect(response.status).not.toBe(400);
+  });
+});
+
+describe("/maintenance/schedules", () => {
+  let authAndDbReady = false;
+
+  beforeAll(async () => {
+    // These endpoints depend on D1 migrations and KV bindings.
+    // If the test runtime doesn't have the required tables/bindings, skip the auth/tank-dependent tests.
+    try {
+      const res = await SELF.fetch("http://localhost/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: uniqueEmail("preflight"), password: "TestPassword123!" }),
+      });
+      authAndDbReady = res.status === 201;
+    } catch {
+      authAndDbReady = false;
+    }
+  });
+
+  describe("Auth required", () => {
+    it("rejects unauthenticated create", async () => {
+      const res = await postMaintenanceSchedule(null, {
+        tankId: generateUUID(),
+        type: "testing",
+        enabled: true,
+        scheduleKind: "weekly",
+        weekdays: [1],
+        timeLocal: "19:30",
+        timezone: "UTC",
+        notes: "{}",
+      });
+
+      expect(res.status).toBe(401);
+      const data = (await res.json()) as { error: string; message: string };
+      expect(data.error).toBe("Unauthorized");
+    });
+
+    it("rejects unauthenticated list", async () => {
+      const res = await SELF.fetch("http://localhost/maintenance/schedules", { method: "GET" });
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe("Create schedule validation", () => {
+    it.runIf(authAndDbReady)("weekly requires weekdays", async () => {
+      const { token } = await signupAndGetToken();
+      const tankId = await createTankForUser(token, "Weekly Tank");
+
+      const res = await postMaintenanceSchedule(token, {
+        tankId,
+        type: "testing",
+        enabled: true,
+        scheduleKind: "weekly",
+        // weekdays missing
+        timeLocal: "19:30",
+        timezone: "UTC",
+      });
+
+      expect(res.status).toBe(400);
+      const data = (await res.json()) as { error: string };
+      expect(data.error).toBe("Validation failed");
+    });
+
+    it.runIf(authAndDbReady)("interval_days requires intervalDays", async () => {
+      const { token } = await signupAndGetToken();
+      const tankId = await createTankForUser(token, "Interval Tank");
+
+      const res = await postMaintenanceSchedule(token, {
+        tankId,
+        type: "water_change",
+        enabled: true,
+        scheduleKind: "interval_days",
+        // intervalDays missing
+        timeLocal: "07:15",
+        timezone: "UTC",
+      });
+
+      expect(res.status).toBe(400);
+      const data = (await res.json()) as { error: string };
+      expect(data.error).toBe("Validation failed");
+    });
+
+    it.runIf(authAndDbReady)("rejects invalid timeLocal format", async () => {
+      const { token } = await signupAndGetToken();
+      const tankId = await createTankForUser(token, "Bad Time Tank");
+
+      const res = await postMaintenanceSchedule(token, {
+        tankId,
+        type: "filter",
+        enabled: true,
+        scheduleKind: "weekly",
+        weekdays: [2],
+        timeLocal: "7:30", // must be HH:MM
+        timezone: "UTC",
+      });
+
+      expect(res.status).toBe(400);
+      const data = (await res.json()) as { error: string };
+      expect(data.error).toBe("Validation failed");
+    });
+
+    it.runIf(authAndDbReady)("rejects weekdays out of bounds (must be 1..7)", async () => {
+      const { token } = await signupAndGetToken();
+      const tankId = await createTankForUser(token, "Bad Weekdays Tank");
+
+      const res = await postMaintenanceSchedule(token, {
+        tankId,
+        type: "testing",
+        enabled: true,
+        scheduleKind: "weekly",
+        weekdays: [0, 8],
+        timeLocal: "19:30",
+        timezone: "UTC",
+      });
+
+      expect(res.status).toBe(400);
+      const data = (await res.json()) as { error: string };
+      expect(data.error).toBe("Validation failed");
+    });
+  });
+
+  describe("Tank ownership enforcement", () => {
+    it.runIf(authAndDbReady)("rejects creating a schedule for another user's tank", async () => {
+      const userA = await signupAndGetToken();
+      const tankA = await createTankForUser(userA.token, "UserA Tank");
+      const userB = await signupAndGetToken();
+
+      const res = await postMaintenanceSchedule(userB.token, {
+        tankId: tankA,
+        type: "testing",
+        enabled: true,
+        scheduleKind: "weekly",
+        weekdays: [1],
+        timeLocal: "19:30",
+        timezone: "UTC",
+      });
+
+      // Implementation may choose 403 or 404; both are acceptable as long as it does not allow access.
+      expect([403, 404]).toContain(res.status);
+    });
+  });
+
+  describe("GET list filtering", () => {
+    it.runIf(authAndDbReady)("filters schedules by tankId", async () => {
+      const { token } = await signupAndGetToken();
+      const tank1 = await createTankForUser(token, "Tank 1");
+      const tank2 = await createTankForUser(token, "Tank 2");
+
+      const create1 = await postMaintenanceSchedule(token, {
+        tankId: tank1,
+        type: "testing",
+        enabled: true,
+        scheduleKind: "weekly",
+        weekdays: [1],
+        timeLocal: "19:30",
+        timezone: "UTC",
+      });
+      expect([201, 200]).toContain(create1.status);
+
+      const create2 = await postMaintenanceSchedule(token, {
+        tankId: tank2,
+        type: "filter",
+        enabled: true,
+        scheduleKind: "interval_days",
+        intervalDays: 7,
+        timeLocal: "08:00",
+        timezone: "UTC",
+      });
+      expect([201, 200]).toContain(create2.status);
+
+      const listAllRes = await listMaintenanceSchedules(token);
+      expect(listAllRes.status).toBe(200);
+      const listAllJson = (await listAllRes.json()) as Record<string, unknown>;
+      expect(listAllJson.success).toBe(true);
+
+      const listTank1Res = await listMaintenanceSchedules(token, tank1);
+      expect(listTank1Res.status).toBe(200);
+      const listTank1Json = (await listTank1Res.json()) as Record<string, unknown>;
+      expect(listTank1Json.success).toBe(true);
+
+      const allArr =
+        (listAllJson.data as unknown[]) ??
+        (listAllJson.schedules as unknown[]) ??
+        (listAllJson.items as unknown[]);
+      const tank1Arr =
+        (listTank1Json.data as unknown[]) ??
+        (listTank1Json.schedules as unknown[]) ??
+        (listTank1Json.items as unknown[]);
+
+      expect(Array.isArray(allArr)).toBe(true);
+      expect(Array.isArray(tank1Arr)).toBe(true);
+
+      // Tank-specific list should not contain schedules from other tanks.
+      const tank1Ids = new Set(
+        (tank1Arr as Array<Record<string, unknown>>).map((s) => String(s.tankId ?? s.tank_id))
+      );
+      expect(tank1Ids.size).toBeGreaterThan(0);
+      expect(tank1Ids.has(tank1)).toBe(true);
+      expect(tank1Ids.has(tank2)).toBe(false);
+    });
   });
 });

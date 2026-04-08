@@ -234,6 +234,116 @@ const TankUpdateSchema = z.object({
 });
 
 /**
+ * Maintenance schedules (configuration storage only; local notifications are on-device)
+ */
+const MaintenanceScheduleTypeEnum = z.enum(['water_change', 'filter', 'testing']);
+const MaintenanceScheduleKindEnum = z.enum(['interval_days', 'weekly']);
+
+const TimeLocalSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, { message: 'timeLocal must be in HH:MM format' })
+  .refine((v) => {
+    const [hh, mm] = v.split(':').map((n) => Number(n));
+    return Number.isInteger(hh) && Number.isInteger(mm) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+  }, { message: 'timeLocal must be a valid time' });
+
+const MaintenanceScheduleCreateSchema = z
+  .object({
+    tankId: z.string().uuid(),
+    type: MaintenanceScheduleTypeEnum,
+    enabled: z.boolean().optional().default(true),
+    scheduleKind: MaintenanceScheduleKindEnum,
+    intervalDays: z.number().int().min(1).optional(),
+    weekdays: z.array(z.number().int().min(1).max(7)).min(1).optional(),
+    timeLocal: TimeLocalSchema,
+    timezone: z.string().min(1),
+    notes: z.string().max(10000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.scheduleKind === 'interval_days') {
+      if (data.intervalDays == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'intervalDays is required when scheduleKind=interval_days',
+          path: ['intervalDays'],
+        });
+      }
+      if (data.weekdays != null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'weekdays is not allowed when scheduleKind=interval_days',
+          path: ['weekdays'],
+        });
+      }
+      return;
+    }
+
+    // weekly
+    if (data.weekdays == null || data.weekdays.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'weekdays is required when scheduleKind=weekly',
+        path: ['weekdays'],
+      });
+    }
+    if (data.intervalDays != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'intervalDays is not allowed when scheduleKind=weekly',
+        path: ['intervalDays'],
+      });
+    }
+  });
+
+const MaintenanceScheduleUpdateSchema = z
+  .object({
+    tankId: z.string().uuid().optional(),
+    type: MaintenanceScheduleTypeEnum.optional(),
+    enabled: z.boolean().optional(),
+    scheduleKind: MaintenanceScheduleKindEnum.optional(),
+    intervalDays: z.number().int().min(1).optional(),
+    weekdays: z.array(z.number().int().min(1).max(7)).min(1).optional(),
+    timeLocal: TimeLocalSchema.optional(),
+    timezone: z.string().min(1).optional(),
+    notes: z.string().max(10000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Only enforce conditional constraints if scheduleKind is being set in this update,
+    // or if the update tries to set intervalDays/weekdays (must be consistent).
+    const kind = data.scheduleKind;
+
+    if (kind === 'interval_days') {
+      if (data.weekdays != null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'weekdays is not allowed when scheduleKind=interval_days',
+          path: ['weekdays'],
+        });
+      }
+      return;
+    }
+
+    if (kind === 'weekly') {
+      if (data.intervalDays != null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'intervalDays is not allowed when scheduleKind=weekly',
+          path: ['intervalDays'],
+        });
+      }
+      return;
+    }
+
+    if (data.intervalDays != null && data.weekdays != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide only one of intervalDays or weekdays',
+        path: ['intervalDays'],
+      });
+    }
+  });
+
+/**
  * Schema for credit purchase request (Legacy - deprecated)
  */
 const CreditPurchaseSchema = z.object({
@@ -1659,6 +1769,362 @@ async function handleDeleteTank(
 }
 
 // =============================================================================
+// MAINTENANCE SCHEDULES HANDLERS
+// =============================================================================
+
+type MaintenanceScheduleType = z.infer<typeof MaintenanceScheduleTypeEnum>;
+type MaintenanceScheduleKind = z.infer<typeof MaintenanceScheduleKindEnum>;
+
+interface MaintenanceScheduleRecord {
+  id: string;
+  user_id: string;
+  tank_id: string | null;
+  type: MaintenanceScheduleType;
+  enabled: number;
+  schedule_kind: MaintenanceScheduleKind;
+  interval_days: number | null;
+  weekdays: string | null;
+  time_local: string;
+  timezone: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function weekdaysStringToArray(weekdays: string | null): number[] | null {
+  if (!weekdays) return null;
+  const parts = weekdays
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => Number(s))
+    .filter((n) => Number.isInteger(n));
+  if (parts.length === 0) return null;
+  return parts;
+}
+
+function weekdaysArrayToString(weekdays: number[] | undefined): string | null {
+  if (!weekdays || weekdays.length === 0) return null;
+  const normalized = Array.from(new Set(weekdays)).sort((a, b) => a - b);
+  return normalized.join(',');
+}
+
+function scheduleRecordToApi(record: MaintenanceScheduleRecord) {
+  return {
+    id: record.id,
+    tankId: record.tank_id,
+    type: record.type,
+    enabled: record.enabled === 1,
+    scheduleKind: record.schedule_kind,
+    intervalDays: record.interval_days,
+    weekdays: weekdaysStringToArray(record.weekdays),
+    timeLocal: record.time_local,
+    timezone: record.timezone,
+    notes: record.notes,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+  };
+}
+
+async function getMaintenanceScheduleForUser(
+  env: Env,
+  userId: string,
+  scheduleId: string
+): Promise<MaintenanceScheduleRecord | null> {
+  const normalizedId = scheduleId.toLowerCase();
+  const row = (await env.DB.prepare(
+    'SELECT * FROM maintenance_schedules WHERE LOWER(id) = ? AND user_id = ?'
+  )
+    .bind(normalizedId, userId)
+    .first()) as MaintenanceScheduleRecord | null;
+  return row;
+}
+
+/**
+ * GET /maintenance/schedules?tankId=<uuid?>
+ */
+async function handleListMaintenanceSchedules(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const tankId = url.searchParams.get('tankId');
+
+    if (tankId) {
+      const parsed = z.string().uuid().safeParse(tankId);
+      if (!parsed.success) {
+        return jsonResponse(
+          { error: 'Validation failed', details: parsed.error.flatten() },
+          400
+        );
+      }
+
+      const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
+      if (tankResult instanceof Response) return tankResult;
+
+      const result = await env.DB.prepare(
+        `SELECT * FROM maintenance_schedules
+         WHERE user_id = ? AND tank_id = ?
+         ORDER BY created_at DESC`
+      )
+        .bind(auth.userId, tankResult.id)
+        .all();
+
+      const schedules = (result.results as MaintenanceScheduleRecord[]).map(scheduleRecordToApi);
+      return jsonResponse({ success: true, schedules });
+    }
+
+    const result = await env.DB.prepare(
+      `SELECT * FROM maintenance_schedules
+       WHERE user_id = ?
+       ORDER BY created_at DESC`
+    )
+      .bind(auth.userId)
+      .all();
+
+    const schedules = (result.results as MaintenanceScheduleRecord[]).map(scheduleRecordToApi);
+    return jsonResponse({ success: true, schedules });
+  } catch (error) {
+    console.error('List maintenance schedules error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * POST /maintenance/schedules
+ */
+async function handleCreateMaintenanceSchedule(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext
+): Promise<Response> {
+  try {
+    const body = await request.json();
+    const validationResult = MaintenanceScheduleCreateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        { error: 'Validation failed', details: validationResult.error.flatten() },
+        400
+      );
+    }
+
+    const data = validationResult.data;
+    const tankResult = await verifyTankOwnership(env, data.tankId, auth.userId);
+    if (tankResult instanceof Response) return tankResult;
+
+    const scheduleId = generateUUID();
+    const now = new Date().toISOString();
+
+    const weekdays = data.scheduleKind === 'weekly' ? weekdaysArrayToString(data.weekdays) : null;
+    const intervalDays = data.scheduleKind === 'interval_days' ? data.intervalDays! : null;
+
+    await env.DB.prepare(
+      `INSERT INTO maintenance_schedules
+       (id, user_id, tank_id, type, enabled, schedule_kind, interval_days, weekdays, time_local, timezone, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(
+        scheduleId,
+        auth.userId,
+        tankResult.id,
+        data.type,
+        data.enabled ? 1 : 0,
+        data.scheduleKind,
+        intervalDays,
+        weekdays,
+        data.timeLocal,
+        data.timezone,
+        data.notes ?? null,
+        now,
+        now
+      )
+      .run();
+
+    const created = await getMaintenanceScheduleForUser(env, auth.userId, scheduleId);
+    if (!created) {
+      return errorResponse('Internal server error', 'Failed to create schedule', 500);
+    }
+
+    return jsonResponse({ success: true, schedule: scheduleRecordToApi(created) }, 201);
+  } catch (error) {
+    console.error('Create maintenance schedule error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * PUT /maintenance/schedules/:id
+ */
+async function handleUpdateMaintenanceSchedule(
+  request: Request,
+  env: Env,
+  auth: AuthenticatedContext,
+  scheduleId: string
+): Promise<Response> {
+  try {
+    const existing = await getMaintenanceScheduleForUser(env, auth.userId, scheduleId);
+    if (!existing) {
+      return errorResponse('Not found', 'Schedule not found', 404);
+    }
+
+    const body = await request.json();
+    const validationResult = MaintenanceScheduleUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      return jsonResponse(
+        { error: 'Validation failed', details: validationResult.error.flatten() },
+        400
+      );
+    }
+    const data = validationResult.data;
+
+    // Determine the effective scheduleKind for conditional validation
+    const nextKind: MaintenanceScheduleKind = (data.scheduleKind ?? existing.schedule_kind) as MaintenanceScheduleKind;
+    const nextIntervalDays = data.intervalDays ?? existing.interval_days ?? null;
+    const nextWeekdaysArray = data.weekdays ?? weekdaysStringToArray(existing.weekdays) ?? null;
+
+    if (nextKind === 'interval_days') {
+      if (nextIntervalDays == null) {
+        return jsonResponse(
+          {
+            error: 'Validation failed',
+            details: { formErrors: [], fieldErrors: { intervalDays: ['intervalDays is required when scheduleKind=interval_days'] } },
+          },
+          400
+        );
+      }
+    } else {
+      if (!nextWeekdaysArray || nextWeekdaysArray.length === 0) {
+        return jsonResponse(
+          {
+            error: 'Validation failed',
+            details: { formErrors: [], fieldErrors: { weekdays: ['weekdays is required when scheduleKind=weekly'] } },
+          },
+          400
+        );
+      }
+    }
+
+    // If tankId is changing, verify ownership
+    let tankIdToStore = existing.tank_id;
+    if (data.tankId) {
+      const tankResult = await verifyTankOwnership(env, data.tankId, auth.userId);
+      if (tankResult instanceof Response) return tankResult;
+      tankIdToStore = tankResult.id;
+    }
+
+    const updates: string[] = ['updated_at = ?'];
+    const values: (string | number | null)[] = [new Date().toISOString()];
+
+    if (data.type !== undefined) {
+      updates.push('type = ?');
+      values.push(data.type);
+    }
+    if (data.enabled !== undefined) {
+      updates.push('enabled = ?');
+      values.push(data.enabled ? 1 : 0);
+    }
+    if (data.timezone !== undefined) {
+      updates.push('timezone = ?');
+      values.push(data.timezone);
+    }
+    if (data.timeLocal !== undefined) {
+      updates.push('time_local = ?');
+      values.push(data.timeLocal);
+    }
+    if (data.notes !== undefined) {
+      updates.push('notes = ?');
+      values.push(data.notes ?? null);
+    }
+    if (data.scheduleKind !== undefined) {
+      updates.push('schedule_kind = ?');
+      values.push(data.scheduleKind);
+    }
+
+    // Persist tank change if requested
+    if (data.tankId !== undefined) {
+      updates.push('tank_id = ?');
+      values.push(tankIdToStore);
+    }
+
+    // Recurrence fields: normalize to chosen kind
+    if (data.scheduleKind !== undefined || data.intervalDays !== undefined || data.weekdays !== undefined) {
+      if (nextKind === 'interval_days') {
+        updates.push('interval_days = ?');
+        values.push(nextIntervalDays);
+        updates.push('weekdays = ?');
+        values.push(null);
+      } else {
+        updates.push('interval_days = ?');
+        values.push(null);
+        updates.push('weekdays = ?');
+        values.push(weekdaysArrayToString(nextWeekdaysArray ?? undefined));
+      }
+    }
+
+    values.push(scheduleId.toLowerCase(), auth.userId);
+
+    await env.DB.prepare(
+      `UPDATE maintenance_schedules SET ${updates.join(', ')} WHERE LOWER(id) = ? AND user_id = ?`
+    )
+      .bind(...values)
+      .run();
+
+    const updated = await getMaintenanceScheduleForUser(env, auth.userId, scheduleId);
+    if (!updated) {
+      return errorResponse('Internal server error', 'Failed to load updated schedule', 500);
+    }
+
+    return jsonResponse({ success: true, schedule: scheduleRecordToApi(updated) });
+  } catch (error) {
+    console.error('Update maintenance schedule error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+/**
+ * DELETE /maintenance/schedules/:id
+ */
+async function handleDeleteMaintenanceSchedule(
+  env: Env,
+  auth: AuthenticatedContext,
+  scheduleId: string
+): Promise<Response> {
+  try {
+    const existing = await getMaintenanceScheduleForUser(env, auth.userId, scheduleId);
+    if (!existing) {
+      return errorResponse('Not found', 'Schedule not found', 404);
+    }
+
+    await env.DB.prepare('DELETE FROM maintenance_schedules WHERE LOWER(id) = ? AND user_id = ?')
+      .bind(scheduleId.toLowerCase(), auth.userId)
+      .run();
+
+    return jsonResponse({ success: true });
+  } catch (error) {
+    console.error('Delete maintenance schedule error:', error);
+    return errorResponse(
+      'Internal server error',
+      error instanceof Error ? error.message : 'Unknown error',
+      500
+    );
+  }
+}
+
+// =============================================================================
 // MEASUREMENT HANDLERS
 // =============================================================================
 
@@ -1898,7 +2364,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
           return jsonResponse(
             {
               error: 'Device verification required',
-              message: 'Please update to the latest app version (1.0.3 or later) to continue using this service.',
+              message: 'Please update to the latest app version (1.0.4 or later) to continue using this service.',
               code: 'DEVICE_CHECK_REQUIRED',
             },
             403
@@ -2089,7 +2555,7 @@ function handleHealth(env: Env): Response {
   return jsonResponse({
     status: 'healthy',
     service: 'ReefBuddy API',
-    version: '1.0.3',
+    version: '1.0.4',
     environment: env.ENVIRONMENT || 'unknown',
     timestamp: new Date().toISOString(),
   });
@@ -2831,7 +3297,7 @@ async function handleJWSPurchase(
     );
   }
 
-  // TEMPORARY: Skip JWS verification for debugging  // Parse JWS payload first to check environment
+  // Parse JWS payload first to check environment. Sandbox/Xcode skip verification by design; Production always verifies via verifyAppleJWS.
   let jwsPayload: JWSTransactionPayload;
   try {
     const parts = jwsRepresentation.split('.');
@@ -2894,7 +3360,6 @@ async function handleJWSPurchase(
       {
         error: 'Product mismatch',
         message: `JWS product (${payload.productId}) does not match requested product (${productId})`,
-        debug: { jwsProductId: payload.productId, providedProductId: productId }
       },
       400
     );
@@ -2909,7 +3374,6 @@ async function handleJWSPurchase(
       {
         error: 'Invalid bundle ID',
         message: `Transaction bundle ID (${payload.bundleId}) does not match expected bundle ID (${expectedBundleId})`,
-        debug: { jwsBundleId: payload.bundleId, expectedBundleId: expectedBundleId }
       },
       400
     );
@@ -4322,7 +4786,7 @@ export default {
       case pathname === '/' && method === 'GET':
         response = jsonResponse({
           service: 'ReefBuddy API',
-          version: '1.0.3',
+          version: '1.0.4',
           description: 'Water chemistry analysis for saltwater aquariums',
           endpoints: {
             'GET /': 'This information',
@@ -4356,6 +4820,10 @@ export default {
             'PUT /notifications/settings': 'Update alert notification settings (requires auth)',
             'GET /notifications/history': 'Get notification history (requires auth)',
             'POST /notifications/read': 'Mark notifications as read (requires auth)',
+            'GET /maintenance/schedules': 'List maintenance schedules (requires auth)',
+            'POST /maintenance/schedules': 'Create maintenance schedule (requires auth)',
+            'PUT /maintenance/schedules/:id': 'Update maintenance schedule (requires auth)',
+            'DELETE /maintenance/schedules/:id': 'Delete maintenance schedule (requires auth)',
           },
         });
         break;
@@ -4377,6 +4845,51 @@ export default {
       // Auth endpoints (requires authentication)
       case pathname === '/auth/logout' && method === 'POST': {
         response = await handleLogout(request, env);
+        break;
+      }
+
+      // Maintenance schedules endpoints (requires authentication)
+      case pathname === '/maintenance/schedules' && method === 'GET': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleListMaintenanceSchedules(request, env, authResult);
+        }
+        break;
+      }
+
+      case pathname === '/maintenance/schedules' && method === 'POST': {
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleCreateMaintenanceSchedule(request, env, authResult);
+        }
+        break;
+      }
+
+      case pathname.match(/^\/maintenance\/schedules\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
+        const match = pathname.match(/^\/maintenance\/schedules\/([A-Fa-f0-9-]+)$/);
+        const scheduleId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleUpdateMaintenanceSchedule(request, env, authResult, scheduleId);
+        }
+        break;
+      }
+
+      case pathname.match(/^\/maintenance\/schedules\/([A-Fa-f0-9-]+)$/) !== null && method === 'DELETE': {
+        const match = pathname.match(/^\/maintenance\/schedules\/([A-Fa-f0-9-]+)$/);
+        const scheduleId = match![1];
+        const authResult = await authenticateRequest(request, env);
+        if (authResult instanceof Response) {
+          response = authResult;
+        } else {
+          response = await handleDeleteMaintenanceSchedule(env, authResult, scheduleId);
+        }
         break;
       }
 
@@ -4508,9 +5021,13 @@ export default {
         response = await handleCreditsPurchase(request, env);
         break;
 
-      // Debug endpoint for testing JWS validation
+      // Debug endpoint for testing JWS validation (development only; 404 in production)
       case pathname === '/debug/jws-test' && method === 'POST':
-        response = await handleJWSTest(request, env);
+        if (env.ENVIRONMENT === 'production') {
+          response = jsonResponse({ error: 'Not found', message: 'Not found' }, 404);
+        } else {
+          response = await handleJWSTest(request, env);
+        }
         break;
 
       // Historical data endpoints (requires authentication)

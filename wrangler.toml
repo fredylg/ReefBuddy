@@ -81,8 +81,10 @@ invocation_logs = true
 # Production environment (deploy with: npx wrangler deploy --env production)
 [env.production]
 name = "reefbuddy"
-# Custom domain for production API (workers.dev subdomain remains available)
-domains = ["api.reefbuddy.aethers.com.au"]
+workers_dev = true
+routes = [
+  { pattern = "api.reefbuddy.aethers.com.au", custom_domain = true }
+]
 
 # D1 Database Binding (same as top-level)
 [[env.production.d1_databases]]
