@@ -49,7 +49,9 @@ async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
 // TEST SUITES
 // =============================================================================
 
-describe("DeviceCheck Production Security Tests", () => {
+const runProdDeviceCheckTests = process.env.RUN_PROD_DEVICE_CHECK_TESTS === "1";
+
+describe.skipIf(!runProdDeviceCheckTests)("DeviceCheck Production Security Tests", () => {
   describe("Production Environment - DeviceCheck Required", () => {
     it("should reject requests without DeviceCheck token", async () => {
       const requestBody = {

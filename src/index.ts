@@ -131,8 +131,8 @@ const BCRYPT_SALT_ROUNDS = 10;
 
 /**
  * Schema for water parameter readings submission
- * All values are in standard aquarium measurement units
- * Validation is relaxed to allow any numeric values - AI will analyze and provide feedback
+ * All values are in standard aquarium measurement units.
+ * When a parameter is present, ranges match typical reef test kit / API expectations.
  */
 const WaterParametersSchema = z
   .object({
@@ -152,11 +152,40 @@ const WaterParametersSchema = z
     (data) => {
       if (data.salinity == null || data.salinity === undefined) return true;
       const unit = data.salinity_unit ?? 'SG';
-      if (unit === 'PPT') return data.salinity > 30 && data.salinity < 40;
-      return data.salinity > 0.5 && data.salinity < 2;
+      if (unit === 'PPT') return data.salinity >= 30 && data.salinity <= 40;
+      return data.salinity >= 1.02 && data.salinity <= 1.03;
     },
-    { message: 'Salinity out of range: SG must be between 0.5 and 2, PPT between 30 and 40', path: ['salinity'] }
-  );
+    { message: 'Salinity out of range: SG must be between 1.020 and 1.030, PPT between 30 and 40', path: ['salinity'] }
+  )
+  .superRefine((data, ctx) => {
+    const add = (path: (string | number)[], message: string) =>
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path });
+
+    if (data.ph !== undefined && (data.ph < 7.8 || data.ph > 8.6)) {
+      add(['ph'], 'pH must be between 7.8 and 8.6');
+    }
+    if (data.temperature !== undefined && (data.temperature < 72 || data.temperature > 84)) {
+      add(['temperature'], 'Temperature must be between 72 and 84 °F');
+    }
+    if (data.alkalinity !== undefined && (data.alkalinity < 6 || data.alkalinity > 12)) {
+      add(['alkalinity'], 'Alkalinity must be between 6 and 12 dKH');
+    }
+    if (data.calcium !== undefined && (data.calcium < 350 || data.calcium > 500)) {
+      add(['calcium'], 'Calcium must be between 350 and 500 ppm');
+    }
+    if (data.magnesium !== undefined && (data.magnesium < 1200 || data.magnesium > 1500)) {
+      add(['magnesium'], 'Magnesium must be between 1200 and 1500 ppm');
+    }
+    if (data.nitrate !== undefined && (data.nitrate < 0 || data.nitrate > 50)) {
+      add(['nitrate'], 'Nitrate must be between 0 and 50 ppm');
+    }
+    if (data.phosphate !== undefined && (data.phosphate < 0 || data.phosphate > 0.5)) {
+      add(['phosphate'], 'Phosphate must be between 0 and 0.5 ppm');
+    }
+    if (data.ammonia !== undefined && (data.ammonia < 0 || data.ammonia > 1)) {
+      add(['ammonia'], 'Ammonia must be between 0 and 1 ppm');
+    }
+  });
 
 /**
  * Schema for analysis request
@@ -2350,11 +2379,15 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     // 2. Development workers subdomain (if using wrangler dev with --remote)
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
     const isDevWorker = hostname.endsWith('.workers.dev') && (hostname.includes('dev') || hostname.includes('staging'));
-    const isServerDevelopment = isLocalhost || isDevWorker;    if (isDeviceCheckConfigured(env)) {
+    // Only wrangler-style local dev may skip DeviceCheck when credentials are configured.
+    // Vitest (ENVIRONMENT=test) and production must enforce DeviceCheck when configured.
+    const allowDeviceCheckHostBypass =
+      env.ENVIRONMENT === 'development' && (isLocalhost || isDevWorker);
+    if (isDeviceCheckConfigured(env)) {
       if (!deviceToken) {        // SECURITY: Only allow bypass in actual development environments (server-side check)
         // DeviceCheck doesn't work in iOS Simulator, so this is expected for local development
         // But production must always require DeviceCheck token regardless of client flag
-        if (isServerDevelopment) {
+        if (allowDeviceCheckHostBypass) {
           console.warn(`Analysis request from ${deviceId} without DeviceCheck token (server development mode - simulator) - allowing`);
           // Continue to credit check and analysis
         } else {

@@ -9,6 +9,8 @@ export default defineWorkersConfig(async () => {
 
   return {
     test: {
+      // POST /analyze integration tests call the real AI Gateway; default 5s is too tight under parallel load.
+      testTimeout: 120_000,
       setupFiles: ["tests/apply-d1-migrations.ts"],
       poolOptions: {
         workers: {
@@ -23,6 +25,10 @@ export default defineWorkersConfig(async () => {
               FREE_ANALYSIS_LIMIT: "3",
               FREE_TIER_LIMIT: "3",
               TEST_MIGRATIONS: migrations,
+              // .dev.vars may define APPLE_* for wrangler dev; tests expect DeviceCheck off unless overridden per test.
+              APPLE_KEY_ID: "",
+              APPLE_PRIVATE_KEY: "",
+              APPLE_TEAM_ID: "",
             },
           },
         },

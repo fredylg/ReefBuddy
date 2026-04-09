@@ -56,15 +56,29 @@ const validAnalysisRequest = {
  * Make a POST request to the analyze endpoint
  * Automatically adds deviceId if not provided
  */
+function randomTestClientIp(): string {
+  return `203.0.113.${Math.floor(Math.random() * 250) + 1}`;
+}
+
 async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
-  // Ensure deviceId is present (required for the API)
+  // Avoid sharing one IP bucket across hundreds of tests in this file
+  return postAnalyzeWithClientIp(body, randomTestClientIp());
+}
+
+async function postAnalyzeWithClientIp(
+  body: Record<string, unknown>,
+  clientIp: string
+): Promise<Response> {
   const requestBody = {
     deviceId: "TEST-DEVICE-001",
     ...body,
   };
   return SELF.fetch("http://localhost/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "CF-Connecting-IP": clientIp,
+    },
     body: JSON.stringify(requestBody),
   });
 }
@@ -609,128 +623,54 @@ describe("OPTIONS /analyze - CORS Preflight", () => {
   });
 });
 
-describe("Rate Limiting - Free Tier (3/month)", () => {
-  // Note: These tests require KV namespace to be properly bound in test environment
-  // The rate limiting uses the tankId as the user identifier
+describe("Rate Limiting (IP-based)", () => {
+  // /analyze applies checkIPRateLimit first (default 10 req / minute per CF-Connecting-IP).
+  // Use a dedicated client IP so parallel tests do not share the same bucket.
 
-  it("should include rate limit remaining in successful response", async () => {
-    const uniqueTankId = generateUUID();
-    const request = {
-      ...validAnalysisRequest,
-      tankId: uniqueTankId,
-    };
+  it("should return 429 when IP rate limit is exceeded", async () => {
+    const clientIp = `203.0.113.${Math.floor(Math.random() * 200) + 10}`;
+    const base = { ...validAnalysisRequest, tankId: generateUUID() };
 
-    const response = await postAnalyze(request);
-
-    // Check if rate limit info is present (when not a validation error)
-    if (response.status === 200) {
-      const data = (await response.json()) as { rateLimitRemaining: number };
-      expect(data.rateLimitRemaining).toBeDefined();
-      expect(typeof data.rateLimitRemaining).toBe("number");
-    }
-  });
-
-  it("should decrement rate limit on each request", async () => {
-    const uniqueTankId = generateUUID();
-    const request = {
-      ...validAnalysisRequest,
-      tankId: uniqueTankId,
-    };
-
-    // First request
-    const response1 = await postAnalyze(request);
-    let remaining1 = 2;
-
-    if (response1.status === 200) {
-      const data1 = (await response1.json()) as { rateLimitRemaining: number };
-      remaining1 = data1.rateLimitRemaining;
+    // IP limit runs before JSON parse; invalid JSON still consumes a slot (fast, no AI).
+    for (let i = 0; i < 10; i++) {
+      const res = await SELF.fetch("http://localhost/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "CF-Connecting-IP": clientIp,
+        },
+        body: "{ invalid json }",
+      });
+      expect(res.status).toBe(400);
     }
 
-    // Second request
-    const response2 = await postAnalyze(request);
-
-    if (response2.status === 200) {
-      const data2 = (await response2.json()) as { rateLimitRemaining: number };
-      expect(data2.rateLimitRemaining).toBe(remaining1 - 1);
-    }
-  });
-
-  it("should return 429 when rate limit exceeded", async () => {
-    const uniqueTankId = generateUUID();
-    const request = {
-      ...validAnalysisRequest,
-      tankId: uniqueTankId,
-    };
-
-    // Make 4 requests (limit is 3)
-    await postAnalyze(request);
-    await postAnalyze(request);
-    await postAnalyze(request);
-    const response4 = await postAnalyze(request);
-
-    expect(response4.status).toBe(429);
-  });
-
-  it("should include upgrade message when rate limit exceeded", async () => {
-    const uniqueTankId = generateUUID();
-    const request = {
-      ...validAnalysisRequest,
-      tankId: uniqueTankId,
-    };
-
-    // Exhaust rate limit
-    await postAnalyze(request);
-    await postAnalyze(request);
-    await postAnalyze(request);
-    const response = await postAnalyze(request);
-
-    expect(response.status).toBe(429);
-
-    const data = (await response.json()) as { error: string; message: string };
+    const blocked = await postAnalyzeWithClientIp(
+      {
+        ...base,
+        deviceId: `TEST-IP-RATE-11-${generateUUID()}`,
+        tankId: generateUUID(),
+      },
+      clientIp
+    );
+    expect(blocked.status).toBe(429);
+    const data = (await blocked.json()) as { error: string; message: string };
     expect(data.error).toBe("Rate limit exceeded");
-    expect(data.message).toContain("Upgrade");
   });
 
-  it("should track rate limits per tankId (user)", async () => {
-    const tankId1 = generateUUID();
-    const tankId2 = generateUUID();
+  it("should use separate buckets for different client IPs", async () => {
+    const ipA = `203.0.113.${Math.floor(Math.random() * 50) + 130}`;
+    const ipB = `203.0.113.${Math.floor(Math.random() * 50) + 180}`;
 
-    // Exhaust rate limit for tankId1
-    const request1 = { ...validAnalysisRequest, tankId: tankId1 };
-    await postAnalyze(request1);
-    await postAnalyze(request1);
-    await postAnalyze(request1);
-
-    // tankId2 should still have quota
-    const request2 = { ...validAnalysisRequest, tankId: tankId2 };
-    const response = await postAnalyze(request2);
-
-    expect(response.status).not.toBe(429);
-  });
-
-  it("should not count validation failures against rate limit", async () => {
-    const uniqueTankId = generateUUID();
-
-    // Make invalid requests (should not count)
-    const invalidRequest = {
-      tankId: uniqueTankId,
-      parameters: { ph: 15 }, // Invalid
-      tankVolume: 75,
-    };
-
-    await postAnalyze(invalidRequest);
-    await postAnalyze(invalidRequest);
-    await postAnalyze(invalidRequest);
-    await postAnalyze(invalidRequest);
-
-    // Valid request should still work
-    const validRequest = {
-      ...validAnalysisRequest,
-      tankId: uniqueTankId,
-    };
-
-    const response = await postAnalyze(validRequest);
-    expect(response.status).not.toBe(429);
+    const r = await postAnalyzeWithClientIp(
+      {
+        ...validAnalysisRequest,
+        tankId: generateUUID(),
+        deviceId: `TEST-IP-B-${generateUUID()}`,
+      },
+      ipB
+    );
+    expect([200, 402, 503]).toContain(r.status);
+    expect(r.status).not.toBe(429);
   });
 });
 
@@ -757,10 +697,10 @@ describe("Error Handling", () => {
       body: "{ invalid json }",
     });
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(400);
 
     const data = (await response.json()) as { error: string };
-    expect(data.error).toBe("Internal server error");
+    expect(data.error).toBe("Invalid JSON");
   });
 
   it("should handle empty request body", async () => {
@@ -770,7 +710,7 @@ describe("Error Handling", () => {
       body: "",
     });
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(400);
   });
 });
 

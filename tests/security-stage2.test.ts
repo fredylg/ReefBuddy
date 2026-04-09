@@ -69,7 +69,7 @@ describe('L4: Receipt Encryption', () => {
     const testEnv = mockEnv;
 
     // Import encryption functions (would be imported in real test)
-    const { encryptReceiptData, decryptReceiptData } = await import('../src/index.ts');
+    const { encryptReceiptData, decryptReceiptData } = await import('../src/receipt-crypto.ts');
 
     // Encrypt
     const encrypted = await encryptReceiptData(testReceipt, testEnv);
@@ -85,7 +85,7 @@ describe('L4: Receipt Encryption', () => {
     const testReceipt = 'test-receipt-data';
     const testEnv = { ...mockEnv, RECEIPT_ENCRYPTION_KEY: undefined };
 
-    const { encryptReceiptData } = await import('../src/index.ts');
+    const { encryptReceiptData } = await import('../src/receipt-crypto.ts');
 
     await expect(encryptReceiptData(testReceipt, testEnv)).rejects.toThrow('Receipt encryption key not configured');
   });

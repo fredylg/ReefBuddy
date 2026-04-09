@@ -95,14 +95,16 @@ const mockErrorResponse = {
  * Automatically adds deviceId if not provided
  */
 async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
-  // Ensure deviceId is present (required for the API)
   const requestBody = {
     deviceId: "TEST-DEVICE-001",
     ...body,
   };
   return SELF.fetch("http://localhost/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "CF-Connecting-IP": `203.0.114.${Math.floor(Math.random() * 250) + 1}`,
+    },
     body: JSON.stringify(requestBody),
   });
 }
@@ -198,13 +200,14 @@ describe("AI Gateway Integration", () => {
       }
     });
 
-    it("should return rate limit remaining in response", async () => {
+    it("should return credit fields in successful response", async () => {
       const response = await postAnalyze(validAnalysisRequest);
 
       if (response.status === 200) {
-        const data = (await response.json()) as { rateLimitRemaining: number };
-        expect(data.rateLimitRemaining).toBeDefined();
-        expect(typeof data.rateLimitRemaining).toBe("number");
+        const data = (await response.json()) as { creditsRemaining: number; freeRemaining: number };
+        expect(data.creditsRemaining).toBeDefined();
+        expect(typeof data.creditsRemaining).toBe("number");
+        expect(data.freeRemaining).toBeDefined();
       }
     });
   });
