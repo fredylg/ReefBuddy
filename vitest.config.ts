@@ -1,41 +1,40 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineWorkersConfig, readD1Migrations } from "@cloudflare/vitest-pool-workers/config";
 
-export default defineWorkersConfig({
-  test: {
-    // Pool workers configuration for Cloudflare Workers testing
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: "./wrangler.toml" },
-        miniflare: {
-          // D1 database binding for tests
-          d1Databases: {
-            DB: "test-db",
-          },
-          // KV namespace binding for tests
-          kvNamespaces: ["REEF_KV"],
-          // Environment variables for testing
-          bindings: {
-            ENVIRONMENT: "test",
-            FREE_TIER_LIMIT: "3",
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineWorkersConfig(async () => {
+  const migrations = await readD1Migrations(path.join(__dirname, "migrations"));
+
+  return {
+    test: {
+      setupFiles: ["tests/apply-d1-migrations.ts"],
+      poolOptions: {
+        workers: {
+          wrangler: { configPath: "./wrangler.toml" },
+          miniflare: {
+            d1Databases: {
+              DB: "test-db",
+            },
+            kvNamespaces: ["REEF_KV"],
+            bindings: {
+              ENVIRONMENT: "test",
+              FREE_ANALYSIS_LIMIT: "3",
+              FREE_TIER_LIMIT: "3",
+              TEST_MIGRATIONS: migrations,
+            },
           },
         },
       },
+      include: ["tests/**/*.test.ts"],
+      exclude: ["node_modules/**", "dist/**"],
+      reporters: ["verbose"],
+      coverage: {
+        provider: "v8",
+        reporter: ["text", "json", "html"],
+        exclude: ["node_modules/**", "tests/**", "vitest.config.ts"],
+      },
     },
-    // Test file patterns
-    include: ["tests/**/*.test.ts"],
-    // Exclude patterns
-    exclude: ["node_modules/**", "dist/**"],
-    // Reporter configuration
-    reporters: ["verbose"],
-    // Coverage configuration (optional, enable if needed)
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-      exclude: [
-        "node_modules/**",
-        "tests/**",
-        "vitest.config.ts",
-      ],
-    },
-  },
+  };
 });
