@@ -159,6 +159,35 @@ async function listMaintenanceSchedules(token: string, tankId?: string): Promise
   });
 }
 
+async function postWaterChange(
+  token: string | null,
+  tankId: string,
+  body: Record<string, unknown>
+): Promise<Response> {
+  return SELF.fetch(`http://localhost/api/tanks/${tankId}/water-changes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function listWaterChanges(token: string, tankId: string): Promise<Response> {
+  return SELF.fetch(`http://localhost/api/tanks/${tankId}/water-changes`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+async function deleteWaterChange(token: string, waterChangeId: string): Promise<Response> {
+  return SELF.fetch(`http://localhost/api/water-changes/${waterChangeId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 /**
  * Generate a valid UUID
  */
@@ -185,7 +214,7 @@ describe("GET /", () => {
       endpoints: Record<string, string>;
     };
     expect(data.service).toBe("ReefBuddy API");
-    expect(data.version).toBe("1.0.4");
+    expect(data.version).toBe("1.0.6");
     expect(data.endpoints).toBeDefined();
   });
 
@@ -985,5 +1014,81 @@ describe("/maintenance/schedules", () => {
       expect(tank1Ids.has(tank1)).toBe(true);
       expect(tank1Ids.has(tank2)).toBe(false);
     });
+  });
+});
+
+describe("/api/tanks/:tankId/water-changes", () => {
+  it("requires auth to create a water change", async () => {
+    const res = await postWaterChange(null, generateUUID(), {
+      percentReplaced: 10,
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("creates and lists water changes for a tank", async () => {
+    const { token } = await signupAndGetToken();
+    const tankId = await createTankForUser(token, "Water Change Tank");
+
+    const create = await postWaterChange(token, tankId, {
+      performedAt: new Date("2026-05-01T10:00:00.000Z").toISOString(),
+      percentReplaced: 12.5,
+      gallonsReplaced: 5,
+      notes: "Weekly change",
+    });
+
+    expect(create.status).toBe(201);
+    const created = (await create.json()) as {
+      success: boolean;
+      data: { id: string; tankId: string; percentReplaced: number; gallonsReplaced: number; notes: string };
+    };
+    expect(created.success).toBe(true);
+    expect(created.data.id).toBeTruthy();
+    expect(created.data.tankId).toBe(tankId);
+    expect(created.data.percentReplaced).toBe(12.5);
+    expect(created.data.gallonsReplaced).toBe(5);
+    expect(created.data.notes).toBe("Weekly change");
+
+    const list = await listWaterChanges(token, tankId);
+    expect(list.status).toBe(200);
+    const listed = (await list.json()) as { success: boolean; data: Array<{ id: string }> };
+    expect(listed.success).toBe(true);
+    expect(listed.data.some((wc) => wc.id === created.data.id)).toBe(true);
+  });
+
+  it("validates replaced amount", async () => {
+    const { token } = await signupAndGetToken();
+    const tankId = await createTankForUser(token, "Water Change Validation Tank");
+
+    const missingAmount = await postWaterChange(token, tankId, { notes: "No amount" });
+    expect(missingAmount.status).toBe(400);
+
+    const badPercent = await postWaterChange(token, tankId, { percentReplaced: 101 });
+    expect(badPercent.status).toBe(400);
+  });
+
+  it("rejects water changes for another user's tank", async () => {
+    const userA = await signupAndGetToken();
+    const tankA = await createTankForUser(userA.token, "Owner Tank");
+    const userB = await signupAndGetToken();
+
+    const res = await postWaterChange(userB.token, tankA, { percentReplaced: 10 });
+    expect([403, 404]).toContain(res.status);
+  });
+
+  it("soft deletes water changes", async () => {
+    const { token } = await signupAndGetToken();
+    const tankId = await createTankForUser(token, "Delete Water Change Tank");
+
+    const create = await postWaterChange(token, tankId, { gallonsReplaced: 7 });
+    expect(create.status).toBe(201);
+    const created = (await create.json()) as { data: { id: string } };
+
+    const del = await deleteWaterChange(token, created.data.id);
+    expect(del.status).toBe(200);
+
+    const list = await listWaterChanges(token, tankId);
+    expect(list.status).toBe(200);
+    const listed = (await list.json()) as { data: Array<{ id: string }> };
+    expect(listed.data.some((wc) => wc.id === created.data.id)).toBe(false);
   });
 });

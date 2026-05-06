@@ -73,7 +73,7 @@
 
 ### 3.1 AI Configuration
 ```
-Model: claude-3-haiku-20240307 (start with Haiku for cost efficiency)
+Model: claude-haiku-4-5-20251001 (Haiku for cost efficiency)
 Gateway: reefbuddy-ai-gateway
 Account: 34fe73a21dc07a799a1ded7cc1763895
 ```

@@ -68,25 +68,29 @@ final class MaintenanceScheduleStore: ObservableObject {
     /// Best-effort sync for any items marked `needsSync`.
     func syncPendingBestEffort() async {
         let pending = schedules.filter { $0.needsSync }
+        print("☁️ [ScheduleStore] syncPendingBestEffort — \(pending.count) pending of \(schedules.count) total")
         guard !pending.isEmpty else { return }
 
         for item in pending {
             do {
                 if item.isDeleted {
+                    print("☁️ [ScheduleStore] deleting \(item.id)")
                     try await apiClient.deleteMaintenanceSchedule(id: item.id)
                     schedules.removeAll { $0.id == item.id }
                     persist()
                 } else {
                     do {
+                        print("☁️ [ScheduleStore] updating \(item.id)")
                         _ = try await apiClient.updateMaintenanceSchedule(item)
                     } catch APIError.notFound {
+                        print("☁️ [ScheduleStore] not found → creating \(item.id)")
                         _ = try await apiClient.createMaintenanceSchedule(item)
                     }
                     markSynced(item.id)
+                    print("☁️ [ScheduleStore] synced \(item.id)")
                 }
             } catch {
-                // Keep local state + notifications working; retry later
-                print("⚠️ Maintenance sync failed for \(item.id): \(error.localizedDescription)")
+                print("⚠️ [ScheduleStore] sync failed for \(item.id): \(error)")
             }
         }
     }
@@ -120,6 +124,93 @@ final class MaintenanceScheduleStore: ObservableObject {
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
             print("⚠️ Failed to persist maintenance schedules: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Water Change Store (local-first)
+
+@MainActor
+final class WaterChangeStorage: ObservableObject {
+    @Published private(set) var waterChangesByTank: [UUID: [WaterChange]] = [:]
+
+    private let storageKey = "com.reefbuddy.water_changes"
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+
+    init() {
+        encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+
+        decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        load()
+    }
+
+    func waterChanges(for tankId: UUID) -> [WaterChange] {
+        (waterChangesByTank[tankId] ?? [])
+            .filter { !$0.isDeleted }
+            .sorted { $0.performedAt > $1.performedAt }
+    }
+
+    func replace(_ waterChanges: [WaterChange], for tankId: UUID) {
+        waterChangesByTank[tankId] = waterChanges.sorted { $0.performedAt > $1.performedAt }
+        persist()
+    }
+
+    func save(_ waterChange: WaterChange) {
+        var entries = waterChangesByTank[waterChange.tankId] ?? []
+        if let index = entries.firstIndex(where: { $0.id == waterChange.id }) {
+            entries[index] = waterChange
+        } else {
+            entries.insert(waterChange, at: 0)
+        }
+        waterChangesByTank[waterChange.tankId] = entries.sorted { $0.performedAt > $1.performedAt }
+        persist()
+    }
+
+    func markDeleted(_ id: UUID, tankId: UUID) {
+        guard var entries = waterChangesByTank[tankId],
+              let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        entries[index].isDeleted = true
+        entries[index].needsSync = true
+        entries[index].updatedAt = Date()
+        waterChangesByTank[tankId] = entries
+        persist()
+    }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
+            waterChangesByTank = [:]
+            return
+        }
+
+        do {
+            let stringDict = try decoder.decode([String: [WaterChange]].self, from: data)
+            waterChangesByTank = Dictionary(uniqueKeysWithValues:
+                stringDict.compactMap { key, value in
+                    guard let uuid = UUID(uuidString: key) else { return nil }
+                    return (uuid, value)
+                }
+            )
+            let total = waterChangesByTank.values.reduce(0) { $0 + $1.count }
+            print("📦 Loaded \(total) water changes from local storage")
+        } catch {
+            print("⚠️ Failed to load water changes: \(error.localizedDescription)")
+            waterChangesByTank = [:]
+        }
+    }
+
+    private func persist() {
+        do {
+            let stringDict = Dictionary(uniqueKeysWithValues:
+                waterChangesByTank.map { ($0.key.uuidString, $0.value) }
+            )
+            let data = try encoder.encode(stringDict)
+            UserDefaults.standard.set(data, forKey: storageKey)
+        } catch {
+            print("⚠️ Failed to persist water changes: \(error.localizedDescription)")
         }
     }
 }

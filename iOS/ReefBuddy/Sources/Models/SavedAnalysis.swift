@@ -19,6 +19,12 @@ struct SavedAnalysis: Identifiable, Codable {
     
     /// Date when the analysis was performed
     let analyzedAt: Date
+
+    /// Canonical measurement row used for this analysis, when available
+    let measurementId: String?
+
+    /// Water change event associated with this analysis, when available
+    let waterChangeEventId: String?
     
     /// Water parameters that were analyzed
     let parameters: AnalyzedParameters
@@ -42,6 +48,8 @@ struct SavedAnalysis: Identifiable, Codable {
         tankId: String,
         tankName: String,
         analyzedAt: Date = Date(),
+        measurementId: String? = nil,
+        waterChangeEventId: String? = nil,
         parameters: AnalyzedParameters,
         summary: String,
         recommendations: [String],
@@ -52,6 +60,8 @@ struct SavedAnalysis: Identifiable, Codable {
         self.tankId = tankId
         self.tankName = tankName
         self.analyzedAt = analyzedAt
+        self.measurementId = measurementId
+        self.waterChangeEventId = waterChangeEventId
         self.parameters = parameters
         self.summary = summary
         self.recommendations = recommendations
@@ -60,11 +70,19 @@ struct SavedAnalysis: Identifiable, Codable {
     }
     
     /// Create a SavedAnalysis from an AnalysisResponse and tank info
-    init(from response: AnalysisResponse, tank: Tank, parameters: AnalyzedParameters) {
+    init(
+        from response: AnalysisResponse,
+        tank: Tank,
+        parameters: AnalyzedParameters,
+        measurementId: String? = nil,
+        waterChangeEventId: String? = nil
+    ) {
         self.id = UUID()
         self.tankId = tank.id.uuidString
         self.tankName = tank.name
         self.analyzedAt = Date()
+        self.measurementId = measurementId
+        self.waterChangeEventId = waterChangeEventId
         self.parameters = parameters
         self.summary = response.summary
         self.recommendations = response.recommendations

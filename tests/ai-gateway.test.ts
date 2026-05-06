@@ -67,7 +67,7 @@ const mockAIResponse = {
       }),
     },
   ],
-  model: "claude-3-haiku-20240307",
+  model: "claude-haiku-4-5-20251001",
   stop_reason: "end_turn",
   stop_sequence: null,
   usage: {

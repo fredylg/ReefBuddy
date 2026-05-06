@@ -31,10 +31,12 @@ struct ReefBuddyApp: App {
                 .environmentObject(analysisStorage)
                 .environmentObject(scheduleStore)
                 .onAppear {
+                    print("🚀 [App] onAppear — configuring notifications, schedules: \(scheduleStore.activeSchedules.count)")
                     appDelegate.configureNotifications()
                     Task {
                         await MaintenanceNotificationService.shared.scheduleAll(scheduleStore.activeSchedules)
                         await scheduleStore.syncPendingBestEffort()
+                        print("🚀 [App] startup tasks complete")
                     }
                 }
         }
@@ -45,6 +47,7 @@ struct ReefBuddyApp: App {
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func configureNotifications() {
+        print("🔔 [AppDelegate] configureNotifications")
         UNUserNotificationCenter.current().delegate = self
     }
 
@@ -52,13 +55,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        print("🔔 [AppDelegate] willPresent: \(notification.request.identifier)")
+        return [.banner, .sound]
     }
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
+        print("🔔 [AppDelegate] didReceive: \(response.notification.request.identifier), action: \(response.actionIdentifier)")
         NotificationCenter.default.post(
             name: .maintenanceNotificationTapped,
             object: nil,
@@ -94,6 +99,9 @@ final class AppState: ObservableObject {
     /// Health logs for livestock
     @Published var livestockLogs: [LivestockLog] = []
 
+    /// Water changes for the selected tank
+    @Published var waterChanges: [WaterChange] = []
+
     /// Loading state
     @Published var isLoading: Bool = false
 
@@ -106,12 +114,16 @@ final class AppState: ObservableObject {
     /// Deep link from maintenance reminder notification
     @Published var maintenanceDeepLink: MaintenanceDeepLink?
 
+    /// Latest explicitly logged water change available to link to the next analysis.
+    @Published var pendingWaterChangeContext: AnalysisWaterChangeContext?
+
     // MARK: - Dependencies
 
     private let apiClient = APIClient()
     private let tankStorage = TankStorage()
     private let livestockStorage = LivestockStorage()
     private let measurementStorage = MeasurementStorage()
+    private let waterChangeStorage = WaterChangeStorage()
     private let imageStorage = ImageStorage()
 
     // MARK: - Device ID
@@ -144,6 +156,7 @@ final class AppState: ObservableObject {
             livestock = livestockStorage.livestock(for: tank.id)
             livestockLogs = livestockStorage.livestockLogs(for: tank.id)
             measurements = measurementStorage.measurements(for: tank.id)
+            waterChanges = waterChangeStorage.waterChanges(for: tank.id)
         }
         
         // Load sample data for development (only in DEBUG, after loading from storage)
@@ -158,21 +171,28 @@ final class AppState: ObservableObject {
             if let tank = selectedTank {
                 measurementStorage.save(measurements, for: tank.id)
             }
+        }
+        #endif
+    }
 
     func handleMaintenanceNotification(userInfo: [AnyHashable: Any]) {
-        guard let kind = userInfo["kind"] as? String, kind == "maintenance" else { return }
+        print("🔔 [AppState] handleMaintenanceNotification userInfo: \(userInfo)")
+        guard let kind = userInfo["kind"] as? String, kind == "maintenance" else {
+            print("🔔 [AppState] ignored — kind=\(userInfo["kind"] ?? "nil")")
+            return
+        }
         guard let scheduleIdStr = userInfo["scheduleId"] as? String,
               let tankIdStr = userInfo["tankId"] as? String,
               let typeStr = userInfo["type"] as? String,
               let scheduleId = UUID(uuidString: scheduleIdStr),
               let tankId = UUID(uuidString: tankIdStr),
               let type = MaintenanceSchedule.ScheduleType(rawValue: typeStr)
-        else { return }
-
-        maintenanceDeepLink = MaintenanceDeepLink(scheduleId: scheduleId, tankId: tankId, type: type)
-    }
+        else {
+            print("🔔 [AppState] failed to parse deep link payload")
+            return
         }
-        #endif
+        print("🔔 [AppState] deep link → schedule=\(scheduleIdStr) tank=\(tankIdStr) type=\(typeStr)")
+        maintenanceDeepLink = MaintenanceDeepLink(scheduleId: scheduleId, tankId: tankId, type: type)
     }
 
     // MARK: - Tank Operations
@@ -184,7 +204,8 @@ final class AppState: ObservableObject {
         livestock = livestockStorage.livestock(for: tank.id)
         livestockLogs = livestockStorage.livestockLogs(for: tank.id)
         measurements = measurementStorage.measurements(for: tank.id)
-        print("📱 Selected tank: \(tank.name) - loaded \(livestock.count) livestock, \(livestockLogs.count) logs, \(measurements.count) measurements")
+        waterChanges = waterChangeStorage.waterChanges(for: tank.id)
+        print("📱 Selected tank: \(tank.name) - loaded \(livestock.count) livestock, \(livestockLogs.count) logs, \(measurements.count) measurements, \(waterChanges.count) water changes")
     }
 
     /// Fetch all tanks from the backend
@@ -304,7 +325,8 @@ final class AppState: ObservableObject {
 
     /// Submit a new measurement
     /// Saves to local storage regardless of API success/failure
-    func submitMeasurement(_ measurement: Measurement) async {
+    @discardableResult
+    func submitMeasurement(_ measurement: Measurement) async -> Measurement {
         isLoading = true
         errorMessage = nil
 
@@ -314,15 +336,80 @@ final class AppState: ObservableObject {
             measurements.insert(saved, at: 0)
             // Save to local storage
             measurementStorage.save(saved)
+            isLoading = false
+            return saved
         } catch {
             // Allow local save even if API fails (works offline)
             print("⚠️ API save measurement failed, using local storage: \(error.localizedDescription)")
             measurements.insert(measurement, at: 0)
             // Save to local storage
             measurementStorage.save(measurement)
+            isLoading = false
+            return measurement
+        }
+    }
+
+    /// Fetch completed water changes for a tank. Falls back to local storage when offline.
+    func fetchWaterChanges(for tank: Tank) async {
+        waterChanges = waterChangeStorage.waterChanges(for: tank.id)
+
+        do {
+            let serverChanges = try await apiClient.getWaterChanges(for: tank.id)
+            waterChangeStorage.replace(serverChanges, for: tank.id)
+            waterChanges = waterChangeStorage.waterChanges(for: tank.id)
+        } catch {
+            print("⚠️ Failed to fetch water changes from backend: \(error.localizedDescription)")
+        }
+    }
+
+    /// Log a water change locally first, then best-effort sync to the backend.
+    @discardableResult
+    func logWaterChange(_ waterChange: WaterChange) async -> WaterChange {
+        var local = waterChange
+        local.updatedAt = Date()
+        local.needsSync = true
+        waterChangeStorage.save(local)
+        if selectedTank?.id == local.tankId {
+            waterChanges = waterChangeStorage.waterChanges(for: local.tankId)
         }
 
-        isLoading = false
+        do {
+            let saved = try await apiClient.createWaterChange(local)
+            waterChangeStorage.save(saved)
+            if selectedTank?.id == saved.tankId {
+                waterChanges = waterChangeStorage.waterChanges(for: saved.tankId)
+            }
+            pendingWaterChangeContext = AnalysisWaterChangeContext(id: saved.id, tankId: saved.tankId)
+            return saved
+        } catch {
+            print("⚠️ API water change save failed, using local storage: \(error.localizedDescription)")
+            pendingWaterChangeContext = AnalysisWaterChangeContext(id: local.id, tankId: local.tankId)
+            return local
+        }
+    }
+
+    func recentWaterChanges(for tankId: UUID) -> [WaterChange] {
+        waterChangeStorage.waterChanges(for: tankId)
+    }
+
+    func matchingWaterChangeId(for tankId: UUID, analyzedAt: Date = Date()) -> UUID? {
+        if let pending = pendingWaterChangeContext, pending.tankId == tankId {
+            return pending.id
+        }
+
+        let cutoff = analyzedAt.addingTimeInterval(-96 * 60 * 60)
+        return waterChangeStorage
+            .waterChanges(for: tankId)
+            .filter { $0.performedAt >= cutoff && $0.performedAt <= analyzedAt }
+            .sorted { $0.performedAt > $1.performedAt }
+            .first?
+            .id
+    }
+
+    func clearPendingWaterChangeIfMatched(_ waterChangeId: UUID?) {
+        guard let waterChangeId,
+              pendingWaterChangeContext?.id == waterChangeId else { return }
+        pendingWaterChangeContext = nil
     }
 
     /// Request AI analysis for a measurement

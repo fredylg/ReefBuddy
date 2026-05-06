@@ -246,6 +246,29 @@ struct SavedAnalysesView: View {
                             .font(BrutalistTheme.Typography.body)
                             .foregroundColor(BrutalistTheme.Colors.text)
                     }
+
+                    if analysis.measurementId != nil || analysis.waterChangeEventId != nil {
+                        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
+                            Text("LINKED RECORDS")
+                                .font(BrutalistTheme.Typography.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+
+                            if let measurementId = analysis.measurementId {
+                                Text("Measurement: \(shortId(measurementId))")
+                                    .font(BrutalistTheme.Typography.caption)
+                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                            }
+                            if let waterChangeEventId = analysis.waterChangeEventId {
+                                Text("Water change: \(shortId(waterChangeEventId))")
+                                    .font(BrutalistTheme.Typography.caption)
+                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                            }
+                        }
+                        .padding(BrutalistTheme.Spacing.md)
+                        .background(BrutalistTheme.Colors.action.opacity(0.12))
+                        .brutalistBorder(width: 2)
+                    }
                     
                     // Warnings
                     if let warnings = analysis.warnings, !warnings.isEmpty {
@@ -390,6 +413,10 @@ struct SavedAnalysesView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+
+    private func shortId(_ id: String) -> String {
+        String(id.prefix(8)).uppercased()
     }
 }
 

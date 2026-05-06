@@ -47,7 +47,7 @@ This project includes multiple layers of protection against Xcode crashes caused
 
 ## 📱 iOS App Info
 
-- **Marketing version**: 1.0.4
+- **Marketing version**: 1.0.6
 - **Deployment target**: iOS 17.0
 - **Bundle ID**: `au.com.aethers.reefbuddy`
 

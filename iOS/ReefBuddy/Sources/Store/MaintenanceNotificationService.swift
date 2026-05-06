@@ -13,14 +13,19 @@ final class MaintenanceNotificationService {
     // MARK: - Public API (requested surface)
 
     func scheduleAll(_ schedules: [MaintenanceSchedule]) async {
+        print("🗓 [Notifications] scheduleAll — \(schedules.count) schedules")
         for schedule in schedules where !schedule.isDeleted {
             await upsertSchedule(schedule)
         }
     }
 
     func upsertSchedule(_ schedule: MaintenanceSchedule) async {
+        print("🗓 [Notifications] upsertSchedule id=\(schedule.id) enabled=\(schedule.enabled) kind=\(schedule.scheduleKind.rawValue)")
         await deleteSchedule(scheduleId: schedule.id)
-        guard schedule.enabled else { return }
+        guard schedule.enabled else {
+            print("🗓 [Notifications] skipped (disabled)")
+            return
+        }
 
         switch schedule.scheduleKind {
         case .weekly:
@@ -214,7 +219,7 @@ final class MaintenanceNotificationService {
     }
 
     private func addRequest(_ request: UNNotificationRequest) async throws {
-        try await withCheckedThrowingContinuation { cont in
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             center.add(request) { error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: ()) }

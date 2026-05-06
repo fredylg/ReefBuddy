@@ -194,6 +194,52 @@ actor APIClient {
         try validateResponse(response)
     }
 
+    // MARK: - Water Changes
+
+    func createWaterChange(_ waterChange: WaterChange) async throws -> WaterChange {
+        let url = baseURL.appendingPathComponent("api/tanks/\(waterChange.tankId.uuidString)/water-changes")
+        var request = makeRequest(url: url, method: "POST")
+
+        let body = WaterChangeCreateRequest(from: waterChange)
+        let waterChangeEncoder = JSONEncoder()
+        waterChangeEncoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try waterChangeEncoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        let apiResponse = try decoder.decode(APIResponse<WaterChange>.self, from: data)
+        var created = apiResponse.data
+        created.needsSync = false
+        created.isDeleted = false
+        return created
+    }
+
+    func getWaterChanges(for tankId: UUID, limit: Int = 50) async throws -> [WaterChange] {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/tanks/\(tankId.uuidString)/water-changes"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "limit", value: String(limit))]
+
+        let request = makeRequest(url: components.url!, method: "GET")
+        let (data, response) = try await session.data(for: request)
+        try validateResponse(response)
+
+        let apiResponse = try decoder.decode(APIResponse<[WaterChange]>.self, from: data)
+        return apiResponse.data.map { item in
+            var synced = item
+            synced.needsSync = false
+            synced.isDeleted = false
+            return synced
+        }
+    }
+
+    func deleteWaterChange(id: UUID) async throws {
+        let url = baseURL.appendingPathComponent("api/water-changes/\(id.uuidString)")
+        let request = makeRequest(url: url, method: "DELETE")
+
+        let (_, response) = try await session.data(for: request)
+        try validateResponse(response)
+    }
+
     // MARK: - Measurement Endpoints
 
     /// Fetch all measurements for a tank
@@ -265,6 +311,25 @@ actor APIClient {
         }
 
         let (data, response) = try await session.data(for: request)
+
+        // Surface Worker validation / bad requests (e.g. parameter range) instead of a generic 400 string
+        if let http = response as? HTTPURLResponse, http.statusCode == 400 {
+            struct AnalyzeErrorPayload: Codable {
+                let error: String?
+                let message: String?
+            }
+            if let parsed = try? JSONDecoder().decode(AnalyzeErrorPayload.self, from: data) {
+                let detail = [parsed.message, parsed.error]
+                    .compactMap { $0 }
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " — ")
+                if !detail.isEmpty {
+                    throw APIError.badRequestDetail(detail)
+                }
+            }
+            throw APIError.badRequest
+        }
+
         try validateResponse(response)
 
         // Parse the Worker's response format (also uses camelCase)
@@ -751,6 +816,22 @@ private struct MaintenanceScheduleUpsertResponse: Codable {
     let schedule: MaintenanceSchedule
 }
 
+private struct WaterChangeCreateRequest: Codable {
+    let performedAt: Date
+    let percentReplaced: Double?
+    let gallonsReplaced: Double?
+    let notes: String?
+    let sourceScheduleId: String?
+
+    init(from waterChange: WaterChange) {
+        self.performedAt = waterChange.performedAt
+        self.percentReplaced = waterChange.percentReplaced
+        self.gallonsReplaced = waterChange.gallonsReplaced
+        self.notes = waterChange.notes
+        self.sourceScheduleId = waterChange.sourceScheduleId?.uuidString
+    }
+}
+
 // MARK: - Credits Models
 
 /// Request body for purchasing credits (StoreKit 2 JWS format)
@@ -815,6 +896,8 @@ struct AnalysisResult {
 enum APIError: LocalizedError {
     case invalidResponse
     case badRequest
+    /// Server returned 400 with a specific message (e.g. validation summary)
+    case badRequestDetail(String)
     case unauthorized
     case noCredits
     case forbidden
@@ -833,6 +916,8 @@ enum APIError: LocalizedError {
             return "Invalid response from server"
         case .badRequest:
             return "Invalid request. Please check your input."
+        case .badRequestDetail(let message):
+            return message
         case .unauthorized:
             return "Authentication required"
         case .noCredits:

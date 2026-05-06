@@ -25,6 +25,9 @@ struct MeasurementEntryView: View {
     @State private var temperatureUnit: TemperatureUnit = .celsius
     @State private var salinityUnit: SalinityUnit = .sg
     @State private var showingPurchaseCredits = false
+    @State private var analysisMeasurementId: String?
+    @State private var analysisWaterChangeEventId: String?
+    @State private var showingWaterChangeLog = false
 
     // MARK: - Body
 
@@ -60,7 +63,9 @@ struct MeasurementEntryView: View {
                 AnalysisResultSheet(
                     analysis: analysis,
                     tank: tank,
-                    parameters: measurement.toAnalyzedParameters(temperatureUnit: temperatureUnit, salinityUnit: salinityUnit)
+                    parameters: measurement.toAnalyzedParameters(temperatureUnit: temperatureUnit, salinityUnit: salinityUnit),
+                    measurementId: analysisMeasurementId,
+                    waterChangeEventId: analysisWaterChangeEventId
                 )
             }
         }
@@ -76,6 +81,15 @@ struct MeasurementEntryView: View {
         }
         .sheet(isPresented: $showingPurchaseCredits) {
             PurchaseCreditsView()
+        }
+        .sheet(isPresented: $showingWaterChangeLog) {
+            WaterChangeLogSheet(
+                deepLink: nil,
+                fallbackTank: tank,
+                onComplete: { showingWaterChangeLog = false },
+                onCancel: { showingWaterChangeLog = false }
+            )
+            .environmentObject(appState)
         }
     }
 
@@ -391,6 +405,10 @@ struct MeasurementEntryView: View {
                 saveParameters()
             }
 
+            BrutalistButton.secondary("LOG WATER CHANGE", isFullWidth: true) {
+                showingWaterChangeLog = true
+            }
+
             // Disclaimer
             disclaimerView
         }
@@ -534,15 +552,17 @@ struct MeasurementEntryView: View {
         Task {
             let unitString = temperatureUnit == .celsius ? "C" : "F"
             do {
-                if let analysis = try await appState.requestAnalysis(for: measurementModel, tank: tank, storeManager: storeManager, temperatureUnit: unitString) {
+                let savedMeasurement = await appState.submitMeasurement(measurementModel)
+                let linkedWaterChangeId = appState.matchingWaterChangeId(for: tank.id, analyzedAt: Date())
+
+                if let analysis = try await appState.requestAnalysis(for: savedMeasurement, tank: tank, storeManager: storeManager, temperatureUnit: unitString) {
                     await MainActor.run {
                         isAnalyzing = false
                         analysisResult = analysis
+                        analysisMeasurementId = savedMeasurement.id.uuidString
+                        analysisWaterChangeEventId = linkedWaterChangeId?.uuidString
                         showingAnalysis = true
                     }
-
-                    // Also save the measurement
-                    await appState.submitMeasurement(measurementModel)
                 } else if let error = appState.errorMessage {
                     // Show error to user
                     await MainActor.run {
@@ -782,8 +802,11 @@ struct AnalysisResultSheet: View {
     let analysis: AnalysisResponse
     let tank: Tank
     let parameters: AnalyzedParameters
+    let measurementId: String?
+    let waterChangeEventId: String?
     
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var analysisStorage: AnalysisStorage
     @State private var showingShareSheet = false
     @State private var showingSavedConfirmation = false
@@ -1186,9 +1209,12 @@ struct AnalysisResultSheet: View {
         let savedAnalysis = SavedAnalysis(
             from: analysis,
             tank: tank,
-            parameters: parameters
+            parameters: parameters,
+            measurementId: measurementId,
+            waterChangeEventId: waterChangeEventId
         )
         analysisStorage.save(savedAnalysis)
+        appState.clearPendingWaterChangeIfMatched(UUID(uuidString: waterChangeEventId ?? ""))
         showingSavedConfirmation = true
     }
 
@@ -1257,8 +1283,11 @@ struct AnalysisResultSheet: View {
             ]
         ),
         tank: Tank.samples.first ?? Tank(name: "Preview Tank", volumeGallons: 50, tankType: .fowlr),
-        parameters: AnalyzedParameters(salinity: 1.025, temperature: 78, ph: 8.2, alkalinity: 7.2)
+        parameters: AnalyzedParameters(salinity: 1.025, temperature: 78, ph: 8.2, alkalinity: 7.2),
+        measurementId: nil,
+        waterChangeEventId: nil
     )
+    .environmentObject(AppState())
     .environmentObject(AnalysisStorage())
 }
 

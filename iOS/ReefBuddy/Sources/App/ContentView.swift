@@ -12,6 +12,7 @@ struct ContentView: View {
     @EnvironmentObject private var storeManager: StoreManager
     @State private var selectedTab: Tab = .tanks
     @State private var showingMaintenanceActions = false
+    @State private var showingWaterChangeLog = false
 
     // MARK: - Body
 
@@ -30,6 +31,7 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .maintenanceNotificationTapped)) { note in
             let userInfo = note.userInfo ?? [:]
+            print("📲 [ContentView] maintenanceNotificationTapped received, userInfo keys: \(userInfo.keys.map { "\($0)" })")
             appState.handleMaintenanceNotification(userInfo: userInfo)
             handleMaintenanceDeepLinkIfPossible()
         }
@@ -46,8 +48,25 @@ struct ContentView: View {
                 onGoToMeasure: {
                     selectedTab = .measure
                     showingMaintenanceActions = false
+                },
+                onLogWaterChange: {
+                    showingMaintenanceActions = false
+                    showingWaterChangeLog = true
                 }
             )
+        }
+        .sheet(isPresented: $showingWaterChangeLog) {
+            WaterChangeLogSheet(
+                deepLink: appState.maintenanceDeepLink,
+                onComplete: {
+                    showingWaterChangeLog = false
+                    appState.maintenanceDeepLink = nil
+                },
+                onCancel: {
+                    showingWaterChangeLog = false
+                }
+            )
+            .environmentObject(appState)
         }
     }
 
@@ -115,6 +134,9 @@ struct ContentView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
+        case .settings:
+            NavigationStack { SettingsView() }
+
         case .tanks:
             TankListView()
 
@@ -139,8 +161,18 @@ struct ContentView: View {
                 noTankSelectedView
             }
 
-        case .settings:
-            NavigationStack { SettingsView() }
+        case .logWaterChange:
+            if let tank = appState.selectedTank {
+                WaterChangeLogSheet(
+                    deepLink: nil,
+                    fallbackTank: tank,
+                    onComplete: { selectedTab = .measure },
+                    onCancel: { selectedTab = .measure }
+                )
+                .environmentObject(appState)
+            } else {
+                noTankSelectedView
+            }
         }
     }
 
@@ -232,6 +264,7 @@ private struct MaintenanceQuickActionsSheet: View {
     let deepLink: MaintenanceDeepLink?
     let onClose: () -> Void
     let onGoToMeasure: () -> Void
+    let onLogWaterChange: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.lg) {
@@ -258,7 +291,7 @@ private struct MaintenanceQuickActionsSheet: View {
             }
 
             BrutalistButton.secondary("LOG WATER CHANGE", isFullWidth: true) {
-                onGoToMeasure()
+                onLogWaterChange()
             }
         }
         .padding(BrutalistTheme.Spacing.lg)
@@ -290,17 +323,253 @@ private struct MaintenanceQuickActionsSheet: View {
     }
 }
 
+struct WaterChangeLogSheet: View {
+    let deepLink: MaintenanceDeepLink?
+    var fallbackTank: Tank? = nil
+    let onComplete: () -> Void
+    let onCancel: () -> Void
+
+    @EnvironmentObject private var appState: AppState
+    @State private var performedAt = Date()
+    @State private var percentReplaced = ""
+    @State private var gallonsReplaced = ""
+    @State private var notes = ""
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var showingHistory = false
+
+    private var tank: Tank? {
+        if let tankId = deepLink?.tankId {
+            return appState.tanks.first(where: { $0.id == tankId }) ?? fallbackTank ?? appState.selectedTank
+        }
+        return fallbackTank ?? appState.selectedTank
+    }
+
+    private var canSave: Bool {
+        Double(percentReplaced.trimmingCharacters(in: .whitespaces)) != nil ||
+        Double(gallonsReplaced.trimmingCharacters(in: .whitespaces)) != nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.lg) {
+                    Text("LOG WATER CHANGE")
+                        .font(BrutalistTheme.Typography.headerMedium)
+                        .foregroundColor(BrutalistTheme.Colors.text)
+
+                    Text(tank?.name.uppercased() ?? "SELECTED TANK")
+                        .font(BrutalistTheme.Typography.caption)
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.65))
+
+                    BrutalistButton.secondary("VIEW WATER CHANGE HISTORY", isFullWidth: true) {
+                        showingHistory = true
+                    }
+
+                    DatePicker("WHEN", selection: $performedAt, displayedComponents: [.date, .hourAndMinute])
+                        .font(BrutalistTheme.Typography.body)
+                        .padding(BrutalistTheme.Spacing.md)
+                        .background(BrutalistTheme.Colors.background)
+                        .brutalistBorder()
+
+                    BrutalistTextField(
+                        "10",
+                        text: $percentReplaced,
+                        label: "PERCENT REPLACED",
+                        helperText: "Optional if gallons are entered.",
+                        keyboardType: .decimalPad
+                    )
+
+                    BrutalistTextField(
+                        "5",
+                        text: $gallonsReplaced,
+                        label: "GALLONS REPLACED",
+                        helperText: "Optional if percent is entered.",
+                        keyboardType: .decimalPad
+                    )
+
+                    VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
+                        Text("NOTES")
+                            .font(BrutalistTheme.Typography.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                        TextEditor(text: $notes)
+                            .frame(minHeight: 110)
+                            .padding(BrutalistTheme.Spacing.sm)
+                            .background(BrutalistTheme.Colors.background)
+                            .brutalistBorder()
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(BrutalistTheme.Typography.caption)
+                            .foregroundColor(BrutalistTheme.Colors.warning)
+                    }
+
+                    BrutalistButton.primary(isSaving ? "SAVING..." : "SAVE WATER CHANGE", isFullWidth: true) {
+                        save()
+                    }
+                    .disabled(isSaving || !canSave)
+
+                    BrutalistButton.secondary("CANCEL", isFullWidth: true) {
+                        onCancel()
+                    }
+                }
+                .padding(BrutalistTheme.Spacing.lg)
+            }
+            .background(BrutalistTheme.Colors.background)
+        }
+        .task {
+            if let tank {
+                await appState.fetchWaterChanges(for: tank)
+            }
+        }
+        .sheet(isPresented: $showingHistory) {
+            WaterChangeHistorySheet(
+                tank: tank,
+                onClose: { showingHistory = false }
+            )
+            .environmentObject(appState)
+        }
+    }
+
+    private func save() {
+        guard let tank else {
+            errorMessage = "No tank selected."
+            return
+        }
+        let percent = Double(percentReplaced.trimmingCharacters(in: .whitespaces))
+        let gallons = Double(gallonsReplaced.trimmingCharacters(in: .whitespaces))
+        guard percent != nil || gallons != nil else {
+            errorMessage = "Enter percent or gallons replaced."
+            return
+        }
+
+        isSaving = true
+        errorMessage = nil
+
+        let waterChange = WaterChange(
+            tankId: tank.id,
+            performedAt: performedAt,
+            percentReplaced: percent,
+            gallonsReplaced: gallons,
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes,
+            sourceScheduleId: deepLink?.scheduleId
+        )
+
+        Task {
+            _ = await appState.logWaterChange(waterChange)
+            await MainActor.run {
+                isSaving = false
+                onComplete()
+            }
+        }
+    }
+}
+
+private struct WaterChangeHistorySheet: View {
+    let tank: Tank?
+    let onClose: () -> Void
+
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
+                    HStack {
+                        Text("WATER CHANGE HISTORY")
+                            .font(BrutalistTheme.Typography.headerMedium)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                        Spacer()
+                        Button("CLOSE") { onClose() }
+                            .font(BrutalistTheme.Typography.button)
+                            .foregroundColor(BrutalistTheme.Colors.text)
+                    }
+
+                    if let tank {
+                        Text(tank.name.uppercased())
+                            .font(BrutalistTheme.Typography.caption)
+                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.65))
+
+                        let items = appState.recentWaterChanges(for: tank.id)
+                        if items.isEmpty {
+                            Text("No water changes logged yet.")
+                                .font(BrutalistTheme.Typography.body)
+                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                                .padding(.top, BrutalistTheme.Spacing.md)
+                        } else {
+                            ForEach(items) { wc in
+                                waterChangeRow(wc)
+                            }
+                        }
+                    } else {
+                        Text("No tank selected.")
+                            .font(BrutalistTheme.Typography.body)
+                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                    }
+                }
+                .padding(BrutalistTheme.Spacing.lg)
+            }
+            .background(BrutalistTheme.Colors.background)
+        }
+    }
+
+    private func waterChangeRow(_ wc: WaterChange) -> some View {
+        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
+            HStack {
+                Text(formattedDate(wc.performedAt))
+                    .font(BrutalistTheme.Typography.bodyBold)
+                    .foregroundColor(BrutalistTheme.Colors.text)
+                Spacer()
+                Text(amountText(wc))
+                    .font(BrutalistTheme.Typography.caption)
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+            }
+
+            if let notes = wc.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(BrutalistTheme.Typography.body)
+                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.85))
+            }
+        }
+        .padding(BrutalistTheme.Spacing.md)
+        .background(BrutalistTheme.Colors.background)
+        .brutalistCard()
+    }
+
+    private func amountText(_ wc: WaterChange) -> String {
+        if let pct = wc.percentReplaced {
+            return String(format: "%.1f%%", pct)
+        }
+        if let gal = wc.gallonsReplaced {
+            return String(format: "%.1f gal", gal)
+        }
+        return ""
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
 // MARK: - Tab Enum
 
 enum Tab: CaseIterable {
+    case settings
     case tanks
     case measure
     case livestock
     case history
-    case settings
+    case logWaterChange
 
     var title: String {
         switch self {
+        case .settings:
+            return "SETTINGS"
         case .tanks:
             return "TANKS"
         case .measure:
@@ -309,13 +578,15 @@ enum Tab: CaseIterable {
             return "LIVESTOCK"
         case .history:
             return "HISTORY"
-        case .settings:
-            return "SETTINGS"
+        case .logWaterChange:
+            return "WATER"
         }
     }
 
     var subtitle: String {
         switch self {
+        case .settings:
+            return "App preferences"
         case .tanks:
             return "Manage your aquariums"
         case .measure:
@@ -324,13 +595,15 @@ enum Tab: CaseIterable {
             return "Track your corals & fish"
         case .history:
             return "Track your progress"
-        case .settings:
-            return "App preferences"
+        case .logWaterChange:
+            return "Log a water change"
         }
     }
 
     var icon: String {
         switch self {
+        case .settings:
+            return "gearshape.fill"
         case .tanks:
             return "drop.fill"
         case .measure:
@@ -339,8 +612,8 @@ enum Tab: CaseIterable {
             return "fish.fill"
         case .history:
             return "chart.line.uptrend.xyaxis"
-        case .settings:
-            return "gearshape.fill"
+        case .logWaterChange:
+            return "drop.circle.fill"
         }
     }
 }
@@ -419,7 +692,7 @@ struct SettingsView: View {
                 // About Section
                 settingsSection(title: "ABOUT", icon: "info.circle.fill") {
                     VStack(spacing: 0) {
-                        aboutRow(label: "Version", value: "1.0.4")
+                        aboutRow(label: "Version", value: "1.0.6")
                         Rectangle()
                             .fill(BrutalistTheme.Colors.text.opacity(0.1))
                             .frame(height: 1)

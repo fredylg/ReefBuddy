@@ -91,6 +91,50 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Water Change
+
+struct WaterChange: Identifiable, Codable, Equatable {
+    let id: UUID
+    var tankId: UUID
+    var performedAt: Date
+    var percentReplaced: Double?
+    var gallonsReplaced: Double?
+    var notes: String?
+    var sourceScheduleId: UUID?
+    var createdAt: Date
+    var updatedAt: Date
+
+    // Local-first sync metadata
+    var needsSync: Bool
+    var isDeleted: Bool
+
+    init(
+        id: UUID = UUID(),
+        tankId: UUID,
+        performedAt: Date = Date(),
+        percentReplaced: Double? = nil,
+        gallonsReplaced: Double? = nil,
+        notes: String? = nil,
+        sourceScheduleId: UUID? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date(),
+        needsSync: Bool = true,
+        isDeleted: Bool = false
+    ) {
+        self.id = id
+        self.tankId = tankId
+        self.performedAt = performedAt
+        self.percentReplaced = percentReplaced
+        self.gallonsReplaced = gallonsReplaced
+        self.notes = notes
+        self.sourceScheduleId = sourceScheduleId
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.needsSync = needsSync
+        self.isDeleted = isDeleted
+    }
+}
+
 // MARK: - Notes helpers (testing checklist)
 
 enum MaintenanceChecklistItem: String, CaseIterable, Codable, Hashable {
@@ -131,5 +175,10 @@ struct MaintenanceDeepLink: Equatable {
     let scheduleId: UUID
     let tankId: UUID
     let type: MaintenanceSchedule.ScheduleType
+}
+
+struct AnalysisWaterChangeContext: Equatable {
+    let id: UUID
+    let tankId: UUID
 }
 
