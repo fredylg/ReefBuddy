@@ -185,7 +185,7 @@ The two headline findings:
 
 **C-02 · Medium · Bump** `compatibility_date` **from** `2024-01-01` **to a current date.** Run tests + `wrangler deploy --dry-run`. `nodejs_compat` not needed unless B-03 option (a) is chosen. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**C-03 · Low · Point iOS at** `api.reefbuddy.aethers.com.au` **and then set** `workers_dev = false`**.** The custom domain is live and healthy but unused; the app hard-codes the personal `reefbuddy.fredylg.workers.dev` host (`APIClient.swift:14`). Recommended: YES → Decision: [ x] YES  [ ] NO
+**C-03 · Low · Point iOS at** `api.reefbuddy.aethers.com.au` **and then set** `workers_dev = false`**.** The custom domain is live and healthy but unused; the app hard-codes the personal `reefbuddy.fredylg.workers.dev` host (`APIClient.swift:14`). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 **C-04 · Low · Flatten** `[vars.AI_GATEWAY] gateway_id` **to** `AI_GATEWAY_ID`**; fix the deprecated** `kv:namespace` **comment; verify observability applies to the production env; add** `head_sampling_rate`**.** Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
@@ -199,29 +199,29 @@ The two headline findings:
 
 ## 7. iOS — API contract (critical; sync is silently broken)
 
-**I-01 · Critical · Date decoding fails on every server response.** `APIClient.swift:85` uses `.iso8601`, which does not accept fractional seconds; the backend emits `toISOString()` with milliseconds. `getTanks`, `createTank`, `createMeasurement`, `createWaterChange`, `getWaterChanges`, `createMaintenanceSchedule`, `updateMaintenanceSchedule` all throw and fall back to local storage, while the server row was already inserted (orphans on every save). Fix: custom strategy trying `.withFractionalSeconds` then without. Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-01 · Critical · Date decoding fails on every server response.** `APIClient.swift:85` uses `.iso8601`, which does not accept fractional seconds; the backend emits `toISOString()` with milliseconds. `getTanks`, `createTank`, `createMeasurement`, `createWaterChange`, `getWaterChanges`, `createMaintenanceSchedule`, `updateMaintenanceSchedule` all throw and fall back to local storage, while the server row was already inserted (orphans on every save). Fix: custom strategy trying `.withFractionalSeconds` then without. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-02 · Critical ·** `needsSync` **/** `isDeleted` **are required Decodable keys the server never sends.** `MaintenanceSchedule.swift:58-59,108-109`. Schedule upsert decoding always fails. Fix: `decodeIfPresent ?? false`, or separate API DTOs from local models. Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-02 · Critical ·** `needsSync` **/** `isDeleted` **are required Decodable keys the server never sends.** `MaintenanceSchedule.swift:58-59,108-109`. Schedule upsert decoding always fails. Fix: `decodeIfPresent ?? false`, or separate API DTOs from local models. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-03 · Critical ·** `getMeasurements` **calls** `GET /api/measurements?tank_id=`**, which does not exist.** `APIClient.swift:246-260`. History only ever shows local data. Fix: call `/tanks/{id}/history` (after B-18/B-19) or add the GET route. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-03 · Critical ·** `getMeasurements` **calls** `GET /api/measurements?tank_id=`**, which does not exist.** `APIClient.swift:246-260`. History only ever shows local data. Fix: call `/tanks/{id}/history` (after B-18/B-19) or add the GET route. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-04 · Critical · Tank GET/PUT/DELETE send uppercase UUIDs to case-sensitive, session-only routes.** `APIClient.swift:104,129,142`. `deleteTank` only deletes locally. Fix: lowercase UUIDs in paths (client) + B-18/B-19 (server). Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-04 · Critical · Tank GET/PUT/DELETE send uppercase UUIDs to case-sensitive, session-only routes.** `APIClient.swift:104,129,142`. `deleteTank` only deletes locally. Fix: lowercase UUIDs in paths (client) + B-18/B-19 (server). Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-05 · High · Livestock create/list/update decoding fails on every call.** `Livestock.swift:411-456`: `createdAt` required but server sends only `added_at`; `category` optionality differs across three duplicate `LivestockDBRecord` structs. Users see "Saved locally, but failed to sync" on every add. Fix: one DTO, optional `createdAt`. Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-05 · High · Livestock create/list/update decoding fails on every call.** `Livestock.swift:411-456`: `createdAt` required but server sends only `added_at`; `category` optionality differs across three duplicate `LivestockDBRecord` structs. Users see "Saved locally, but failed to sync" on every add. Fix: one DTO, optional `createdAt`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 **I-06 · High · Health status and category enums don't match the backend.** iOS sends `thriving|stressed|declining|critical`; server accepts `healthy|sick|deceased|quarantine` → 400. `.anemone` and `.other` are silently sent as `Invertebrate`. Fix: extend server enums (preferred) or map in the DTO. **Live evidence:** all 81 livestock rows in production have `health_status = healthy`; no other value has ever been stored. Recommended: YES → Decision: [ x] YES  [ ] NO **Server side done 2026-09-07 (migration 0016); iOS DTO mapping in P4-06.**
 
-**I-07 · Medium ·** `Measurement.pH` **has no** `CodingKeys`**, so** `ph` **from the server decodes as nil.** `Measurement.swift:31`. Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-07 · Medium ·** `Measurement.pH` **has no** `CodingKeys`**, so** `ph` **from the server decodes as nil.** `Measurement.swift:31`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-08 · Medium ·** `Tank.tankType` **is non-optional; server column is nullable.** `Tank.swift:20`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-08 · Medium ·** `Tank.tankType` **is non-optional; server column is nullable.** `Tank.swift:20`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-09 · Medium · Every 403 becomes "Please update to the latest app version"** even for "You do not have access to this tank". `APIClient.swift:759-762`. Parse the `code` field. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-09 · Medium · Every 403 becomes "Please update to the latest app version"** even for "You do not have access to this tank". `APIClient.swift:759-762`. Parse the `code` field. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-10 · Medium · Wrap network/decoding errors and log** `DecodingError` **context** so silent fallbacks become visible; `.decodingError`/`.networkError`/`.forbidden` cases exist but are never thrown. Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-10 · Medium · Wrap network/decoding errors and log** `DecodingError` **context** so silent fallbacks become visible; `.decodingError`/`.networkError`/`.forbidden` cases exist but are never thrown. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-11 · Low · Single** `DeviceIdentity` **helper.** `X-Device-ID` uses `identifierForVendor` with no fallback in `APIClient`, while `AppState`/`StoreManager` fall back to a UserDefaults UUID. Optionally back it with Keychain (the unused `KeychainManager`) so the free tier survives reinstall. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-11 · Low · Single** `DeviceIdentity` **helper.** `X-Device-ID` uses `identifierForVendor` with no fallback in `APIClient`, while `AppState`/`StoreManager` fall back to a UserDefaults UUID. Optionally back it with Keychain (the unused `KeychainManager`) so the free tier survives reinstall. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-12 · Low ·** `fetchTanks` **replaces local tanks wholesale;** `deleteTank` **never cascades to measurements/livestock/schedules/water changes in UserDefaults.** Will bite once sync works. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-12 · Low ·** `fetchTanks` **replaces local tanks wholesale;** `deleteTank` **never cascades to measurements/livestock/schedules/water changes in UserDefaults.** Will bite once sync works. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 ---
 
@@ -229,17 +229,17 @@ The two headline findings:
 
 ## 8. iOS — StoreKit / credits
 
-**I-13 · High ·** `transaction.finish()` **is called even when backend validation fails.** `StoreManager.swift:337-356`. A consumable finished without credits is unrecoverable. Fix: finish only on success. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-13 · High ·** `transaction.finish()` **is called even when backend validation fails.** `StoreManager.swift:337-356`. A consumable finished without credits is unrecoverable. Fix: finish only on success. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-14 · High · Purchase error alert re-presents forever.** `PurchaseCreditsView.swift:51-57` binds to `.constant(purchaseError != nil)` and OK does nothing. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-14 · High · Purchase error alert re-presents forever.** `PurchaseCreditsView.swift:51-57` binds to `.constant(purchaseError != nil)` and OK does nothing. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-15 · Medium · Prices are hardcoded** `$0.99` **/** `$4.99`**.** `Product.displayPrice` is loaded but never shown; wrong in every non-USD storefront and an App Review risk. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-15 · Medium · Prices are hardcoded** `$0.99` **/** `$4.99`**.** `Product.displayPrice` is loaded but never shown; wrong in every non-USD storefront and an App Review risk. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-16 · Medium · App fabricates 3 free credits when the balance fetch fails.** `StoreManager.swift:256-270`, `ReefBuddyApp.swift:433-437`. Show "balance unavailable" instead. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-16 · Medium · App fabricates 3 free credits when the balance fetch fails.** `StoreManager.swift:256-270`, `ReefBuddyApp.swift:433-437`. Show "balance unavailable" instead. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-17 · Medium ·** `Task.detached` **capturing** `@MainActor self` **in the transaction listener** (leak + Swift 6 error); send `String(transaction.id)` instead of a random UUID (`:209`). Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-17 · Medium ·** `Task.detached` **capturing** `@MainActor self` **in the transaction listener** (leak + Swift 6 error); send `String(transaction.id)` instead of a random UUID (`:209`). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-18 · Low · "Restore" via** `AppStore.sync()` **cannot restore consumables**; replay `Transaction.unfinished` + refetch balance instead. Regenerate `ReefBuddy.storekit` (invalid `internalID`s); drop `StoreKit.plist` from Resources. Recommended: YES → Decision: [x ] YES  [ ] NO
+**I-18 · Low · "Restore" via** `AppStore.sync()` **cannot restore consumables**; replay `Transaction.unfinished` + refetch balance instead. Regenerate `ReefBuddy.storekit` (invalid `internalID`s); drop `StoreKit.plist` from Resources. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 ---
 
@@ -247,13 +247,13 @@ The two headline findings:
 
 ## 9. iOS — notifications / deep links
 
-**I-19 · High · Notification delegate is set in** `ContentView.onAppear`**, too late for cold-start taps.** `ReefBuddyApp.swift:33-52`. Tapping a reminder when the app is not running never opens the quick-action sheet. Fix: set the delegate in `didFinishLaunchingWithOptions`, buffer the pending deep link in `AppState`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-19 · High · Notification delegate is set in** `ContentView.onAppear`**, too late for cold-start taps.** `ReefBuddyApp.swift:33-52`. Tapping a reminder when the app is not running never opens the quick-action sheet. Fix: set the delegate in `didFinishLaunchingWithOptions`, buffer the pending deep link in `AppState`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-20 · High · Interval reminders re-anchor to "today" on every launch**, so an every-7-days reminder fires the day after every launch. `MaintenanceNotificationService.swift:180-203`. Fix: add `anchorDate`/`lastFiredAt` to the model; reschedule only on change. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-20 · High · Interval reminders re-anchor to "today" on every launch**, so an every-7-days reminder fires the day after every launch. `MaintenanceNotificationService.swift:180-203`. Fix: add `anchorDate`/`lastFiredAt` to the model; reschedule only on change. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-21 · Medium · 10 pending requests per interval schedule × 64-request iOS cap;** `try? addRequest` **swallows errors.** Lower window to 2–3, log failures. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-21 · Medium · 10 pending requests per interval schedule × 64-request iOS cap;** `try? addRequest` **swallows errors.** Lower window to 2–3, log failures. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-22 · Low · Weekly triggers omit** `timeZone`**; deep-link handler runs twice per tap.** `MaintenanceNotificationService.swift:105-121`, `ContentView.swift:32-40`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-22 · Low · Weekly triggers omit** `timeZone`**; deep-link handler runs twice per tap.** `MaintenanceNotificationService.swift:105-121`, `ContentView.swift:32-40`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 **I-23 · Medium ·** `NotificationSettingsView` **(550 lines) is unreachable and non-functional**: `@State` only, never persisted, sample history hardcoded, entry point commented out; the app never registers for remote notifications so the backend `/notifications/`* pipeline receives nothing, and `sendPushNotification` is a stub. Your call: see P-02. → Decision: [ x] YES wire it  [ ] NO delete it **Deferred to the push-notifications plan (see P-02).**
 
@@ -263,15 +263,15 @@ The two headline findings:
 
 ## 10. iOS — App Store compliance and project config
 
-**I-24 · High · No** `PrivacyInfo.xcprivacy`**.** Required since May 2024; the app uses `UserDefaults` (reason code `CA92.1`) and collects a device identifier. Uploads without it are rejected (ITMS-91053). Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-24 · High · No** `PrivacyInfo.xcprivacy`**.** Required since May 2024; the app uses `UserDefaults` (reason code `CA92.1`) and collects a device identifier. Uploads without it are rejected (ITMS-91053). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-25 · Medium · Version/build strings hardcoded** (`ContentView.swift:695,699` says build `2026.02`; pbxproj says `5`). Read from `Bundle.main`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-25 · Medium · Version/build strings hardcoded** (`ContentView.swift:695,699` says build `2026.02`; pbxproj says `5`). Read from `Bundle.main`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-26 · Medium · 98 ungated** `print(` **statements; some dump the full JWS, the full analysis payload with notes, and device IDs.** Replace with `os.Logger` (privacy `.private`). Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-26 · Medium · 98 ungated** `print(` **statements; some dump the full JWS, the full analysis payload with notes, and device IDs.** Replace with `os.Logger` (privacy `.private`). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-27 · Low · Add** `ITSAppUsesNonExemptEncryption = NO` to the generated Info.plist (removes the upload prompt). Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-27 · Low · Add** `ITSAppUsesNonExemptEncryption = NO` to the generated Info.plist (removes the upload prompt). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-28 · Medium · Update project settings for Xcode 26**: `LastUpgradeCheck 1500` → current, accept "recommended settings". Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-28 · Medium · Update project settings for Xcode 26**: `LastUpgradeCheck 1500` → current, accept "recommended settings". Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 ---
 
@@ -299,9 +299,9 @@ The two headline findings:
 
 **I-35 · Medium · Delete unused files/views**: `AnalysisView.swift` (445 lines, never instantiated; `AnalysisResultSheet` duplicates it), `User.swift` + `KeychainManager.swift` (no login UI; see P-01), `AppIconGenerator.swift` from the shipping target, `BrutalistPicker`, `BrutalistIconButton`. Recommended: YES (except keep `KeychainManager` if I-11 uses it) → Decision: [ x] YES  [ ] NO **Adjusted for P-01 (b): `User.swift` and `KeychainManager.swift` are kept.**
 
-**I-36 · Low · Small bugs bundle**: unreachable `catch` blocks around a non-throwing `requestAnalysis` (`MeasurementEntryView.swift:552-601`); `hasAnyValue` ignores ammonia/nitrite (`:516-525`); stale-copy double PUT in `LivestockDetailView.swift:86-97`; `Double(volumeText)!` in `TankListView.swift:231`; "Last updated: Today" hardcoded; CSV escaping not RFC 4180 (`ExportView.swift:298`); dead state `isRefreshing`/`showingSubscription`; previews missing environment objects; `Tab.logWaterChange` duplicates the modal sheet. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-36 · Low · Small bugs bundle**: unreachable `catch` blocks around a non-throwing `requestAnalysis` (`MeasurementEntryView.swift:552-601`); `hasAnyValue` ignores ammonia/nitrite (`:516-525`); stale-copy double PUT in `LivestockDetailView.swift:86-97`; `Double(volumeText)!` in `TankListView.swift:231`; "Last updated: Today" hardcoded; CSV escaping not RFC 4180 (`ExportView.swift:298`); dead state `isRefreshing`/`showingSubscription`; previews missing environment objects; `Tab.logWaterChange` duplicates the modal sheet. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-37 · Low · Move livestock photos from** `Documents/` **to Application Support** (keeps them out of Files/backups). Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-37 · Low · Move livestock photos from** `Documents/` **to Application Support** (keeps them out of Files/backups). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
 ---
 

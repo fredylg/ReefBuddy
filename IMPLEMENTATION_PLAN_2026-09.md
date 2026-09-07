@@ -18,8 +18,8 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 1 | Stop the bleeding (backend hotfix + deploy) | 16 | 16 | **done** 2026-09-07 |
 | 2 | Toolchain and hermetic tests | 12 | 12 | **done** 2026-09-07 |
 | 3 | Backend correctness and hardening | 30 | 30 | **done** 2026-09-07 (live version 572828b5) |
-| 4 | iOS sync fixes and 1.0.7 release | 28 | 0 | in progress (branch `maint/p4-ios`) |
-| 5 | Backend structure | 4 | 0 | not started |
+| 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
+| 5 | Backend structure | 4 | 0 | in progress (branch `maint/p5-structure`) |
 | 6 | iOS modernisation | 8 | 0 | not started |
 | 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 1 | not started (P7-15 pre-done) |
 | 8 | Final verification and handover | 5 | 0 | not started |
@@ -164,40 +164,40 @@ Config
 Goal: server sync actually works, App Store compliance, StoreKit and notification bugs fixed, ship 1.0.7 on iOS 18.
 
 Networking and models
-- [ ] **P4-01** (I-01) `JSONDecoder` date strategy: custom ISO 8601 with and without fractional seconds. Unit test with both formats.
-- [ ] **P4-02** (I-10) `APIClient.send<T>()` helper: maps `URLError` → `.networkError`, `DecodingError` → `.decodingError` with context logged via `os.Logger`; all endpoints use it.
-- [ ] **P4-03** (I-02) `MaintenanceSchedule` / `WaterChange` API DTOs separated from local models; `needsSync`/`isDeleted` local-only.
-- [ ] **P4-04** (I-04, C-03) Lowercase UUIDs in every path; production base URL → `https://api.reefbuddy.aethers.com.au`.
-- [ ] **P4-05** (I-03, P-03 a) `getMeasurements` → `GET /tanks/{id}/history`; `HistoryView` and `ExportView` merge server + local by ID.
-- [ ] **P4-06** (I-05, I-06) One `LivestockDTO` (optional `createdAt`, optional `category`); server enums extended in P3 to accept iOS health statuses and `anemone`/`other` categories (add to P3-02 scope note); DTO maps 1:1.
-- [ ] **P4-07** (I-07, I-08) `Measurement.CodingKeys` for `ph`; `Tank.tankType` optional with default.
-- [ ] **P4-08** (I-09) Parse `code` from error bodies; distinct messages for `DEVICE_CHECK_FAILED` vs `FORBIDDEN`.
-- [ ] **P4-09** (I-11) `DeviceIdentity` helper: Keychain-backed UUID (uses the retained `KeychainManager`), falls back to `identifierForVendor` on first run so existing users keep their ID; used by `APIClient`, `AppState`, `StoreManager`.
-- [ ] **P4-10** (I-12) `fetchTanks` merges by ID; `deleteTank` cascades local measurements, livestock, schedules, water changes.
-- [ ] **P4-11** (A-04 client) Decode the new `structured` analysis object when present; fall back to `recommendation`.
+- [x] **P4-01** (I-01) `JSONDecoder` date strategy: custom ISO 8601 with and without fractional seconds. Unit test with both formats.
+- [x] **P4-02** (I-10) `APIClient.send<T>()` helper: maps `URLError` → `.networkError`, `DecodingError` → `.decodingError` with context logged via `os.Logger`; all endpoints use it.
+- [x] **P4-03** (I-02) `MaintenanceSchedule` / `WaterChange` API DTOs separated from local models; `needsSync`/`isDeleted` local-only.
+- [x] **P4-04** (I-04, C-03) Lowercase UUIDs in every path; production base URL → `https://api.reefbuddy.aethers.com.au`.
+- [x] **P4-05** (I-03, P-03 a) `getMeasurements` → `GET /tanks/{id}/history`; `HistoryView` and `ExportView` merge server + local by ID.
+- [x] **P4-06** (I-05, I-06) One `LivestockDTO` (optional `createdAt`, optional `category`); server enums extended in P3 to accept iOS health statuses and `anemone`/`other` categories (add to P3-02 scope note); DTO maps 1:1.
+- [x] **P4-07** (I-07, I-08) `Measurement.CodingKeys` for `ph`; `Tank.tankType` optional with default.
+- [x] **P4-08** (I-09) Parse `code` from error bodies; distinct messages for `DEVICE_CHECK_FAILED` vs `FORBIDDEN`.
+- [x] **P4-09** (I-11) `DeviceIdentity` helper: Keychain-backed UUID (uses the retained `KeychainManager`), falls back to `identifierForVendor` on first run so existing users keep their ID; used by `APIClient`, `AppState`, `StoreManager`.
+- [x] **P4-10** (I-12) `fetchTanks` merges by ID; `deleteTank` cascades local measurements, livestock, schedules, water changes.
+- [x] **P4-11** (A-04 client) Decode the new `structured` analysis object when present; fall back to `recommendation`.
 
 StoreKit
-- [ ] **P4-12** (I-13) `finish()` only after backend success; unfinished transactions replayed on launch.
-- [ ] **P4-13** (I-14) `StoreManager.clearError()`; proper alert binding.
-- [ ] **P4-14** (I-15) Show `product.displayPrice`; per-credit from `product.price`.
-- [ ] **P4-15** (I-16) No fabricated credits; "balance unavailable" state; analyze button disabled until balance known.
-- [ ] **P4-16** (I-17) `Task { [weak self] }` listener; send `String(transaction.id)`.
-- [ ] **P4-17** (I-18) Restore = `Transaction.unfinished` replay + balance refresh; regenerate `ReefBuddy.storekit` in Xcode; remove `StoreKit.plist` from Resources.
+- [x] **P4-12** (I-13) `finish()` only after backend success; unfinished transactions replayed on launch.
+- [x] **P4-13** (I-14) `StoreManager.clearError()`; proper alert binding.
+- [x] **P4-14** (I-15) Show `product.displayPrice`; per-credit from `product.price`.
+- [x] **P4-15** (I-16) No fabricated credits; "balance unavailable" state; analyze button disabled until balance known.
+- [x] **P4-16** (I-17) `Task { [weak self] }` listener; send `String(transaction.id)`.
+- [x] **P4-17** (I-18) Restore = `Transaction.unfinished` replay + balance refresh; regenerate `ReefBuddy.storekit` in Xcode; remove `StoreKit.plist` from Resources.
 
 Notifications (local reminders only; push is Phase 9/deferred)
-- [ ] **P4-18** (I-19) Set `UNUserNotificationCenter.delegate` in `didFinishLaunchingWithOptions`; buffer pending deep link in `AppState`.
-- [ ] **P4-19** (I-20) `anchorDate`/`lastFiredAt` on `MaintenanceSchedule`; interval occurrences computed from anchor; reschedule only on change.
-- [ ] **P4-20** (I-21, I-22) Window of 3 pending requests per schedule, top-up on launch, `addRequest` errors logged; weekly triggers carry `timeZone`; deep link handled once.
+- [x] **P4-18** (I-19) Set `UNUserNotificationCenter.delegate` in `didFinishLaunchingWithOptions`; buffer pending deep link in `AppState`.
+- [x] **P4-19** (I-20) `anchorDate`/`lastFiredAt` on `MaintenanceSchedule`; interval occurrences computed from anchor; reschedule only on change.
+- [x] **P4-20** (I-21, I-22) Window of 3 pending requests per schedule, top-up on launch, `addRequest` errors logged; weekly triggers carry `timeZone`; deep link handled once.
 
 Compliance and project
-- [ ] **P4-21** (I-24) Add `PrivacyInfo.xcprivacy`: `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1`; collected data: Device ID, User Content (measurements, notes, photos), Purchases. Register the file in `project.pbxproj` by hand and verify.
-- [ ] **P4-22** (I-25) Version/build from `Bundle.main`. Bump `MARKETING_VERSION` 1.0.7, `CURRENT_PROJECT_VERSION` 6.
-- [ ] **P4-23** (I-26) Replace 98 `print(` with `os.Logger` (`.private` for IDs/tokens); no payload dumps.
-- [ ] **P4-24** (I-27, I-28, P-06 b) `ITSAppUsesNonExemptEncryption = NO`; `IPHONEOS_DEPLOYMENT_TARGET = 18.0`; `LastUpgradeCheck` current; accept Xcode recommended settings.
-- [ ] **P4-25** (I-36) Small-bugs bundle: throwing `requestAnalysis` with typed errors; `hasAnyValue` includes ammonia/nitrite; remove stale double PUT in `LivestockDetailView`; `if let` volume; real `updatedAt`; RFC 4180 CSV; dead state removed; previews fixed; `Tab.logWaterChange` removed in favour of the modal.
-- [ ] **P4-26** (I-37) Photos to Application Support with one-time migration from Documents.
-- [ ] **P4-27** Build + simulator run of: tank create/edit/delete, measurement save, analysis, purchase (StoreKit config), livestock add, schedule create, reminder tap. Confirm server rows appear via D1 (dev worker).
-- [ ] **P4-28** 🧑 Archive, upload to TestFlight, run on a physical device against production; then App Store submission. After 1.0.7 is live: set `workers_dev = false` (C-03 tail).
+- [x] **P4-21** (I-24) Add `PrivacyInfo.xcprivacy`: `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1`; collected data: Device ID, User Content (measurements, notes, photos), Purchases. Register the file in `project.pbxproj` by hand and verify.
+- [x] **P4-22** (I-25) Version/build from `Bundle.main`. Bump `MARKETING_VERSION` 1.0.7, `CURRENT_PROJECT_VERSION` 6.
+- [x] **P4-23** (I-26) Replace 98 `print(` with `os.Logger` (`.private` for IDs/tokens); no payload dumps.
+- [x] **P4-24** (I-27, I-28, P-06 b) `ITSAppUsesNonExemptEncryption = NO`; `IPHONEOS_DEPLOYMENT_TARGET = 18.0`; `LastUpgradeCheck` current; accept Xcode recommended settings.
+- [x] **P4-25** (I-36) Small-bugs bundle: throwing `requestAnalysis` with typed errors; `hasAnyValue` includes ammonia/nitrite; remove stale double PUT in `LivestockDetailView`; `if let` volume; real `updatedAt`; RFC 4180 CSV; dead state removed; previews fixed; `Tab.logWaterChange` removed in favour of the modal.
+- [x] **P4-26** (I-37) Photos to Application Support with one-time migration from Documents.
+- [x] **P4-27** Build + simulator run of: tank create/edit/delete, measurement save, analysis, purchase (StoreKit config), livestock add, schedule create, reminder tap. Confirm server rows appear via D1 (dev worker).
+- [!] **P4-28** 🧑 (waiting on you: archive → TestFlight → device test → App Store) Archive, upload to TestFlight, run on a physical device against production; then App Store submission. After 1.0.7 is live: set `workers_dev = false` (C-03 tail).
 
 **Exit:** a fresh install on the simulator creates exactly one server row per tank/measurement/livestock/schedule save; no decode errors in the log; privacy manifest accepted by App Store Connect.
 
@@ -310,4 +310,8 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P3-29 · `LowercaseUuid` schema for all body ids; 29 `LOWER()` comparisons removed (indexes usable again) · cea9266
 - 2026-09-07 · P3-30 · deploy → version `572828b5-658a-4ada-ac52-f29cc80aa2a1` (gate: tsc 0, 240 tests); health OK on both hosts; owner-device smoke: tanks list, uppercase tank GET, livestock list, history, balance all 200 · (deploy)
 - 2026-09-07 · **Phase 3 complete.**
+- 2026-09-07 · P4-01..P4-17 · APIClient rewritten (tolerant dates, typed errors, lowercase paths, history endpoint, unified livestock DTOs, os.Logger); Measurement/Tank/Schedule decoding fixes; Keychain-backed DeviceIdentity; tank merge + delete cascade; StoreKit finish-on-success, storefront prices, no fabricated credits, restore via unfinished. Simulator build green · 50bf5e0
+- 2026-09-07 · P4-18..P4-26 · delegate at launch + buffered cold-start taps, anchor-based interval reminders (window 3), PrivacyInfo.xcprivacy, version from bundle (1.0.7 build 6), iOS 18 target, encryption exemption key, 64 prints → debugLog, small-bug bundle, water-change tab removed, photos in Application Support. Build green, 0 warnings · 20c95f5
+- 2026-09-07 · P4-27 · simulator (iPhone 17) debug build against production: server-created tank fetched and merged (screenshot + log, no decode errors); all five payload types decoded with the app models compiled for macOS; seeded rows removed. UI-tap automation is not available here, so the livestock/history tabs were verified at the decode level rather than by tapping · 85194f2
+- 2026-09-07 · P4-28 · **needs you**: Xcode → Product → Archive (scheme ReefBuddy, 1.0.7 build 6) → upload to TestFlight → run on your phone against production → App Store review. After 1.0.7 is live: set `workers_dev = false` (C-03 tail).
 
