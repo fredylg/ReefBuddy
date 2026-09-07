@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 // MARK: - History View
@@ -172,16 +173,25 @@ struct HistoryView: View {
     }
 
     private var miniChartPreview: some View {
-        GeometryReader { geometry in
-            let points = getMiniChartPoints(width: geometry.size.width, height: geometry.size.height)
-            if points.count > 1 {
-                Path { path in
-                    path.move(to: points[0])
-                    for point in points.dropFirst() {
-                        path.addLine(to: point)
-                    }
+        let values = getParameterValues(from: filteredMeasurements.reversed()).compactMap { $0 }
+        let minVal = values.min() ?? 0
+        let maxVal = values.max() ?? 1
+
+        return Group {
+            if values.count > 1 {
+                Chart(Array(values.enumerated()), id: \.offset) { index, value in
+                    LineMark(
+                        x: .value("Reading", index),
+                        y: .value(selectedParameter.displayName, value)
+                    )
+                    .interpolationMethod(.linear)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .square, lineJoin: .miter))
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
-                .stroke(BrutalistTheme.Colors.text, style: StrokeStyle(lineWidth: 2, lineCap: .square, lineJoin: .miter))
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartYScale(domain: maxVal > minVal ? minVal...maxVal : (minVal - 0.5)...(minVal + 0.5))
+                .chartLegend(.hidden)
             } else {
                 // No data placeholder
                 Text("NO DATA")
@@ -317,25 +327,6 @@ struct HistoryView: View {
             return measurements.map { $0.temperature }
         case .salinity:
             return measurements.map { $0.salinity }
-        }
-    }
-
-    private func getMiniChartPoints(width: CGFloat, height: CGFloat) -> [CGPoint] {
-        let values = getParameterValues(from: filteredMeasurements.reversed()).compactMap { $0 }
-        guard values.count > 1 else { return [] }
-
-        let minVal = values.min() ?? 0
-        let maxVal = values.max() ?? 1
-        let range = maxVal - minVal == 0 ? 1 : maxVal - minVal
-
-        let padding: CGFloat = 4
-        let usableWidth = width - (padding * 2)
-        let usableHeight = height - (padding * 2)
-
-        return values.enumerated().map { index, value in
-            let x = padding + (CGFloat(index) / CGFloat(values.count - 1)) * usableWidth
-            let y = padding + usableHeight - ((CGFloat(value - minVal) / CGFloat(range)) * usableHeight)
-            return CGPoint(x: x, y: y)
         }
     }
 }

@@ -1,8 +1,9 @@
+import Charts
 import SwiftUI
 
 // MARK: - Chart View
 
-/// Full-screen chart view with New Brutalist style line charts.
+/// Full-screen chart view with New Brutalist style line charts (Swift Charts).
 /// Jagged lines, no fills, sharp corners, hard shadows.
 struct ChartView: View {
 
@@ -51,27 +52,106 @@ struct ChartView: View {
             selectedPointInfo
                 .frame(height: 60)
 
-            // Chart
-            GeometryReader { geometry in
-                ZStack {
-                    // Grid lines
-                    gridLines(in: geometry.size)
-
-                    // Chart line
-                    brutalistChartLine(in: geometry.size)
-
-                    // Data points
-                    dataPoints(in: geometry.size)
-
-                    // Touch overlay
-                    touchOverlay(in: geometry.size)
-                }
-            }
-            .padding(BrutalistTheme.Spacing.lg)
-            .background(BrutalistTheme.Colors.background)
+            chart
+                .padding(BrutalistTheme.Spacing.lg)
+                .background(BrutalistTheme.Colors.background)
         }
         .brutalistCard()
         .padding(BrutalistTheme.Spacing.lg)
+    }
+
+    // MARK: - Chart (Swift Charts, brutalist styling: straight segments, square markers, hard grid)
+
+    private var chart: some View {
+        let data = Array(chartData.enumerated())
+        let range = parameterRange.range
+        let (minVal, maxVal) = chartValueRange
+
+        return Chart {
+            // Optimal range highlight
+            RectangleMark(
+                yStart: .value("Optimal low", range.lowerBound),
+                yEnd: .value("Optimal high", range.upperBound)
+            )
+            .foregroundStyle(BrutalistTheme.Colors.action.opacity(0.1))
+
+            ForEach(data, id: \.offset) { _, point in
+                // Main line - jagged, no smoothing
+                LineMark(
+                    x: .value("Date", point.date),
+                    y: .value(parameter.displayName, point.value)
+                )
+                .interpolationMethod(.linear)
+                .lineStyle(StrokeStyle(lineWidth: BrutalistTheme.Borders.standard, lineCap: .square, lineJoin: .miter))
+                .foregroundStyle(BrutalistTheme.Colors.text)
+
+                // Square data point
+                PointMark(
+                    x: .value("Date", point.date),
+                    y: .value(parameter.displayName, point.value)
+                )
+                .symbol {
+                    let isSelected = selectedPoint == point
+                    Rectangle()
+                        .fill(isSelected ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
+                        .frame(width: isSelected ? 14 : 10, height: isSelected ? 14 : 10)
+                        .overlay(
+                            Rectangle()
+                                .strokeBorder(statusColor(for: point.value), lineWidth: isSelected ? 3 : 2)
+                        )
+                }
+            }
+
+            if let selected = selectedPoint {
+                RuleMark(x: .value("Selected", selected.date))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
+            }
+        }
+        .chartYScale(domain: minVal...maxVal)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: min(max(chartData.count, 2), 7))) {
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.1))
+                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.1))
+                AxisValueLabel {
+                    if let number = value.as(Double.self) {
+                        Text(formatValue(number))
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
+                    }
+                }
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                guard let plotFrame = proxy.plotFrame else { return }
+                                let x = value.location.x - geometry[plotFrame].origin.x
+                                if let date: Date = proxy.value(atX: x) {
+                                    selectedPoint = nearestPoint(to: date)
+                                }
+                            }
+                    )
+            }
+        }
+    }
+
+    /// The data point whose date is closest to `date` (touch selection).
+    private func nearestPoint(to date: Date) -> ChartDataPoint? {
+        chartData.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
     }
 
     private var selectedPointInfo: some View {
@@ -100,155 +180,6 @@ struct ChartView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, BrutalistTheme.Spacing.md)
-    }
-
-    // MARK: - Grid Lines
-
-    private func gridLines(in size: CGSize) -> some View {
-        let horizontalLines = 5
-        let verticalLines = min(chartData.count, 7)
-
-        return ZStack {
-            // Horizontal grid lines
-            ForEach(0..<horizontalLines, id: \.self) { index in
-                let y = size.height * CGFloat(index) / CGFloat(horizontalLines - 1)
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: y))
-                    path.addLine(to: CGPoint(x: size.width, y: y))
-                }
-                .stroke(
-                    BrutalistTheme.Colors.text.opacity(0.1),
-                    style: StrokeStyle(lineWidth: 1, dash: [4, 4])
-                )
-            }
-
-            // Vertical grid lines
-            if verticalLines > 1 {
-                ForEach(0..<verticalLines, id: \.self) { index in
-                    let x = size.width * CGFloat(index) / CGFloat(verticalLines - 1)
-                    Path { path in
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x, y: size.height))
-                    }
-                    .stroke(
-                        BrutalistTheme.Colors.text.opacity(0.1),
-                        style: StrokeStyle(lineWidth: 1, dash: [4, 4])
-                    )
-                }
-            }
-
-            // Optimal range highlight
-            optimalRangeOverlay(in: size)
-        }
-    }
-
-    private func optimalRangeOverlay(in size: CGSize) -> some View {
-        let range = parameterRange
-        let (minVal, maxVal) = chartValueRange
-
-        guard maxVal > minVal else { return AnyView(EmptyView()) }
-
-        let normalizedLower = CGFloat((range.range.lowerBound - minVal) / (maxVal - minVal))
-        let normalizedUpper = CGFloat((range.range.upperBound - minVal) / (maxVal - minVal))
-
-        let yLower = size.height * (1 - normalizedLower)
-        let yUpper = size.height * (1 - normalizedUpper)
-
-        return AnyView(
-            Rectangle()
-                .fill(BrutalistTheme.Colors.action.opacity(0.1))
-                .frame(height: abs(yLower - yUpper))
-                .position(x: size.width / 2, y: (yLower + yUpper) / 2)
-        )
-    }
-
-    // MARK: - Brutalist Chart Line
-
-    private func brutalistChartLine(in size: CGSize) -> some View {
-        let points = getChartPoints(in: size)
-
-        return ZStack {
-            // Main line - jagged, no smoothing
-            if points.count > 1 {
-                Path { path in
-                    path.move(to: points[0])
-                    for point in points.dropFirst() {
-                        // Direct lines, no curves - true brutalist style
-                        path.addLine(to: point)
-                    }
-                }
-                .stroke(
-                    BrutalistTheme.Colors.text,
-                    style: StrokeStyle(
-                        lineWidth: BrutalistTheme.Borders.standard,
-                        lineCap: .square,
-                        lineJoin: .miter
-                    )
-                )
-            }
-        }
-    }
-
-    // MARK: - Data Points
-
-    private func dataPoints(in size: CGSize) -> some View {
-        let points = getChartPoints(in: size)
-        let data = chartData
-
-        return ZStack {
-            ForEach(Array(zip(points.indices, points)), id: \.0) { index, point in
-                let dataPoint = data[index]
-                let isSelected = selectedPoint?.date == dataPoint.date
-
-                // Square data point - brutalist style
-                Rectangle()
-                    .fill(isSelected ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
-                    .frame(width: isSelected ? 14 : 10, height: isSelected ? 14 : 10)
-                    .overlay(
-                        Rectangle()
-                            .strokeBorder(
-                                statusColor(for: dataPoint.value),
-                                lineWidth: isSelected ? 3 : 2
-                            )
-                    )
-                    .position(point)
-            }
-        }
-    }
-
-    // MARK: - Touch Overlay
-
-    private func touchOverlay(in size: CGSize) -> some View {
-        let points = getChartPoints(in: size)
-        let data = chartData
-
-        return Color.clear
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let location = value.location
-
-                        // Find closest point
-                        var closestIndex = 0
-                        var closestDistance = CGFloat.infinity
-
-                        for (index, point) in points.enumerated() {
-                            let distance = abs(point.x - location.x)
-                            if distance < closestDistance {
-                                closestDistance = distance
-                                closestIndex = index
-                            }
-                        }
-
-                        if closestIndex < data.count {
-                            selectedPoint = data[closestIndex]
-                        }
-                    }
-                    .onEnded { _ in
-                        // Keep selection visible
-                    }
-            )
     }
 
     // MARK: - Stats Summary
@@ -391,32 +322,6 @@ struct ChartView: View {
     }
 
     // MARK: - Helper Methods
-
-    private func getChartPoints(in size: CGSize) -> [CGPoint] {
-        let data = chartData
-        guard data.count > 0 else { return [] }
-
-        let (minVal, maxVal) = chartValueRange
-        let valueRange = maxVal - minVal
-
-        guard valueRange > 0 else { return [] }
-
-        let padding: CGFloat = 8
-
-        return data.enumerated().map { index, point in
-            let x: CGFloat
-            if data.count == 1 {
-                x = size.width / 2
-            } else {
-                x = padding + CGFloat(index) / CGFloat(data.count - 1) * (size.width - padding * 2)
-            }
-
-            let normalizedY = (point.value - minVal) / valueRange
-            let y = size.height - padding - CGFloat(normalizedY) * (size.height - padding * 2)
-
-            return CGPoint(x: x, y: y)
-        }
-    }
 
     private func getParameterValue(from measurement: Measurement) -> Double? {
         switch parameter {
