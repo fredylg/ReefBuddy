@@ -19,7 +19,7 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 2 | Toolchain and hermetic tests | 12 | 12 | **done** 2026-09-07 |
 | 3 | Backend correctness and hardening | 30 | 30 | **done** 2026-09-07 (live version 572828b5) |
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
-| 5 | Backend structure | 4 | 0 | in progress (branch `maint/p5-structure`) |
+| 5 | Backend structure | 4 | 3 | in progress (branch `maint/p5-structure`; P5-04 deploy awaiting go-ahead) |
 | 6 | iOS modernisation | 8 | 0 | not started |
 | 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 1 | not started (P7-15 pre-done) |
 | 8 | Final verification and handover | 5 | 0 | not started |
@@ -207,9 +207,9 @@ Compliance and project
 
 Goal: `src/index.ts` becomes a router; behaviour unchanged (suite is the guard).
 
-- [ ] **P5-01** (B-35) Delete the non-`/api` duplicate route family (`/tanks/:id/livestock`, `/livestock/:id`, `/livestock/:id/logs`, `/measurements`); keep `/api/*`. Update tests that used the old paths.
-- [ ] **P5-02** (B-36) Split into `env.ts`, `http.ts`, `schemas/*`, `auth/{session,devicecheck}.ts`, `ai/gateway.ts`, `credits/{store,storekit}.ts`, `routes/*.ts`, table-driven router in `index.ts`. Mechanical moves only; one commit per module.
-- [ ] **P5-03** (B-29) Prettier config + one formatting commit; merged-statement lines gone.
+- [x] **P5-01** (B-35) Delete the non-`/api` duplicate route family (`/tanks/:id/livestock`, `/livestock/:id`, `/livestock/:id/logs`, `/measurements`); keep `/api/*`. Update tests that used the old paths.
+- [x] **P5-02** (B-36) Split into `env.ts`, `http.ts`, `schemas/*`, `auth/{session,devicecheck}.ts`, `ai/gateway.ts`, `credits/{store,storekit}.ts`, `routes/*.ts`, table-driven router in `index.ts`. Mechanical moves only; one commit per module.
+- [x] **P5-03** (B-29) Prettier config + one formatting commit; merged-statement lines gone.
 - [ ] **P5-04** ⛔ Deploy; smoke test; `wrangler check startup` compared with baseline.
 
 **Exit:** no file over 600 lines; suite green; identical responses for the smoke set.
@@ -314,4 +314,6 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P4-18..P4-26 · delegate at launch + buffered cold-start taps, anchor-based interval reminders (window 3), PrivacyInfo.xcprivacy, version from bundle (1.0.7 build 6), iOS 18 target, encryption exemption key, 64 prints → debugLog, small-bug bundle, water-change tab removed, photos in Application Support. Build green, 0 warnings · 20c95f5
 - 2026-09-07 · P4-27 · simulator (iPhone 17) debug build against production: server-created tank fetched and merged (screenshot + log, no decode errors); all five payload types decoded with the app models compiled for macOS; seeded rows removed. UI-tap automation is not available here, so the livestock/history tabs were verified at the decode level rather than by tapping · 85194f2
 - 2026-09-07 · P4-28 · **needs you**: Xcode → Product → Archive (scheme ReefBuddy, 1.0.7 build 6) → upload to TestFlight → run on your phone against production → App Store review. After 1.0.7 is live: set `workers_dev = false` (C-03 tail).
-
+- 2026-09-07 · P5-01 · legacy `/tanks/:id/livestock`, `/livestock/:id`, `/livestock/:id/logs` and `/measurements` routes removed from the router; livestock tests moved to `/api/*` · 5355475
+- 2026-09-07 · P5-02 · `src/index.ts` 4,743 → 221 lines; split into `env.ts`, `http.ts` (incl. KV rate limiter), `schemas.ts`, `ai/gateway.ts`, `auth/{session,devicecheck}.ts`, `credits/{store,storekit}.ts`, `routes/*.ts` (10 files); `reflect-metadata` stays the first import · 5355475
+- 2026-09-07 · P5-03 · Prettier 3.9.6 (`.prettierrc.json`, `.prettierignore`, `npm run format[:check]`); one formatting-only commit over src/ and tests/ (39 files); tsc 0, 240 tests before and after · ff7d232
