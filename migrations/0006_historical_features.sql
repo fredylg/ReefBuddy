@@ -1,6 +1,6 @@
 -- ============================================================================
 -- ReefBuddy Historical Features Migration
--- Migration: 0003_historical_features.sql
+-- Migration: 0006_historical_features.sql
 -- Author: @data-steward
 -- Description: Adds indexes for efficient date-range queries, trend support,
 --              and aggregation views for daily/weekly/monthly averages.

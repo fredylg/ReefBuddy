@@ -1,5 +1,23 @@
 # ReefBuddy Security Remediation Plan
 
+> **Archived 2026-09-07 (maintenance review item X-02).** The trackers below were corrected against the
+> code as it is after maintenance Phases 1–7; the original text underneath is kept for history and is
+> not maintained. Live findings and decisions are in `MAINTENANCE_REVIEW_2026-09.md`.
+>
+> **Stage 1 (backend)** — C1 done (Phase 1/3: signature + x5c chain to Apple Root CA G3), C2 done,
+> C3 done (P3-06: allow-list only, no `*` fallback, `Vary: Origin`), H1 done (structured JSON output
+> plus `sanitizeTextInput`/`sanitizeModelOutput`/`sanitizeAnalysisStringsDeep`), **H3 was wrongly
+> ticked** — the limiter failed open until 2026-09-07, when `/analyze` was switched to fail closed
+> (`checkIPRateLimit(..., 'deny')`; cheap routes still fail open on purpose), H4 done (P1: no bodies,
+> tokens or JWS in logs), H5 done (60/min device scope), M2 **open by decision** (bcrypt 10 rounds;
+> 12 would multiply Workers CPU time for a login feature that is not shipped), M3 done, M4 done
+> (top-level config is production), L1 done (P3: generic messages + `X-Request-Id`), L2 done
+> (`X-Request-Id` on every response), L3 done (Zod `.max()` on every string field), L4 **won't do**
+> (the JWS is Apple-signed public data; nothing secret to encrypt).
+>
+> **Stage 2 (iOS)** — H2 done differently (DeviceCheck two-bit state, bounded device ids, Keychain-backed
+> `DeviceIdentity`), M1 done (Keychain, Phase 4), iOS-1 done (typed `APIError`, Phase 4).
+
 **Created:** January 19, 2026
 **Based On:** SECURITY_AUDIT.md
 **Target Completion:** Before App Store Release
@@ -27,17 +45,17 @@
 | C1 | CRITICAL | Enable JWS Signature Verification | [x] Completed |
 | C2 | CRITICAL | Remove Debug Endpoint | [x] Completed |
 | C3 | CRITICAL | Restrict CORS Policy | [x] Completed |
-| H1 | HIGH | Improve Prompt Injection Protection | [ ] Not Started |
-| H3 | HIGH | Fix Rate Limiting Fail-Open | [x] Completed |
+| H1 | HIGH | Improve Prompt Injection Protection | [x] Completed (2026-09, structured output + sanitisers) |
+| H3 | HIGH | Fix Rate Limiting Fail-Open | [x] Completed 2026-09-07 for `/analyze` (was ticked in error before) |
 | H4 | HIGH | Sanitize Sensitive Data in Logs | [x] Completed |
 | H5 | HIGH | Add Rate Limiting to Credit Balance | [x] Completed |
-| M2 | MEDIUM | Increase Bcrypt Salt Rounds | [ ] Not Started |
+| M2 | MEDIUM | Increase Bcrypt Salt Rounds | [ ] Open by decision (10 rounds; login not shipped) |
 | M3 | MEDIUM | Add Security Headers | [x] Completed |
 | M4 | MEDIUM | Update Environment Config | [x] Completed |
 | L1 | LOW | Reduce Error Verbosity | [x] Completed |
-| L2 | LOW | Add Request ID Tracing | [ ] Not Started |
-| L3 | LOW | Add Input Length Limits | [ ] Not Started |
-| L4 | LOW | Encrypt Receipt Data | [ ] Not Started |
+| L2 | LOW | Add Request ID Tracing | [x] Completed (`X-Request-Id`, Phase 3) |
+| L3 | LOW | Add Input Length Limits | [x] Completed (Zod `.max()` everywhere, Phase 3) |
+| L4 | LOW | Encrypt Receipt Data | [-] Won't do (Apple-signed public JWS) |
 
 ---
 
@@ -635,9 +653,9 @@ curl https://reefbuddy.fredylg.workers.dev/health
 
 | ID | Severity | Item | Status |
 |----|----------|------|--------|
-| H2 | HIGH | Strengthen Device ID Verification | [ ] Not Started |
-| M1 | MEDIUM | Migrate Credentials to Keychain | [ ] Not Started |
-| iOS-1 | MEDIUM | Handle New Backend Error Codes | [ ] Not Started |
+| H2 | HIGH | Strengthen Device ID Verification | [x] Completed differently (DeviceCheck bits + Keychain device id) |
+| M1 | MEDIUM | Migrate Credentials to Keychain | [x] Completed (Phase 4) |
+| iOS-1 | MEDIUM | Handle New Backend Error Codes | [x] Completed (typed `APIError`, Phase 4) |
 
 ---
 
@@ -1187,4 +1205,4 @@ Week 4:
 ---
 
 *Plan created: January 19, 2026*
-*Last updated: January 19, 2026*
+*Last updated: September 7, 2026 (archived)*

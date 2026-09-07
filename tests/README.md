@@ -1,120 +1,62 @@
-# ReefBuddy Test Suite
+# Backend test suite
 
-**Owner:** @tester-agent (Quality Assurance Lead)
+Vitest runs the Worker inside the real Workers runtime through `@cloudflare/vitest-plugin`
+(`vitest.config.ts`): Miniflare provides D1 and KV, `tests/apply-d1-migrations.ts` replays
+`migrations/*.sql` before each file, and `tests/helpers/mock-gateway.ts` intercepts the AI Gateway so
+no test talks to Anthropic. Storage is isolated per test file, not per test, so tests use unique device
+ids and IPs instead of relying on rollback.
 
-This directory contains all automated tests for the ReefBuddy backend API.
-
-## Test Structure
-
-```
-tests/
-  api.test.ts       # API endpoint tests (measurements, validation, limits)
-  README.md         # This file
-```
-
-## Running Tests
-
-### Run All Tests
 ```bash
-npm test
+npm test                         # 243 tests, 6 skipped (need real Apple credentials)
+npx vitest run tests/credits.test.ts
+npx vitest run -t "refund"       # by name
 ```
 
-### Run Tests in Watch Mode (Development)
-```bash
-npm run test:watch
-```
+## Files
 
-### Run Tests with Coverage
-```bash
-npx vitest run --coverage
-```
+| File | Covers |
+|------|--------|
+| `api.test.ts` | measurements validation, tank routes, CORS/security headers, request ids |
+| `tanks-backward-compat.test.ts` | tank payload shapes the iOS app sends (uppercase ids, optional fields) |
+| `device-routes.test.ts` | `X-Device-ID` access to every app route, bounds on device ids, rate-limit scopes |
+| `credits.test.ts` | balance, free tier, consume/refund, concurrency (no negative credits) |
+| `credits-purchase.test.ts` | StoreKit 2 JWS verification: signature, x5c chain, OIDs, environments (`fixtures/*.jws`) |
+| `analyze-credits-refund.test.ts` | `/analyze` success/failure paths and credit refunds per failure kind |
+| `ai-gateway.test.ts` | gateway request shape, structured output parsing, retries, error mapping |
+| `devicecheck-bits.test.ts` | two-bit free-tier state machine |
+| `devicecheck-security.test.ts` | DeviceCheck enforcement and dev/production gating |
+| `livestock-notifications.test.ts` | `/api/tanks/:id/livestock`, logs, notification settings/history |
+| `e2e/devicecheck-production.test.ts` | real DeviceCheck call; excluded from `npm test` (needs `.dev.vars`) |
 
-## Test Categories
+Helpers: `helpers/mock-gateway.ts` (`installGatewayMock`, `queueGatewayReply`, `lastGatewayRequestBody`),
+`env.d.ts` (adds `TEST_MIGRATIONS` to `Cloudflare.Env`), `raw-modules.d.ts` (`?raw` SQL imports).
 
-### 1. POST /measurements Tests
-- **Input Validation:** Validates Zod schema enforcement for measurement data
-- **Response Format:** Verifies correct HTTP status codes and JSON responses
-- **Database Persistence:** Confirms data is stored correctly in D1
+## Bindings in tests
 
-### 2. Free Tier Limit Tests
-- **Usage Tracking:** Validates KV-based measurement counting
-- **Limit Enforcement:** Confirms 3/month limit for free users
-- **Premium Bypass:** Verifies unlimited access for subscribers
+`vitest.config.ts` runs the `dev` environment of `wrangler.toml` with these overrides: `ENVIRONMENT=test`,
+`FREE_ANALYSIS_LIMIT=3`, a dummy `ANTHROPIC_API_KEY`, empty `CF_AI_GATEWAY_TOKEN` and `APPLE_*`
+secrets. `worker-configuration.d.ts` (from `npm run types`) types `env`.
 
-### 3. Security Tests
-- **Rate Limiting:** IP-based request throttling
-- **Input Sanitization:** SQL injection and XSS prevention
+## Writing a test
 
-## Test Configuration
-
-Tests are configured in `vitest.config.ts` at the project root.
-
-### Key Settings:
-- **Pool:** `@cloudflare/vitest-pool-workers` for Workers environment
-- **Bindings:** Miniflare provides mock D1 and KV namespaces
-- **Environment Variables:** Test-specific values are injected
-
-## Writing New Tests
-
-### Test File Naming
-All test files should end with `.test.ts`:
-```
-tests/feature-name.test.ts
-```
-
-### Test Structure Template
 ```typescript
-import { describe, it, expect } from "vitest";
+import { env, SELF } from 'cloudflare:test';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { installGatewayMock, queueGatewayReply } from './helpers/mock-gateway';
 
-describe("Feature Name", () => {
-  describe("Sub-feature", () => {
-    it("should do something specific", async () => {
-      // Arrange
-      const input = { /* test data */ };
+describe('feature', () => {
+  beforeAll(() => installGatewayMock());
 
-      // Act
-      const result = await someFunction(input);
-
-      // Assert
-      expect(result).toBeDefined();
+  it('does the thing', async () => {
+    const deviceId = crypto.randomUUID(); // unique per test: storage is per file
+    const res = await SELF.fetch('https://example.com/api/tanks', {
+      headers: { 'X-Device-ID': deviceId },
     });
+    expect(res.status).toBe(200);
   });
 });
 ```
 
-### Using Placeholder Tests
-When the implementation is not yet ready, use `it.todo()`:
-```typescript
-it.todo("should implement this feature");
-```
-
-## Definition of Done
-
-Per CLAUDE.md, a task is not complete until:
-1. Developer implements the feature
-2. **@tester-agent** creates and runs automated tests
-3. **@tester-agent** confirms success (or reverts to "In Progress" with error logs)
-
-## Environment Variables
-
-Tests use the following environment bindings:
-- `DB` - D1 database (mocked via miniflare)
-- `REEF_KV` - KV namespace for session/limit tracking
-- `FREE_TIER_LIMIT` - Set to "3" for testing
-- `ENVIRONMENT` - Set to "test"
-
-## Troubleshooting
-
-### Tests fail with "Cannot find module"
-Run `npm install` to ensure all dependencies are installed.
-
-### D1/KV binding errors
-Verify `vitest.config.ts` has correct miniflare bindings configured.
-
-### Timeout errors
-Workers tests may need longer timeouts. Add to specific tests:
-```typescript
-it("slow test", async () => {
-  // ...
-}, 10000); // 10 second timeout
-```
+Rules of thumb: never hit the network; give each test its own device id and `CF-Connecting-IP`
+(the limiter is 60/min per device, 10/min per IP on `/analyze`); assert on status and JSON shape,
+not on log output; keep fixtures in `tests/fixtures/`.

@@ -1,149 +1,72 @@
 # ReefBuddy
 
-A high-contrast, New Brutalist iOS app for saltwater aquarium hobbyists, powered by Cloudflare Workers and AI.
+A high-contrast, New Brutalist iOS app for saltwater aquarium hobbyists, backed by a Cloudflare
+Worker and Claude.
 
-## ✨ Features
+## Features
 
-- **AI water chemistry analysis**: Parameter interpretation + dosing recommendations (`POST /analyze`)
-- **Credits model**: 3 free analyses per device + paid credit packs via IAP
-- **Tanks**: Create/list/update/delete tanks (`/api/tanks…`) with auth or device-based access (for onboarding)
-- **Measurements**: Record parameters + notes, server-side validation, alert evaluation (`POST /measurements`)
-- **History & charts**: Trends/averages/history endpoints for charting (`/tanks/:tankId/history|trends|averages`)
-- **Export**: CSV export of measurements (`GET /tanks/:tankId/export`)
-- **Livestock**: Manage livestock per tank + health logs (`/tanks/:tankId/livestock`, `/livestock/:id/logs`)
-- **Notifications**: Push token registration + per-parameter alert settings + notification history (`/notifications/*`)
-- **Saved analyses (iOS)**: Save AI results locally for later reference
+- **AI water chemistry analysis** with dosing recommendations (`POST /analyze`, structured output)
+- **Credits**: 3 free analyses per device (DeviceCheck-enforced), then paid credit packs via StoreKit 2
+- **Tanks, measurements, history**: charts (Swift Charts), trends, averages, CSV export
+- **Livestock** with photos and health logs
+- **Maintenance reminders** (local notifications) and water-change logging linked to analyses
+- **Saved analyses** kept on device
 
-## 🚨 Critical: Xcode Project Protection
+## Architecture
 
-This project includes multiple layers of protection against Xcode crashes caused by UUID collisions and project file corruption:
+| Layer | Technology |
+|-------|------------|
+| iOS | Swift 6, SwiftUI, `@Observable`, Swift Charts, StoreKit 2 — iOS 18.0+ |
+| API | Cloudflare Workers (TypeScript), table-driven router in `src/index.ts` |
+| Data | Cloudflare D1 (SQLite, 15 migrations), KV for rate limits and sessions |
+| AI | Claude Haiku 4.5 via Cloudflare AI Gateway (authenticated, logged) |
+| Web | Static site in `web/` on Cloudflare Pages (`reefbuddy-web`, https://reefbuddy.aethers.com.au) |
 
-### 🛡️ Automatic Protection
-- **`.cursorrules`** - Cursor-specific project rules loaded automatically
-- **`setup-hooks.sh`** - Enables git pre-commit validation
-- **`verify-xcode-project.sh`** - Manual project integrity verification
+Production API: `https://api.reefbuddy.aethers.com.au` (Worker `reefbuddy`). Bundle id
+`au.com.aethers.reefbuddy`, current version 1.0.8.
 
-### 🔧 Setup Protection
+## Quick start
+
 ```bash
-# Enable automatic validation on every commit
-./setup-hooks.sh
-
-# Manual verification (run before/after any iOS changes)
-./verify-xcode-project.sh
-```
-
-### ⚠️ Critical Rules
-- **NEVER** delete or recreate `iOS/ReefBuddy.xcodeproj/project.pbxproj`
-- **ALWAYS** check for UUID collisions: `grep "8A1B2C3D000000" iOS/ReefBuddy.xcodeproj/project.pbxproj | sort | uniq -d`
-- **ONLY EDIT** the existing project file when adding/removing Swift files
-
-## 🏗️ Architecture
-
-- **Frontend:** SwiftUI with New Brutalist design system
-- **Backend:** Cloudflare Workers (TypeScript/ES Modules)
-- **Database:** Cloudflare D1 (SQLite)
-- **AI:** Claude 3.5 Sonnet via Cloudflare AI Gateway
-- **Auth:** Session-based with KV storage
-
-## 📱 iOS App Info
-
-- **Marketing version**: 1.0.6
-- **Deployment target**: iOS 17.0
-- **Bundle ID**: `au.com.aethers.reefbuddy`
-
-## 🚀 Quick Start
-
-### Backend Development
-```bash
-# Install dependencies
 npm install
+npm run dev               # local Worker on http://localhost:8787 (uses reefbuddy-dev + .dev.vars)
+npm run db:migrate        # local D1
+npm test                  # 243 Vitest tests in the Workers runtime
+npm run typecheck
 
-# Start local development server
-npx wrangler dev
-
-# Apply database migrations
-npx wrangler d1 migrations apply reef-db --local
-
-# Run tests
-npx vitest run
+./verify-xcode-project.sh # then open iOS/ReefBuddy.xcodeproj (Xcode 26)
+./scripts/setup-hooks.sh  # once per clone: pre-commit validation of the Xcode project
 ```
 
-### iOS Development
+DEBUG builds of the app target `http://localhost:8787`; set `API_BASE_URL` in the scheme's
+environment to point a debug build at production.
+
+## Deployment
+
 ```bash
-# Verify project integrity
-./verify-xcode-project.sh
-
-# Open project (requires Xcode 15+)
-open iOS/ReefBuddy.xcodeproj
+npm run deploy            # typecheck → migration lint → tests → wrangler deploy (production)
+npm run db:migrate:remote # production migrations
+npm run deploy:web        # website
 ```
 
-## 📋 Project Status
+## Pricing
 
-See [`PLAN.md`](PLAN.md) for detailed development roadmap and current status.
+- **Free:** 3 analyses per device
+- **5 credits:** `com.reefbuddy.credits5`
+- **50 credits:** `com.reefbuddy.credits50`
 
-## 📚 Documentation
+## Documentation
 
-- [`CLAUDE.md`](CLAUDE.md) - Development standards and agent roles
-- [`PLAN.md`](PLAN.md) - Project roadmap and QA status
-- [`iOS/README.md`](iOS/README.md) - iOS-specific setup and guidelines
-- [`iap-configuration/`](iap-configuration/) - In-App Purchase setup and StoreKit files
-- [`web/`](web/) - Promotional website
-- [`migrations/`](migrations/) - Database schema changes
+- [`CLAUDE.md`](CLAUDE.md) — development guide, API endpoint table, **Xcode project rules**
+- [`migrations/README.md`](migrations/README.md) — schema history and migration rules
+- [`tests/README.md`](tests/README.md) — test suite layout
+- [`AI_GATEWAY_AUTH_SETUP.md`](AI_GATEWAY_AUTH_SETUP.md) — AI Gateway configuration
+- [`MAINTENANCE_REVIEW_2026-09.md`](MAINTENANCE_REVIEW_2026-09.md) / [`IMPLEMENTATION_PLAN_2026-09.md`](IMPLEMENTATION_PLAN_2026-09.md) — September 2026 maintenance pass
+- [`iap-configuration/`](iap-configuration/) — App Store Connect IAP notes
+- [`docs/archive/`](docs/archive/) — superseded plans and audits
 
-## 🎨 Design System
+## Xcode project
 
-**New Brutalist Manifesto:**
-- Pure white backgrounds (#FFFFFF)
-- Pure black text (#000000)
-- Electric Aquamarine actions (#00FFD1)
-- Safety Orange warnings (#FF3D00)
-- Sharp 0px radius corners
-- 3pt solid black borders
-- Hard offset shadows (no blur)
-
-## 🔒 Security
-
-- Session-based authentication with KV storage
-- Device-based credit tracking (3 free analyses, then IAP)
-- Input validation with Zod schemas
-- AI Gateway for LLM call caching
-- **StoreKit 2 transaction verification** via signed transaction JWS (preferred)
-  - **Legacy receipt verification** is still present for backward compatibility but is deprecated
-- **Apple DeviceCheck** support for device attestation
-  - Optional in development
-  - Expected to be configured in production (backend rejects analysis if DeviceCheck isn’t configured)
-
-## 💰 Pricing Model (In-App Purchase)
-
-- **Free:** 3 analyses per device (lifetime)
-- **5 Credits:** $0.99 (com.reefbuddy.credits5)
-- **50 Credits:** $4.99 - Best value, 50% savings (com.reefbuddy.credits50)
-
-## 🚀 Deployment
-
-### Backend (Cloudflare Workers)
-```bash
-# Deploy backend
-npx wrangler deploy
-
-# Apply production migrations
-npx wrangler d1 migrations apply reef-db --remote
-```
-
-### Promotional Website (Cloudflare Pages)
-```bash
-# Deploy website
-npx wrangler pages deploy web --project-name reefbuddy-site
-```
-
-**Live URL:** https://reefbuddy-site.pages.dev
-
-## 🤝 Contributing
-
-This project uses specialized AI agents for different roles:
-- **@ui-brutalist**: Frontend/SwiftUI development
-- **@edge-engineer**: Backend/Cloudflare Workers
-- **@data-steward**: Database migrations and integrity
-- **@tester-agent**: QA and automated testing
-
-Always run `./verify-xcode-project.sh` before and after iOS work.
+`iOS/ReefBuddy.xcodeproj/project.pbxproj` is edited by hand and must never be regenerated. The rules
+live in [`CLAUDE.md`](CLAUDE.md#ios-development-rules); `./verify-xcode-project.sh` checks the file
+before and after any iOS change.

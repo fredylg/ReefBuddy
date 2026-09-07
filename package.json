@@ -10,13 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "npm run typecheck && npm test && wrangler deploy",
+    "deploy": "npm run typecheck && npm run lint:migrations && npm test && wrangler deploy",
     "deploy:dry": "wrangler deploy --dry-run",
     "db:migrate": "wrangler d1 migrations apply reef-db --local --env dev",
     "db:migrate:remote": "wrangler d1 migrations apply reef-db --remote",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "deploy:web": "wrangler pages deploy web --project-name reefbuddy-web"
+    "deploy:web": "wrangler pages deploy web --project-name reefbuddy-web",
+    "lint:migrations": "./scripts/lint-migrations.sh"
   },
   "keywords": [
     "cloudflare-workers",

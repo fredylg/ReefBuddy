@@ -4,7 +4,7 @@ Single-page promotional website for the ReefBuddy iOS app, built with the New Br
 
 ## Live URL
 
-**Production:** https://reefbuddy-site.pages.dev
+**Production:** https://reefbuddy.aethers.com.au (Cloudflare Pages project `reefbuddy-web`, also https://reefbuddy-web.pages.dev)
 
 ## Design System
 
@@ -25,9 +25,12 @@ The website matches the iOS app's New Brutalist design:
 
 ```
 web/
-├── index.html    # Single-page promotional site
-├── style.css     # New Brutalist CSS design system
-└── README.md     # This file
+├── index.html              # Single-page promotional site
+├── privacy-policy.html
+├── terms-of-service.html
+├── style.css               # New Brutalist CSS design system
+├── tiktok*.txt             # TikTok domain verification (must stay at the site root)
+└── README.md               # This file
 ```
 
 ## Sections
@@ -63,19 +66,7 @@ The site is hosted on Cloudflare Pages.
 ### Deploy to Production
 
 ```bash
-npx wrangler pages deploy web --project-name reefbuddy-site
-```
-
-### First-Time Setup
-
-If the Pages project doesn't exist:
-
-```bash
-# Create the project
-npx wrangler pages project create reefbuddy-site --production-branch main
-
-# Deploy
-npx wrangler pages deploy web --project-name reefbuddy-site
+npm run deploy:web   # = npx wrangler pages deploy web --project-name reefbuddy-web
 ```
 
 ## Features

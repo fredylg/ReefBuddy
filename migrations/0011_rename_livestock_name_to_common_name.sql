@@ -4,14 +4,11 @@
 -- Description: Renames 'name' column to 'common_name' in livestock table
 --              to match the actual database schema used by the application.
 --              Also removes 'created_at' column as it's not used.
---              
---              IMPORTANT: This migration is for PRODUCTION only.
---              Local databases already have 'common_name' and should skip this.
+--
+--              History: applied to production in 2026-01. Fresh local databases
+--              run it as part of the normal sequence (0001 → 0016); it rebuilds
+--              the table from whatever columns 0004 created.
 -- ============================================================================
-
--- This migration assumes the table has 'name' column (production case)
--- If your local database already has 'common_name', mark this migration as applied:
---   npx wrangler d1 migrations apply reef-db --local --skip-migration 0011
 
 -- Step 1: Create new table with correct schema
 CREATE TABLE IF NOT EXISTS livestock_new (
