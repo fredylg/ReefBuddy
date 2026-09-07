@@ -17,52 +17,24 @@ import { env, SELF } from "cloudflare:test";
 // =============================================================================
 
 /**
- * Initialize test database schema
+ * Clean state for each test. The schema comes from the real migrations (tests/apply-d1-migrations.ts);
+ * storage is shared within this file, so rows are deleted between tests in FK order.
  */
 async function initializeTestDb(): Promise<void> {
-  // Drop existing tables if they exist (clean state)
-  try {
-    await env.DB.prepare("DROP TABLE IF EXISTS livestock").run();
-  } catch { /* ignore */ }
-  try {
-    await env.DB.prepare("DROP TABLE IF EXISTS measurements").run();
-  } catch { /* ignore */ }
-  try {
-    await env.DB.prepare("DROP TABLE IF EXISTS tanks").run();
-  } catch { /* ignore */ }
-  try {
-    await env.DB.prepare("DROP TABLE IF EXISTS users").run();
-  } catch { /* ignore */ }
-
-  // Create users table
-  await env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      subscription_tier TEXT NOT NULL DEFAULT 'free',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `).run();
-
-  // Create tanks table
-  await env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS tanks (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      volume_gallons REAL NOT NULL,
-      tank_type TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      deleted_at TEXT,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `).run();
-
-  // Enable foreign keys
-  await env.DB.prepare("PRAGMA foreign_keys = ON").run();
+  for (const table of [
+    "livestock_logs",
+    "livestock",
+    "measurements",
+    "water_changes",
+    "maintenance_schedules",
+    "notification_history",
+    "notification_settings",
+    "push_tokens",
+    "tanks",
+    "users",
+  ]) {
+    await env.DB.prepare(`DELETE FROM ${table}`).run();
+  }
 }
 
 // =============================================================================

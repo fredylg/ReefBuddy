@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { env, SELF, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
-import worker from "../src/index";
+import worker, { type Env } from "../src/index";
 
 const BUNDLE_ID = "au.com.aethers.reefbuddy";
 const PRODUCT_5 = "com.reefbuddy.credits5";
@@ -56,7 +56,7 @@ let signer: CryptoKeyPair;
 let fakeCertB64: string;
 beforeAll(async () => {
   signer = (await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"])) as CryptoKeyPair;
-  const spki = new Uint8Array(await crypto.subtle.exportKey("spki", signer.publicKey));
+  const spki = new Uint8Array((await crypto.subtle.exportKey("spki", signer.publicKey)) as ArrayBuffer);
   const prefix = crypto.getRandomValues(new Uint8Array(40));
   const suffix = crypto.getRandomValues(new Uint8Array(40));
   const cert = new Uint8Array(prefix.length + spki.length + suffix.length);
@@ -79,7 +79,7 @@ async function balance(deviceId: string): Promise<{ paidCredits: number; freeRem
   return (await res.json()) as { paidCredits: number; freeRemaining: number };
 }
 
-async function purchase(body: Record<string, unknown>, envOverride?: Partial<typeof env>): Promise<Response> {
+async function purchase(body: Record<string, unknown>, envOverride?: Partial<Env>): Promise<Response> {
   const req = new Request("http://localhost/credits/purchase", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -87,7 +87,7 @@ async function purchase(body: Record<string, unknown>, envOverride?: Partial<typ
   });
   if (!envOverride) return SELF.fetch(req);
   const ctx = createExecutionContext();
-  const res = await worker.fetch(req, { ...env, ...envOverride } as typeof env, ctx);
+  const res = await worker.fetch(req, { ...env, ...envOverride } as unknown as Env, ctx);
   await waitOnExecutionContext(ctx);
   return res;
 }
@@ -167,7 +167,7 @@ describe("POST /credits/purchase — environment policy", () => {
   it("in production, a Sandbox transaction is refused (SANDBOX_NOT_ALLOWED) and grants nothing", async () => {
     const deviceId = uid("dev");
     const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox" }));
-    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<typeof env>);
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<Env>);
     expect(res.status).toBe(403);
     expect(((await res.json()) as { code: string }).code).toBe("SANDBOX_NOT_ALLOWED");
     expect((await balance(deviceId)).paidCredits).toBe(0);
@@ -176,7 +176,7 @@ describe("POST /credits/purchase — environment policy", () => {
   it("in production, an Xcode transaction is refused too", async () => {
     const deviceId = uid("dev");
     const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode" }));
-    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<typeof env>);
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<Env>);
     expect(res.status).toBe(403);
   });
 
@@ -185,7 +185,7 @@ describe("POST /credits/purchase — environment policy", () => {
     const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox" }));
     const res = await purchase(
       { deviceId, productId: PRODUCT_5, jwsRepresentation: jws },
-      { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "true" } as Partial<typeof env>
+      { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "true" } as Partial<Env>
     );
     expect(res.status).toBe(200);
     expect((await balance(deviceId)).paidCredits).toBe(5);
@@ -198,7 +198,7 @@ describe("POST /credits/purchase — environment policy", () => {
   it.fails("in production, a self-signed JWS claiming environment=Production is rejected (P3-10 chain validation)", async () => {
     const deviceId = uid("dev");
     const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Production" }));
-    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<typeof env>);
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<Env>);
     expect(res.status).toBe(400);
   });
 });

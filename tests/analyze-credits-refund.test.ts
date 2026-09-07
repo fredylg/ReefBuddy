@@ -2,12 +2,11 @@
  * /analyze credit accounting when the AI call fails or credits run out.
  * Covers P1-03 (refund actually works — MAX() not GREATEST()), P1-04 (every AI failure refunds and is
  * reported as 5xx, never as a 200 "analysis"), and P1-05 (atomic consumption: never negative).
- * The AI Gateway is mocked with fetchMock so this file is deterministic and costs nothing.
+ * The AI Gateway is mocked by spying on the global fetch, so this file is deterministic and costs nothing.
  */
-import { describe, it, expect, beforeAll, afterEach } from "vitest";
-import { env, SELF, fetchMock } from "cloudflare:test";
-
-const GATEWAY_ORIGIN = "https://gateway.ai.cloudflare.com";
+import { describe, it, expect } from "vitest";
+import { env, SELF } from "cloudflare:test";
+import { gatewayCallCount, installGatewayMock, queueGatewayReply, setDefaultGatewayReply } from "./helpers/mock-gateway";
 
 const validRequest = (deviceId: string) => ({
   deviceId,
@@ -35,25 +34,12 @@ async function setCredits(deviceId: string, freeUsed: number, paid: number) {
 }
 
 const uid = () => `REFUND-${crypto.randomUUID()}`;
-const hasKey = Boolean((env as unknown as { ANTHROPIC_API_KEY?: string }).ANTHROPIC_API_KEY);
+const hasKey = Boolean(env.ANTHROPIC_API_KEY);
 
-beforeAll(() => {
-  fetchMock.activate();
-  fetchMock.disableNetConnect();
-});
-let skipPendingCheck = false;
-afterEach(() => {
-  if (skipPendingCheck) {
-    skipPendingCheck = false;
-    return;
-  }
-  fetchMock.assertNoPendingInterceptors();
-});
+installGatewayMock(null); // no default reply: every test queues exactly what it expects
 
 function mockGateway(status: number, body: unknown) {
-  fetchMock.get(GATEWAY_ORIGIN).intercept({ path: /.*/, method: "POST" }).reply(status, JSON.stringify(body), {
-    headers: { "content-type": "application/json" },
-  });
+  queueGatewayReply(status, body);
 }
 
 describe("POST /analyze — AI failures refund the credit (P1-03, P1-04)", () => {
@@ -84,6 +70,7 @@ describe("POST /analyze — AI failures refund the credit (P1-03, P1-04)", () =>
     const data = (await res.json()) as { creditsRefunded: boolean; retryable: boolean };
     expect(data.creditsRefunded).toBe(true);
     expect((await balance(deviceId)).freeRemaining).toBe(3);
+    if (hasKey) expect(gatewayCallCount()).toBe(4);
   }, 30_000);
 
   it("a paid credit is refunded to the paid pool, not the free pool", async () => {
@@ -140,14 +127,7 @@ describe("POST /analyze — credit consumption is atomic (P1-05)", () => {
     await setCredits(deviceId, 3, 1);
     if (hasKey) {
       // A successful AI reply means the winning request keeps its credit, so exactly one may win.
-      skipPendingCheck = true;
-      fetchMock
-        .get(GATEWAY_ORIGIN)
-        .intercept({ path: /.*/, method: "POST" })
-        .reply(200, JSON.stringify({ id: "msg", stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] }), {
-          headers: { "content-type": "application/json" },
-        })
-        .persist();
+      setDefaultGatewayReply({ status: 200, body: { id: "msg", stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] } });
     }
     const results = await Promise.all([1, 2, 3, 4, 5].map(() => analyze(deviceId)));
     const statuses = results.map((r) => r.status);
@@ -160,6 +140,7 @@ describe("POST /analyze — credit consumption is atomic (P1-05)", () => {
       expect(statuses.filter((s) => s === 402).length).toBe(4);
       expect(after.paidCredits).toBe(0);
       expect(after.totalAnalyses).toBe(1);
+      setDefaultGatewayReply(null);
     } else {
       // not_configured: every taker is refunded, so the credit can be taken sequentially; it must still never go negative
       expect(statuses.every((s) => s === 402 || s === 503)).toBe(true);

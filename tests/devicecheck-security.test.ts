@@ -10,13 +10,14 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { installGatewayMock, successReply } from "./helpers/mock-gateway";
 import {
   env,
   createExecutionContext,
   waitOnExecutionContext,
   SELF,
 } from "cloudflare:test";
-import worker from "../src/index";
+import worker, { type Env } from "../src/index";
 
 // =============================================================================
 // TEST DATA
@@ -49,20 +50,29 @@ const mockDeviceToken = "AgAAAHc0ncPPoiuaEPPcItJjtnMEUNk0+me89vLfv5ZingpyOOkgXXX
 // HELPER FUNCTIONS
 // =============================================================================
 
+installGatewayMock(successReply("Parameters look fine."));
+
+let requestCounter = 0;
 async function postAnalyze(
   body: Record<string, unknown>,
   customEnv?: typeof env
 ): Promise<Response> {
   const testEnv = customEnv || env;
   const ctx = createExecutionContext();
-  
+  requestCounter++;
+  // Storage is shared within this file: give every request its own device id and IP bucket.
+  const requestBody =
+    body.deviceId === validAnalysisRequest.deviceId
+      ? { ...body, deviceId: `TEST-DEVICE-SECURITY-${crypto.randomUUID()}` }
+      : body;
+
   const request = new Request("http://localhost/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": `10.2.0.${requestCounter}` },
+    body: JSON.stringify(requestBody),
   });
 
-  const response = await worker.fetch(request, testEnv, ctx);
+  const response = await worker.fetch(request, testEnv as unknown as Env, ctx);
   await waitOnExecutionContext(ctx);
   return response;
 }

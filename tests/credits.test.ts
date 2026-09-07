@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { installGatewayMock, successReply } from "./helpers/mock-gateway";
 import {
   env,
   createExecutionContext,
@@ -16,6 +17,8 @@ import worker from "../src/index";
 // =============================================================================
 // TEST DATA
 // =============================================================================
+
+installGatewayMock(successReply("Parameters look fine."));
 
 const TEST_DEVICE_ID = "TEST-DEVICE-CREDITS-001";
 

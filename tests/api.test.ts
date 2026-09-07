@@ -9,14 +9,9 @@
  * - Error handling
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach, beforeAll } from "vitest";
-import {
-  env,
-  createExecutionContext,
-  waitOnExecutionContext,
-  SELF,
-} from "cloudflare:test";
-import worker from "../src/index";
+import { describe, it, expect, beforeAll } from "vitest";
+import { installGatewayMock, successReply } from "./helpers/mock-gateway";
+import { SELF } from "cloudflare:test";
 
 // =============================================================================
 // TEST DATA
@@ -42,7 +37,7 @@ const validWaterParameters = {
  * Valid analysis request with all required fields
  */
 const validAnalysisRequest = {
-  deviceId: "TEST-DEVICE-001", // Device identifier for credits tracking
+  // deviceId is added per request (unique) by postAnalyze; storage is shared within this file.
   tankId: "550e8400-e29b-41d4-a716-446655440000", // Valid UUID
   parameters: validWaterParameters,
   tankVolume: 75, // gallons
@@ -56,8 +51,13 @@ const validAnalysisRequest = {
  * Make a POST request to the analyze endpoint
  * Automatically adds deviceId if not provided
  */
+installGatewayMock(successReply("Parameters look fine. No dosing needed."));
+
+let ipCounter = 0;
+/** Unique client IP per request so the 10/min/IP limiter never trips across this file. */
 function randomTestClientIp(): string {
-  return `203.0.113.${Math.floor(Math.random() * 250) + 1}`;
+  ipCounter++;
+  return `10.${(ipCounter >> 16) & 255}.${(ipCounter >> 8) & 255}.${ipCounter & 255}`;
 }
 
 async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
@@ -70,7 +70,7 @@ async function postAnalyzeWithClientIp(
   clientIp: string
 ): Promise<Response> {
   const requestBody = {
-    deviceId: "TEST-DEVICE-001",
+    deviceId: `TEST-DEVICE-${crypto.randomUUID()}`,
     ...body,
   };
   return SELF.fetch("http://localhost/analyze", {
@@ -657,7 +657,7 @@ describe("Rate Limiting (IP-based)", () => {
   // Use a dedicated client IP so parallel tests do not share the same bucket.
 
   it("should return 429 when IP rate limit is exceeded", async () => {
-    const clientIp = `203.0.113.${Math.floor(Math.random() * 200) + 10}`;
+    const clientIp = "203.0.113.5"; // dedicated bucket for this test
     const base = { ...validAnalysisRequest, tankId: generateUUID() };
 
     // IP limit runs before JSON parse; invalid JSON still consumes a slot (fast, no AI).
@@ -687,8 +687,8 @@ describe("Rate Limiting (IP-based)", () => {
   });
 
   it("should use separate buckets for different client IPs", async () => {
-    const ipA = `203.0.113.${Math.floor(Math.random() * 50) + 130}`;
-    const ipB = `203.0.113.${Math.floor(Math.random() * 50) + 180}`;
+    const ipA = "203.0.113.6";
+    const ipB = "203.0.113.7";
 
     const r = await postAnalyzeWithClientIp(
       {

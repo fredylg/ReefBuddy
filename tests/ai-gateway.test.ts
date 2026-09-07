@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { installGatewayMock } from "./helpers/mock-gateway";
 import { env, SELF } from "cloudflare:test";
 
 // =============================================================================
@@ -20,7 +21,7 @@ import { env, SELF } from "cloudflare:test";
  * Valid analysis request
  */
 const validAnalysisRequest = {
-  deviceId: "TEST-DEVICE-001",
+  // deviceId is added per request (unique) by postAnalyze; storage is shared within this file.
   tankId: "550e8400-e29b-41d4-a716-446655440000",
   parameters: {
     salinity: 1.025,
@@ -94,16 +95,20 @@ const mockErrorResponse = {
  * Make a POST request to the analyze endpoint
  * Automatically adds deviceId if not provided
  */
+installGatewayMock({ status: 200, body: mockAIResponse });
+
+let ipCounter = 0;
 async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
   const requestBody = {
-    deviceId: "TEST-DEVICE-001",
+    deviceId: `TEST-DEVICE-${crypto.randomUUID()}`,
     ...body,
   };
+  ipCounter++;
   return SELF.fetch("http://localhost/analyze", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "CF-Connecting-IP": `203.0.114.${Math.floor(Math.random() * 250) + 1}`,
+      "CF-Connecting-IP": `10.1.${(ipCounter >> 8) & 255}.${ipCounter & 255}`,
     },
     body: JSON.stringify(requestBody),
   });
