@@ -340,7 +340,7 @@ function handleRoot(): Response {
   }
   return jsonResponse({
     service: 'ReefBuddy API',
-    version: '1.0.6',
+    version: '1.0.8',
     description: 'Water chemistry analysis for saltwater aquariums',
     endpoints,
   });

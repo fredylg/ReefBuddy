@@ -375,7 +375,7 @@ export function handleHealth(env: Env): Response {
   return jsonResponse({
     status: 'healthy',
     service: 'ReefBuddy API',
-    version: '1.0.6',
+    version: '1.0.8',
     environment: env.ENVIRONMENT || 'unknown',
     timestamp: new Date().toISOString(),
   });
