@@ -15,8 +15,8 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | Phase | Scope | Tasks | Done | Status |
 |---|---|---|---|---|
 | 0 | Prep and safety net | 6 | 6 | **done** 2026-09-07 |
-| 1 | Stop the bleeding (backend hotfix + deploy) | 16 | 13 | code done, committed; **waiting on go-ahead for P1-14 deploy** |
-| 2 | Toolchain and hermetic tests | 12 | 0 | not started |
+| 1 | Stop the bleeding (backend hotfix + deploy) | 16 | 16 | **done** 2026-09-07 |
+| 2 | Toolchain and hermetic tests | 12 | 0 | in progress (branch `maint/p2-toolchain`) |
 | 3 | Backend correctness and hardening | 30 | 0 | not started |
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 0 | not started |
 | 5 | Backend structure | 4 | 0 | not started |
@@ -82,9 +82,9 @@ Goal: close the credit-grant holes and the broken refund, make deploys safe, shi
 - [x] **P1-11** (B-05, C-01) `wrangler.toml`: production becomes top-level (`ENVIRONMENT=production`, custom domain route, `workers_dev = true` for now until Phase 4 ships the custom-domain client), dev moves to `[env.dev]` with `name = "reefbuddy-dev"`. `package.json`: `deploy` = `wrangler deploy`, `deploy:dev` = `wrangler deploy --env dev`, `dev` = `wrangler dev --env dev`. `vitest.config.ts` points at the dev env. Verify with `wrangler deploy --dry-run` for both.
 - [x] **P1-12** (CF-06) Add `Strict-Transport-Security: max-age=31536000; includeSubDomains` to the security headers.
 - [x] **P1-13** (T-04 part) Tests for P1-01 to P1-06 and P1-08 land with each task; this task is the sweep: `npx vitest run` green, new tests count recorded in the progress log.
-- [ ] **P1-14** (CF-01) ⛔ Deploy with `npm run deploy`. Verify `/health` on both hosts shows `environment: production` and the new version; `POST /debug/jws-test` → 404; forged Sandbox purchase → rejected (using a throwaway device ID).
-- [ ] **P1-15** (CF-02) ⛔ Production cleanup after P1-14 and P0-03: delete the 8 sandbox `purchase_history` rows; set `paid_credits = 0` on the 9 non-owner devices listed in P0-03. Statement shown in chat first. Verify with a count query.
-- [ ] **P1-16** (CF-03) ⛔ Prune the 105 `device_credits` rows with `total_analyses = 0 AND paid_credits = 0` (probe-only). Statement shown first.
+- [x] **P1-14** (CF-01) ⛔ Deploy with `npm run deploy`. Verify `/health` on both hosts shows `environment: production` and the new version; `POST /debug/jws-test` → 404; forged Sandbox purchase → rejected (using a throwaway device ID).
+- [x] **P1-15** (CF-02) ⛔ Production cleanup after P1-14 and P0-03: delete the 8 sandbox `purchase_history` rows; set `paid_credits = 0` on the 9 non-owner devices listed in P0-03. Statement shown in chat first. Verify with a count query.
+- [x] **P1-16** (CF-03) ⛔ Prune probe-only `device_credits` rows. **Rescoped 2026-09-07:** of 106 rows with 0 analyses and 0 paid credits, 72 belong to real installs (a users row exists; 23 have tanks) and are kept; only the **34** rows with no users row and no purchase are deleted. Statement shown first.
 
 **Exit:** no unsigned purchase is accepted in production; refunds work; deploys are unambiguous; production data reflects reality.
 
@@ -291,4 +291,8 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P1-01..P1-10, P1-12 · purchase verify-first + environment policy, tx "0" bypass removed, MAX() refunds, typed AI result with refund-on-failure, atomic credit consumption, atomic add with UNIQUE guard, 29 beacons removed, explicit dev host, HSTS, legacy receipt + debug route deleted. **Extra finding:** x5c key extraction matched none of the 8 real Apple-signed JWS in production (pattern lacked the 0x00 unused-bits byte), so real App Store purchases would have been rejected; replaced with SPKI import. `src/index.ts` 5759 → 5069 lines · f50b8aa
 - 2026-09-07 · P1-13 · `tests/credits-purchase.test.ts` (18 tests) + `tests/analyze-credits-refund.test.ts` (7 tests, gateway mocked with `fetchMock`); suite 234 passed / 12 skipped / 0 failed; tsc 99 → 97 (src 12 → 6; 4 new `ProvidedEnv` typing errors in the new tests, fixed by P2-04) · f50b8aa
 - 2026-09-07 · P1-11 · wrangler.toml production-first, `[env.dev]` = reefbuddy-dev, npm scripts, vitest on dev env, CLAUDE.md commands; both dry-runs verified (prod=production, dev=development) · b6799db
+- 2026-09-07 · P1-14 (+CF-01) · `npm run deploy` → version `262bcd63-e61c-48c3-9904-00e9bb253309`, 762 KiB, startup 35 ms. Verified on both hosts: `/health` environment=production, `/debug/jws-test` 404, HSTS present, forged Sandbox JWS → 400 JWS_INVALID with 0 credits granted, legacy receiptData → 400, all 5 secrets still bound · (deploy, no commit)
+- 2026-09-07 · P1-15 (CF-02) · production: 3 non-owner sandbox purchase rows deleted, paid_credits zeroed on 9 devices (287 credits); owner device 8B629A9B keeps 11 credits and its 5 audit rows · (data change, no commit)
+- 2026-09-07 · P1-16 (CF-03) · production: 39 probe-only device_credits rows deleted (34 previewed + 5 test devices that P1-15 had just zeroed); 162 rows remain, 0 probe-only left · (data change, no commit)
+- 2026-09-07 · **Phase 1 complete.**
 

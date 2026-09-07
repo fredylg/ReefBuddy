@@ -449,9 +449,9 @@ Read-only inspection with your logged-in wrangler session: deployments, versions
 
 ### New items from the live audit
 
-**CF-01 · High · Redeploy HEAD after the first fix batch and verify with** `/health`**.** The live Worker predates the last commit. Recommended: YES → Decision: [x ] YES  [ ] NO
+**CF-01 · High · Redeploy HEAD after the first fix batch and verify with** `/health`**.** The live Worker predates the last commit. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P1-14, version 262bcd63).**
 
-**CF-02 · Medium · Clean up the test purchases and credits in production.** 8 sandbox rows in `purchase_history` and 298 unpaid credits on 10 devices. Options: leave as-is (they are your own test devices), or zero the sandbox-derived `paid_credits` and delete the 8 rows once B-01 is deployed. Your call. → Decision: [ x] Clean  [ ] Leave **Resolved 2026-09-07: clean, but exclude the owner's test device (ID to be supplied before the cleanup task runs).**
+**CF-02 · Medium · Clean up the test purchases and credits in production.** 8 sandbox rows in `purchase_history` and 298 unpaid credits on 10 devices. Options: leave as-is (they are your own test devices), or zero the sandbox-derived `paid_credits` and delete the 8 rows once B-01 is deployed. Your call. → Decision: [ x] Clean  [ ] Leave **Resolved 2026-09-07: clean, but exclude the owner's test device (ID to be supplied before the cleanup task runs).** **Done 2026-09-07 (P1-15).**
 
 **CF-03 · Low · Prune the 105 probe-only** `device_credits` **rows** (no analyses, no purchases) after B-07 lands. Recommended: YES → Decision: [ x] YES  [ ] NO
 
