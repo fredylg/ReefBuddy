@@ -9,13 +9,13 @@
  * - Development environment allows bypass
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { installGatewayMock, successReply } from "./helpers/mock-gateway";
 import {
   env,
   createExecutionContext,
   waitOnExecutionContext,
-  SELF,
+
 } from "cloudflare:test";
 import worker, { type Env } from "../src/index";
 

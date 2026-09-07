@@ -363,7 +363,7 @@ describe("POST /analyze - Zod Validation", () => {
       const lowPh = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, ph: 7.7 },
+        parameters: { ...validWaterParameters, ph: 5.9 },
       };
 
       const response = await postAnalyze(lowPh);
@@ -377,7 +377,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highPh = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, ph: 8.7 },
+        parameters: { ...validWaterParameters, ph: 9.6 },
       };
 
       const response = await postAnalyze(highPh);
@@ -388,7 +388,7 @@ describe("POST /analyze - Zod Validation", () => {
       const lowSalinity = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, salinity: 1.019 },
+        parameters: { ...validWaterParameters, salinity: 0.999 },
       };
 
       const response = await postAnalyze(lowSalinity);
@@ -399,7 +399,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highSalinity = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, salinity: 1.031 },
+        parameters: { ...validWaterParameters, salinity: 1.041 },
       };
 
       const response = await postAnalyze(highSalinity);
@@ -410,7 +410,7 @@ describe("POST /analyze - Zod Validation", () => {
       const lowTemp = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, temperature: 71 },
+        parameters: { ...validWaterParameters, temperature: 59 },
       };
 
       const response = await postAnalyze(lowTemp);
@@ -421,7 +421,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highTemp = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, temperature: 85 },
+        parameters: { ...validWaterParameters, temperature: 96 },
       };
 
       const response = await postAnalyze(highTemp);
@@ -432,7 +432,7 @@ describe("POST /analyze - Zod Validation", () => {
       const lowAlk = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, alkalinity: 5.9 },
+        parameters: { ...validWaterParameters, alkalinity: -0.1 },
       };
 
       const response = await postAnalyze(lowAlk);
@@ -443,7 +443,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highAlk = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, alkalinity: 12.1 },
+        parameters: { ...validWaterParameters, alkalinity: 20.1 },
       };
 
       const response = await postAnalyze(highAlk);
@@ -454,7 +454,7 @@ describe("POST /analyze - Zod Validation", () => {
       const lowCa = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, calcium: 349 },
+        parameters: { ...validWaterParameters, calcium: 199 },
       };
 
       const response = await postAnalyze(lowCa);
@@ -465,7 +465,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highCa = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, calcium: 501 },
+        parameters: { ...validWaterParameters, calcium: 601 },
       };
 
       const response = await postAnalyze(highCa);
@@ -476,7 +476,7 @@ describe("POST /analyze - Zod Validation", () => {
       const lowMg = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, magnesium: 1199 },
+        parameters: { ...validWaterParameters, magnesium: 799 },
       };
 
       const response = await postAnalyze(lowMg);
@@ -487,7 +487,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highMg = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, magnesium: 1501 },
+        parameters: { ...validWaterParameters, magnesium: 1801 },
       };
 
       const response = await postAnalyze(highMg);
@@ -509,7 +509,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highNitrate = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, nitrate: 51 },
+        parameters: { ...validWaterParameters, nitrate: 201 },
       };
 
       const response = await postAnalyze(highNitrate);
@@ -531,7 +531,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highPhosphate = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, phosphate: 0.51 },
+        parameters: { ...validWaterParameters, phosphate: 5.1 },
       };
 
       const response = await postAnalyze(highPhosphate);
@@ -553,7 +553,7 @@ describe("POST /analyze - Zod Validation", () => {
       const highAmmonia = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
-        parameters: { ...validWaterParameters, ammonia: 1.1 },
+        parameters: { ...validWaterParameters, ammonia: 10.1 },
       };
 
       const response = await postAnalyze(highAmmonia);
@@ -698,7 +698,7 @@ describe("Rate Limiting (IP-based)", () => {
   });
 
   it("should use separate buckets for different client IPs", async () => {
-    const ipA = "203.0.113.6";
+
     const ipB = "203.0.113.7";
 
     const r = await postAnalyzeWithClientIp(

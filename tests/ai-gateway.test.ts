@@ -9,9 +9,9 @@
  * - Error handling
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { installGatewayMock } from "./helpers/mock-gateway";
-import { env, SELF } from "cloudflare:test";
+import { SELF } from "cloudflare:test";
 
 // =============================================================================
 // TEST DATA
@@ -80,12 +80,12 @@ const mockAIResponse = {
 /**
  * Mock error response from AI Gateway
  */
-const mockErrorResponse = {
-  error: {
-    type: "rate_limit_error",
-    message: "You have exceeded your rate limit.",
-  },
-};
+
+
+
+
+
+
 
 // =============================================================================
 // HELPER FUNCTIONS

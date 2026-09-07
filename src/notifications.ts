@@ -23,7 +23,8 @@ export type ParameterName =
   | 'nitrate'
   | 'phosphate'
   | 'salinity'
-  | 'temperature';
+  | 'temperature'
+  | 'nitrite';
 
 /**
  * Notification setting for a single parameter
@@ -83,7 +84,10 @@ export interface MeasurementData {
   nitrate?: number | null;
   phosphate?: number | null;
   salinity?: number | null;
+  /** 'SG' (default) or 'PPT'; thresholds are stored in SG. */
+  salinity_unit?: string | null;
   temperature?: number | null;
+  nitrite?: number | null;
 }
 
 /**
@@ -135,6 +139,7 @@ export const UpdateSettingsSchema = z.object({
         'phosphate',
         'salinity',
         'temperature',
+        'nitrite',
       ]),
       minThreshold: z.number().nullable().optional(),
       maxThreshold: z.number().nullable().optional(),
@@ -150,7 +155,7 @@ export const HistoryQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
   offset: z.coerce.number().min(0).default(0),
   type: z.string().optional(),
-  unreadOnly: z.coerce.boolean().default(false),
+  unreadOnly: z.stringbool().default(false),
 });
 
 // =============================================================================
@@ -174,6 +179,7 @@ export const DEFAULT_THRESHOLDS: Record<
   phosphate: { min: 0, max: 0.1, unit: 'ppm' },
   salinity: { min: 1.023, max: 1.026, unit: 'SG' },
   temperature: { min: 75, max: 80, unit: 'F' },
+  nitrite: { min: 0, max: 0.2, unit: 'ppm' },
 };
 
 /**
@@ -189,6 +195,7 @@ const PARAMETER_NAMES: Record<ParameterName, string> = {
   phosphate: 'Phosphate',
   salinity: 'Salinity',
   temperature: 'Temperature',
+  nitrite: 'Nitrite',
 };
 
 // =============================================================================
@@ -216,15 +223,24 @@ export function checkParameterAlerts(
   }
 
   // Check each parameter in the measurement
+  // Salinity thresholds are stored in SG. A PPT reading is converted (35 ppt ~ 1.026 SG) so it is
+  // not reported as "too high at 35SG" (B-24).
+  const salinityInSG =
+    measurement.salinity == null
+      ? measurement.salinity
+      : measurement.salinity_unit === 'PPT'
+        ? Math.round((1 + measurement.salinity * 0.00075) * 10000) / 10000
+        : measurement.salinity;
   const parametersToCheck: Array<{ name: ParameterName; value: number | null | undefined }> = [
     { name: 'ph', value: measurement.ph },
+    { name: 'nitrite', value: measurement.nitrite },
     { name: 'alkalinity', value: measurement.alkalinity },
     { name: 'calcium', value: measurement.calcium },
     { name: 'magnesium', value: measurement.magnesium },
     { name: 'ammonia', value: measurement.ammonia },
     { name: 'nitrate', value: measurement.nitrate },
     { name: 'phosphate', value: measurement.phosphate },
-    { name: 'salinity', value: measurement.salinity },
+    { name: 'salinity', value: salinityInSG },
     { name: 'temperature', value: measurement.temperature },
   ];
 
@@ -295,28 +311,6 @@ export function formatAlertMessage(
 // =============================================================================
 // PUSH NOTIFICATION DELIVERY
 // =============================================================================
-
-/**
- * APNs (Apple Push Notification service) configuration
- * In production, this would use JWT authentication with Apple Developer credentials
- */
-interface APNsConfig {
-  teamId: string;
-  keyId: string;
-  privateKey: string;
-  bundleId: string;
-  production: boolean;
-}
-
-/**
- * FCM (Firebase Cloud Messaging) configuration
- * In production, this would use a service account key
- */
-interface FCMConfig {
-  projectId: string;
-  privateKey: string;
-  clientEmail: string;
-}
 
 /**
  * Send a push notification to a device

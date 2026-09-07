@@ -26,6 +26,8 @@ export interface Measurement {
   salinity_unit: string | null;
   temperature: number | null;
   ammonia: number | null;
+  nitrite: number | null;
+  notes: string | null;
 }
 
 /**
@@ -114,6 +116,7 @@ const WATER_PARAMETERS = [
   'salinity',
   'temperature',
   'ammonia',
+  'nitrite',
 ] as const;
 
 /**
@@ -144,7 +147,7 @@ export async function getMeasurementHistory(
   const query = `
     SELECT
       id, tank_id, measured_at, ph, alkalinity, calcium,
-      magnesium, nitrate, phosphate, salinity, salinity_unit, temperature, ammonia
+      magnesium, nitrate, phosphate, salinity, salinity_unit, temperature, ammonia, nitrite, notes
     FROM measurements
     WHERE tank_id = ?
       AND measured_at >= ?
@@ -222,13 +225,21 @@ export async function getParameterTrends(
   const minValue = Math.min(...numericValues);
   const maxValue = Math.max(...numericValues);
 
-  // Calculate trend direction using linear regression slope
+  // Trend = least-squares slope over sample order, expressed as the fitted change across the
+  // window relative to the mean. Robust to a single noisy first or last reading.
   let direction: TrendDirection = 'stable';
   let changePercent = 0;
-
-  if (values.length >= 2 && firstValue !== 0) {
-    changePercent = ((lastValue - firstValue) / Math.abs(firstValue)) * 100;
-
+  const n = numericValues.length;
+  if (n >= 2 && avgValue !== 0) {
+    const meanX = (n - 1) / 2;
+    let numerator = 0;
+    let denominator = 0;
+    for (let i = 0; i < n; i++) {
+      numerator += (i - meanX) * (numericValues[i] - avgValue);
+      denominator += (i - meanX) ** 2;
+    }
+    const slope = denominator === 0 ? 0 : numerator / denominator;
+    changePercent = ((slope * (n - 1)) / Math.abs(avgValue)) * 100;
     if (changePercent > TREND_STABILITY_THRESHOLD) {
       direction = 'up';
     } else if (changePercent < -TREND_STABILITY_THRESHOLD) {
@@ -267,10 +278,10 @@ export async function getAllParameterTrends(
 
   const trends: Record<string, ParameterTrend> = {};
 
-  // Get trends for each parameter
-  for (const param of WATER_PARAMETERS) {
-    trends[param] = await getParameterTrends(db, tankId, param, days);
-  }
+  const results = await Promise.all(WATER_PARAMETERS.map((param) => getParameterTrends(db, tankId, param, days)));
+  WATER_PARAMETERS.forEach((param, i) => {
+    trends[param] = results[i];
+  });
 
   return {
     tank_id: tankId,
@@ -364,45 +375,3 @@ export async function getWeeklyAverages(
   return result.results;
 }
 
-/**
- * Get monthly averages for a tank over a number of months.
- *
- * @param db - D1 database instance
- * @param tankId - UUID of the tank
- * @param months - Number of months to retrieve
- * @returns Array of monthly aggregate data
- */
-export async function getMonthlyAverages(
-  db: D1Database,
-  tankId: string,
-  months: number
-): Promise<AggregateData[]> {
-  const startDate = new Date(Date.now() - months * 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split('T')[0];
-
-  const query = `
-    SELECT
-      year_month as period,
-      month_start as period_start,
-      month_end as period_end,
-      sample_count,
-      avg_ph,
-      avg_alkalinity,
-      avg_calcium,
-      avg_magnesium,
-      avg_nitrate,
-      avg_phosphate,
-      avg_salinity,
-      avg_temperature,
-      avg_ammonia
-    FROM v_monthly_averages
-    WHERE tank_id = ?
-      AND month_start >= ?
-    ORDER BY month_start DESC
-  `;
-
-  const result = await db.prepare(query).bind(tankId, startDate).all<AggregateData>();
-
-  return result.results;
-}

@@ -61,6 +61,8 @@ const CSV_HEADERS = [
   'Salinity unit',
   'Temperature (F)',
   'Ammonia (ppm)',
+  'Nitrite (ppm)',
+  'Notes',
 ];
 
 /**
@@ -106,6 +108,8 @@ function measurementToCSVRow(measurement: Measurement): string {
     measurement.salinity_unit ?? '',
     measurement.temperature,
     measurement.ammonia,
+    measurement.nitrite,
+    measurement.notes,
   ];
 
   return values.map(escapeCSVValue).join(',');
@@ -193,32 +197,3 @@ export async function exportMeasurementsToCSV(
   return lines.join('\n');
 }
 
-/**
- * Check if a user has premium subscription tier.
- *
- * @param db - D1 database instance
- * @param userId - UUID of the user
- * @returns True if user has premium access
- */
-export async function checkPremiumAccess(db: D1Database, userId: string): Promise<boolean> {
-  const user = await db
-    .prepare(
-      `
-    SELECT subscription_tier
-    FROM users
-    WHERE id = ?
-      AND deleted_at IS NULL
-  `
-    )
-    .bind(userId)
-    .first<{ subscription_tier: string }>();
-
-  if (!user) {
-    return false;
-  }
-
-  // Premium tiers that have export access
-  const premiumTiers = ['premium', 'pro', 'enterprise'];
-
-  return premiumTiers.includes(user.subscription_tier.toLowerCase());
-}

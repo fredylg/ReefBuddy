@@ -155,55 +155,40 @@ const WaterParametersSchema = z
     nitrate: z.number().nullish().describe('Nitrate in ppm'),
     phosphate: z.number().nullish().describe('Phosphate in ppm'),
     ammonia: z.number().nullish().describe('Ammonia in ppm'),
+    nitrite: z.number().nullish().describe('Nitrite in ppm'),
     notes: z.string().max(500).nullish().describe('User observations about the tank'),
   })
   .refine(
     (data) => {
       if (data.salinity == null || data.salinity === undefined) return true;
       const unit = data.salinity_unit ?? 'SG';
-      if (unit === 'PPT') return data.salinity >= 30 && data.salinity <= 40;
-      return data.salinity >= 1.02 && data.salinity <= 1.03;
+      // Physically plausible bounds only; whether a value is *healthy* is the analysis's job (B-26).
+      if (unit === 'PPT') return data.salinity >= 0 && data.salinity <= 50;
+      return data.salinity >= 1.0 && data.salinity <= 1.04;
     },
-    { message: 'Salinity out of range: SG must be between 1.020 and 1.030, PPT between 30 and 40', path: ['salinity'] }
+    { message: 'Salinity out of range: SG must be between 1.000 and 1.040, PPT between 0 and 50', path: ['salinity'] }
   )
   .superRefine((data, ctx) => {
     const add = (path: (string | number)[], message: string) =>
       ctx.addIssue({ code: 'custom', message, path });
 
-    if (data.ph != null && (data.ph < 7.8 || data.ph > 8.6)) {
-      add(['ph'], 'pH must be between 7.8 and 8.6');
-    }
-    if (data.temperature != null && (data.temperature < 72 || data.temperature > 84)) {
-      add(['temperature'], 'Temperature must be between 72 and 84 °F');
-    }
-    if (data.alkalinity != null && (data.alkalinity < 6 || data.alkalinity > 12)) {
-      add(['alkalinity'], 'Alkalinity must be between 6 and 12 dKH');
-    }
-    if (data.calcium != null && (data.calcium < 350 || data.calcium > 500)) {
-      add(['calcium'], 'Calcium must be between 350 and 500 ppm');
-    }
-    if (data.magnesium != null && (data.magnesium < 1200 || data.magnesium > 1500)) {
-      add(['magnesium'], 'Magnesium must be between 1200 and 1500 ppm');
-    }
-    if (data.nitrate != null && (data.nitrate < 0 || data.nitrate > 50)) {
-      add(['nitrate'], 'Nitrate must be between 0 and 50 ppm');
-    }
-    if (data.phosphate != null && (data.phosphate < 0 || data.phosphate > 0.5)) {
-      add(['phosphate'], 'Phosphate must be between 0 and 0.5 ppm');
-    }
-    if (data.ammonia != null && (data.ammonia < 0 || data.ammonia > 1)) {
-      add(['ammonia'], 'Ammonia must be between 0 and 1 ppm');
+    // Plausibility bounds (test-kit ranges), not ideal-reef ranges: a crashing tank must still be analysable (B-26).
+    const bounds: Array<[keyof typeof data, number, number, string]> = [
+      ['ph', 6.0, 9.5, 'pH must be between 6.0 and 9.5'],
+      ['temperature', 60, 95, 'Temperature must be between 60 and 95 °F'],
+      ['alkalinity', 0, 20, 'Alkalinity must be between 0 and 20 dKH'],
+      ['calcium', 200, 600, 'Calcium must be between 200 and 600 ppm'],
+      ['magnesium', 800, 1800, 'Magnesium must be between 800 and 1800 ppm'],
+      ['nitrate', 0, 200, 'Nitrate must be between 0 and 200 ppm'],
+      ['phosphate', 0, 5, 'Phosphate must be between 0 and 5 ppm'],
+      ['ammonia', 0, 10, 'Ammonia must be between 0 and 10 ppm'],
+      ['nitrite', 0, 10, 'Nitrite must be between 0 and 10 ppm'],
+    ];
+    for (const [key, min, max, message] of bounds) {
+      const value = data[key];
+      if (typeof value === 'number' && (value < min || value > max)) add([key as string], message);
     }
   });
-
-/**
- * Schema for analysis request
- */
-const AnalysisRequestSchema = z.object({
-  tankId: z.uuid(),
-  parameters: WaterParametersSchema,
-  tankVolume: z.number().positive().describe('Tank volume in gallons'),
-});
 
 /**
  * Schema for user signup request
@@ -415,13 +400,6 @@ const CreditPurchaseJWSSchema = z.object({
 });
 
 /**
- * Schema for credit balance request
- */
-const CreditBalanceSchema = z.object({
-  deviceId: z.string().min(1).describe('iOS device identifier'),
-});
-
-/**
  * Schema for historical data query parameters
  */
 const HistoryQuerySchema = z.object({
@@ -513,12 +491,10 @@ const LivestockLogSchema = z.object({
 
 // Export schemas for external use
 export type WaterParameters = z.infer<typeof WaterParametersSchema>;
-export type AnalysisRequest = z.infer<typeof AnalysisRequestSchema>;
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type CreateMeasurement = z.infer<typeof CreateMeasurementSchema>;
 export type CreditPurchaseJWS = z.infer<typeof CreditPurchaseJWSSchema>;
-export type CreditBalance = z.infer<typeof CreditBalanceSchema>;
 export type LivestockCreate = z.infer<typeof LivestockCreateSchema>;
 export type LivestockUpdate = z.infer<typeof LivestockUpdateSchema>;
 export type LivestockLog = z.infer<typeof LivestockLogSchema>;
@@ -972,6 +948,7 @@ async function callAIGateway(env: Env, prompt: string): Promise<AIGatewayResult>
       const response = await fetch(gatewayUrl, {
         method: 'POST',
         headers,
+        signal: AbortSignal.timeout(25_000),
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 2048,
@@ -1415,11 +1392,19 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
 
     // Create user
     const userId = generateUUID();
-    await env.DB.prepare(
-      'INSERT INTO users (id, email, password_hash, subscription_tier) VALUES (?, ?, ?, ?)'
-    )
-      .bind(userId, email.toLowerCase(), passwordHash, 'free')
-      .run();
+    try {
+      await env.DB.prepare(
+        'INSERT INTO users (id, email, password_hash, subscription_tier) VALUES (?, ?, ?, ?)'
+      )
+        .bind(userId, email.toLowerCase(), passwordHash, 'free')
+        .run();
+    } catch (insertError) {
+      // Two concurrent signups for the same email: the UNIQUE constraint decides, not a 500.
+      if (insertError instanceof Error && /UNIQUE constraint failed/i.test(insertError.message)) {
+        return errorResponse('Conflict', 'A user with this email already exists', 409);
+      }
+      throw insertError;
+    }
 
     // Create session
     const sessionToken = await createSession(env, userId);
@@ -1913,7 +1898,7 @@ async function getMaintenanceScheduleForUser(
 ): Promise<MaintenanceScheduleRecord | null> {
   const normalizedId = scheduleId.toLowerCase();
   const row = (await env.DB.prepare(
-    'SELECT * FROM maintenance_schedules WHERE LOWER(id) = ? AND user_id = ?'
+    'SELECT * FROM maintenance_schedules WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
   )
     .bind(normalizedId, userId)
     .first()) as MaintenanceScheduleRecord | null;
@@ -1946,7 +1931,7 @@ async function handleListMaintenanceSchedules(
 
       const result = await env.DB.prepare(
         `SELECT * FROM maintenance_schedules
-         WHERE user_id = ? AND tank_id = ?
+         WHERE deleted_at IS NULL AND user_id = ? AND tank_id = ?
          ORDER BY created_at DESC`
       )
         .bind(auth.userId, tankResult.id)
@@ -1958,7 +1943,7 @@ async function handleListMaintenanceSchedules(
 
     const result = await env.DB.prepare(
       `SELECT * FROM maintenance_schedules
-       WHERE user_id = ?
+       WHERE deleted_at IS NULL AND user_id = ?
        ORDER BY created_at DESC`
     )
       .bind(auth.userId)
@@ -2183,8 +2168,12 @@ async function handleDeleteMaintenanceSchedule(
       return errorResponse('Not found', 'Schedule not found', 404);
     }
 
-    await env.DB.prepare('DELETE FROM maintenance_schedules WHERE LOWER(id) = ? AND user_id = ?')
-      .bind(scheduleId.toLowerCase(), auth.userId)
+    // Soft delete: water_changes.source_schedule_id references this row (FK), and the app syncs isDeleted.
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      'UPDATE maintenance_schedules SET deleted_at = ?, updated_at = ? WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+    )
+      .bind(now, now, scheduleId.toLowerCase(), auth.userId)
       .run();
 
     return jsonResponse({ success: true });
@@ -2486,7 +2475,9 @@ async function handleCreateMeasurement(
           nitrate: data.nitrate,
           phosphate: data.phosphate,
           salinity: data.salinity,
+          salinity_unit: salinityUnit,
           temperature: data.temperature,
+          nitrite: data.nitrite,
         },
         tank.name
       );
@@ -2719,6 +2710,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     if (parameters.nitrate != null) paramLines.push(`- Nitrate: ${sanitizeNumericInput(parameters.nitrate)} ppm`);
     if (parameters.phosphate != null) paramLines.push(`- Phosphate: ${sanitizeNumericInput(parameters.phosphate)} ppm`);
     if (parameters.ammonia != null) paramLines.push(`- Ammonia: ${sanitizeNumericInput(parameters.ammonia)} ppm`);
+    if (parameters.nitrite != null) paramLines.push(`- Nitrite: ${sanitizeNumericInput(parameters.nitrite)} ppm`);
 
     if (paramLines.length === 0) {
       return jsonResponse(
@@ -3775,9 +3767,8 @@ async function handleUpdateNotificationSettings(
 
     // Update each setting
     const updatedSettings: NotificationSetting[] = [];
+    const existingSettings = await getUserNotificationSettings(env.DB, auth.userId);
     for (const setting of settings) {
-      // Get existing setting or defaults
-      const existingSettings = await getUserNotificationSettings(env.DB, auth.userId);
       const existing = existingSettings.find((s) => s.parameter === setting.parameter);
       const defaults = DEFAULT_THRESHOLDS[setting.parameter as ParameterName];
 
@@ -4044,7 +4035,7 @@ async function handleCreateLivestock(
     const normalizedTankId = tankId.toLowerCase(); // Normalize to match database format
     
     // Check if livestock with this ID already exists
-    const existing = (await env.DB.prepare('SELECT id FROM livestock WHERE LOWER(id) = ?')
+    const existing = (await env.DB.prepare('SELECT id FROM livestock WHERE LOWER(id) = ? AND deleted_at IS NULL')
       .bind(livestockId)
       .first()) as { id: string } | null;
     
@@ -4081,7 +4072,7 @@ async function handleCreateLivestock(
       }
     }
     const now = new Date().toISOString();
-    const insertResult = await env.DB.prepare(
+    await env.DB.prepare(
       `INSERT INTO livestock (id, tank_id, common_name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
@@ -4268,7 +4259,7 @@ async function handleUpdateLivestock(
     const normalizedLivestockId = livestockId.toLowerCase();
     values.push(normalizedLivestockId);
 
-    const updateResult = await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
+    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
       .bind(...values)
       .run();
 
@@ -4384,7 +4375,7 @@ async function handleCreateLivestockLog(
     const loggedAt = data.loggedAt || new Date().toISOString();
     const now = new Date().toISOString();
 
-    const insertResult = await env.DB.prepare(
+    await env.DB.prepare(
       `INSERT INTO livestock_logs (id, livestock_id, log_type, description, logged_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
