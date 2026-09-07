@@ -175,49 +175,6 @@ struct BrutalistTextArea: View {
     }
 }
 
-// MARK: - Brutalist Picker
-
-/// A segmented picker following Brutalist design
-struct BrutalistPicker<T: Hashable>: View {
-    let label: String?
-    let options: [T]
-    @Binding var selection: T
-    let labelForOption: (T) -> String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
-            if let label = label {
-                Text(label.uppercased())
-                    .font(BrutalistTheme.Typography.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(BrutalistTheme.Colors.text)
-            }
-
-            HStack(spacing: 0) {
-                ForEach(options, id: \.self) { option in
-                    Button(action: { selection = option }) {
-                        Text(labelForOption(option).uppercased())
-                            .font(BrutalistTheme.Typography.caption)
-                            .fontWeight(.bold)
-                            .foregroundStyle(BrutalistTheme.Colors.text)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, BrutalistTheme.Spacing.sm)
-                            .background(selection == option ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
-                    }
-                    .buttonStyle(.plain)
-
-                    if option != options.last {
-                        Rectangle()
-                            .fill(BrutalistTheme.Colors.text)
-                            .frame(width: BrutalistTheme.Borders.standard)
-                    }
-                }
-            }
-            .brutalistBorder()
-        }
-    }
-}
-
 // MARK: - Brutalist Stepper
 
 /// A numeric stepper following Brutalist design

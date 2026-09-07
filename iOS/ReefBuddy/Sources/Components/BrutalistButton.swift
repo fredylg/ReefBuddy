@@ -198,40 +198,6 @@ extension BrutalistButton {
     }
 }
 
-// MARK: - Icon Button
-
-/// A button with an icon, following Brutalist design
-struct BrutalistIconButton: View {
-    let systemName: String
-    let size: CGFloat
-    let color: Color
-    let action: () -> Void
-
-    init(
-        systemName: String,
-        size: CGFloat = 24,
-        color: Color = BrutalistTheme.Colors.text,
-        action: @escaping () -> Void
-    ) {
-        self.systemName = systemName
-        self.size = size
-        self.color = color
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: size, weight: .bold))
-                .foregroundStyle(color)
-                .frame(width: size + 20, height: size + 20)
-                .background(BrutalistTheme.Colors.background)
-                .brutalistBorder()
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - Previews
 
 #Preview("Button Styles") {
@@ -267,16 +233,6 @@ struct BrutalistIconButton: View {
         BrutalistButton.primary("Disabled Button", isFullWidth: true, isEnabled: false) {
             debugLog("This won't print")
         }
-    }
-    .padding()
-    .background(BrutalistTheme.Colors.background)
-}
-
-#Preview("Icon Buttons") {
-    HStack(spacing: 20) {
-        BrutalistIconButton(systemName: "plus") {}
-        BrutalistIconButton(systemName: "trash", color: BrutalistTheme.Colors.warning) {}
-        BrutalistIconButton(systemName: "pencil") {}
     }
     .padding()
     .background(BrutalistTheme.Colors.background)

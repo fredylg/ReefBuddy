@@ -11,7 +11,6 @@
 		1641E6522F1B2B6B0017122A /* ReefBuddy.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 1641E6512F1B2B6B0017122A /* ReefBuddy.storekit */; };
 		8A1B2C3D00000001 /* ReefBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000011 /* ReefBuddyApp.swift */; };
 		8A1B2C3D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000012 /* ContentView.swift */; };
-		8A1B2C3D00000003 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000013 /* AppIconGenerator.swift */; };
 		8A1B2C3D00000004 /* BrutalistTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000014 /* BrutalistTheme.swift */; };
 		8A1B2C3D00000005 /* BrutalistButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000015 /* BrutalistButton.swift */; };
 		8A1B2C3D00000006 /* BrutalistTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000016 /* BrutalistTextField.swift */; };
@@ -21,7 +20,6 @@
 		8A1B2C3D0000000A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001A /* APIClient.swift */; };
 		8A1B2C3D0000000B /* TankListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001B /* TankListView.swift */; };
 		8A1B2C3D0000000C /* MeasurementEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001C /* MeasurementEntryView.swift */; };
-		8A1B2C3D0000000D /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001D /* AnalysisView.swift */; };
 		8A1B2C3D0000000E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001E /* Assets.xcassets */; };
 		8A1B2C3D000000AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */; };
 		8A1B2C3D0000000F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001F /* HistoryView.swift */; };
@@ -61,7 +59,6 @@
 		8A1B2C3D00000010 /* ReefBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReefBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1B2C3D00000011 /* ReefBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReefBuddyApp.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		8A1B2C3D00000013 /* AppIconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconGenerator.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000014 /* BrutalistTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistTheme.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000015 /* BrutalistButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistButton.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000016 /* BrutalistTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrutalistTextField.swift; sourceTree = "<group>"; };
@@ -71,7 +68,6 @@
 		8A1B2C3D0000001A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001B /* TankListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankListView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001C /* MeasurementEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementEntryView.swift; sourceTree = "<group>"; };
-		8A1B2C3D0000001D /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8A1B2C3D0000001F /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
@@ -163,7 +159,6 @@
 			children = (
 				8A1B2C3D00000011 /* ReefBuddyApp.swift */,
 				8A1B2C3D00000012 /* ContentView.swift */,
-				8A1B2C3D00000013 /* AppIconGenerator.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -205,7 +200,6 @@
 			children = (
 				8A1B2C3D0000001B /* TankListView.swift */,
 				8A1B2C3D0000001C /* MeasurementEntryView.swift */,
-				8A1B2C3D0000001D /* AnalysisView.swift */,
 				8A1B2C3D0000001F /* HistoryView.swift */,
 				8A1B2C3D00000022 /* ChartView.swift */,
 				8A1B2C3D00000026 /* ExportView.swift */,
@@ -338,7 +332,6 @@
 			files = (
 				8A1B2C3D00000001 /* ReefBuddyApp.swift in Sources */,
 				8A1B2C3D00000002 /* ContentView.swift in Sources */,
-				8A1B2C3D00000003 /* AppIconGenerator.swift in Sources */,
 				8A1B2C3D00000004 /* BrutalistTheme.swift in Sources */,
 				8A1B2C3D00000005 /* BrutalistButton.swift in Sources */,
 				8A1B2C3D00000006 /* BrutalistTextField.swift in Sources */,
@@ -349,7 +342,6 @@
 				8A1B2C3D0000000A /* APIClient.swift in Sources */,
 				8A1B2C3D0000000B /* TankListView.swift in Sources */,
 				8A1B2C3D0000000C /* MeasurementEntryView.swift in Sources */,
-				8A1B2C3D0000000D /* AnalysisView.swift in Sources */,
 				8A1B2C3D0000000F /* HistoryView.swift in Sources */,
 				8A1B2C3D00000021 /* ChartView.swift in Sources */,
 				8A1B2C3D00000025 /* ExportView.swift in Sources */,
