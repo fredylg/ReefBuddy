@@ -57,7 +57,8 @@ export async function handleAnalysis(request: Request, env: Env): Promise<Respon
   try {
     // IP-based rate limiting (defense-in-depth beyond credit system)
     const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
-    const rateLimit = await checkIPRateLimit(env, clientIP);
+    // Fail closed: an analysis costs money, so a KV outage blocks rather than opens the gate (H3).
+    const rateLimit = await checkIPRateLimit(env, clientIP, 10, 60_000, 'ip', 'deny');
 
     if (!rateLimit.allowed) {
       return jsonResponse(

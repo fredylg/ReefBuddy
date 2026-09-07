@@ -133,13 +133,17 @@ export interface RateLimitResult {
  * @param ip - Client IP address
  * @param maxRequests - Maximum requests per window (default: 10)
  * @param windowMs - Time window in milliseconds (default: 60000 = 1 minute)
+ * @param scope - Key prefix so different limiters do not share counters
+ * @param onError - What to do when KV is unavailable: 'allow' keeps the API up for cheap routes,
+ *   'deny' fails closed for routes that spend money (the AI analysis, security plan item H3)
  */
 export async function checkIPRateLimit(
   env: Env,
   ip: string,
   maxRequests: number = 10,
   windowMs: number = 60000,
-  scope: string = 'ip'
+  scope: string = 'ip',
+  onError: 'allow' | 'deny' = 'allow'
 ): Promise<RateLimitResult> {
   const key = `ratelimit:${scope}:${ip}`;
   const now = Date.now();
@@ -169,8 +173,10 @@ export async function checkIPRateLimit(
 
     return { allowed: true, remaining: maxRequests - data.count - 1, resetAt: data.windowStart + windowMs };
   } catch (error) {
-    // On KV error, allow request but log warning
-    console.warn('Rate limit check failed, allowing request:', error);
+    console.warn(`Rate limit check failed (${scope}), ${onError === 'deny' ? 'blocking' : 'allowing'} request:`, error);
+    if (onError === 'deny') {
+      return { allowed: false, remaining: 0, resetAt: now + windowMs };
+    }
     return { allowed: true, remaining: maxRequests, resetAt: now + windowMs };
   }
 }
