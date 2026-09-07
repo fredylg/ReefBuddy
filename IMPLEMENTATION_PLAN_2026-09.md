@@ -21,7 +21,7 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
 | 5 | Backend structure | 4 | 4 | done (branch `maint/p5-structure`, live `e667dee4`) |
 | 6 | iOS modernisation | 8 | 7 | code complete (branch `maint/p6-ios`); **P6-08 TestFlight 1.0.8 is yours** |
-| 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 1 | not started (P7-15 pre-done) |
+| 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 12 | branch `maint/p7-hygiene`; **P7-12/P7-13 need your go-ahead, P7-05 mailboxes and P7-14 WAF rule are yours** |
 | 8 | Final verification and handover | 5 | 0 | not started |
 | 9 | Deferred / declined (no work) | — | — | — |
 
@@ -235,22 +235,22 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 
 ## Phase 7 — Database, docs, hygiene, Cloudflare cleanup
 
-- [ ] **P7-01** (M-03, M-04) `migrations/README.md`: 0008 never existed; soft-delete-only rule; fix 0006/0011 headers. CI grep guard for `DELETE FROM` outside `push_tokens`.
-- [ ] **P7-02** (X-01) `CLAUDE.md` + `README.md`: model Haiku 4.5, deploy commands, 38 iOS files (regenerated tree), full endpoint table generated from the router, iOS 18.0.
-- [ ] **P7-03** (X-02) Correct `SECURITY_REMEDIATION_PLAN.md` tracker; H1/H3 marked as done by Phase 3 items; then archive it.
-- [ ] **P7-04** (X-03) `docs/archive/` for `REQUIREMENTS.md`, `REQUIREMENT-ANSWERS.md`, `SECURITY_AUDIT.md`, `MANUAL_TESTING_GUIDE.md`, `APP_ATTEST_IMPLEMENTATION_PLAN.md`, `MAINTENANCE_SCHEDULES_PLAN.md`, `PLAN.md`, `iOS/SETUP.md`, `iOS/VERIFICATION.md`. Keep `AI_GATEWAY_AUTH_SETUP.md`.
-- [ ] **P7-05** (X-04) `web/`: soften Smart Alerts copy; privacy policy data inventory + date; 🧑 confirm `privacy@`/`support@reefbuddy.app` exist.
-- [ ] **P7-06** (H-01) Delete `test.txt`, `src/test.txt`, `src/verification/`, `TEST_FAILURE_REPORT.md`, `D1_LOCAL_VS_REMOTE_COMPARISON.md`, `CLOUDFLARE_SECURITY_BACKFILL.md` (archived copy of the last two under `docs/archive/`), `.cursor/`, `count-tables.sh`, the two dashboard screenshots in the repo root. **Added 2026-09-07:** `.wrangler/state/…/*.sqlite` (local Miniflare D1 files) are tracked in git despite `.gitignore`; `git rm -r --cached .wrangler` so local dev stops dirtying the tree.
-- [ ] **P7-07** (H-02, CF-07) Commit `web/tiktok*.txt`; `npm run deploy:web` = `wrangler pages deploy web --project-name reefbuddy-web`.
-- [ ] **P7-08** (H-03) `.gitignore`: `!.claude/agents/`.
-- [ ] **P7-09** (H-04) `scripts/` with parameterised base URL; delete `test-iap-fix.sh`; fix `capture-app-screenshots.sh` for bash 3.2; `core.hooksPath` for the pre-commit hook.
-- [ ] **P7-10** (H-05) `package.json` `private: true`, license `UNLICENSED`, author; dedupe pbxproj rules to `CLAUDE.md` only; remove duplicate `StoreKit.plist`/`.storekit` under `iap-configuration/`.
-- [ ] **P7-11** (T-06) Rewrite `tests/README.md`.
-- [ ] **P7-12** (CF-04) ⛔ `wrangler kv namespace delete` for `SESSIONS` and `SESSIONS_preview`.
-- [ ] **P7-13** (CF-05) ⛔ `wrangler pages project delete reefbuddy-site`.
-- [ ] **P7-14** (CF-10 follow-up) 🧑 Create the single Free-plan rate-limiting rule on `aethers.com.au`: hostname `api.reefbuddy.aethers.com.au`, path starts with `/credits/purchase` or `/auth/`, 10 requests / 10 s per IP, action Block for 10 s. I write the exact expression; you click it in.
+- [x] **P7-01** (M-03, M-04) `migrations/README.md`: 0008 never existed; soft-delete-only rule; fix 0006/0011 headers. CI grep guard for `DELETE FROM` outside `push_tokens`.
+- [x] **P7-02** (X-01) `CLAUDE.md` + `README.md`: model Haiku 4.5, deploy commands, 38 iOS files (regenerated tree), full endpoint table generated from the router, iOS 18.0.
+- [x] **P7-03** (X-02) Correct `SECURITY_REMEDIATION_PLAN.md` tracker; H1/H3 marked as done by Phase 3 items; then archive it.
+- [x] **P7-04** (X-03) `docs/archive/` for `REQUIREMENTS.md`, `REQUIREMENT-ANSWERS.md`, `SECURITY_AUDIT.md`, `MANUAL_TESTING_GUIDE.md`, `APP_ATTEST_IMPLEMENTATION_PLAN.md`, `MAINTENANCE_SCHEDULES_PLAN.md`, `PLAN.md`, `iOS/SETUP.md`, `iOS/VERIFICATION.md`. Keep `AI_GATEWAY_AUTH_SETUP.md`.
+- [!] **P7-05** (X-04) copy + policy done 2026-09-07; 🧑 still to confirm the mailboxes — `web/`: soften Smart Alerts copy; privacy policy data inventory + date; 🧑 confirm `privacy@`/`support@reefbuddy.app` exist.
+- [x] **P7-06** (H-01) Delete `test.txt`, `src/test.txt`, `src/verification/`, `TEST_FAILURE_REPORT.md`, `D1_LOCAL_VS_REMOTE_COMPARISON.md`, `CLOUDFLARE_SECURITY_BACKFILL.md` (archived copy of the last two under `docs/archive/`), `.cursor/`, `count-tables.sh`, the two dashboard screenshots in the repo root. **Added 2026-09-07:** `.wrangler/state/…/*.sqlite` (local Miniflare D1 files) are tracked in git despite `.gitignore`; `git rm -r --cached .wrangler` so local dev stops dirtying the tree.
+- [x] **P7-07** (H-02, CF-07) Commit `web/tiktok*.txt`; `npm run deploy:web` = `wrangler pages deploy web --project-name reefbuddy-web`.
+- [x] **P7-08** (H-03) `.gitignore`: `!.claude/agents/`.
+- [x] **P7-09** (H-04) `scripts/` with parameterised base URL; delete `test-iap-fix.sh`; fix `capture-app-screenshots.sh` for bash 3.2; `core.hooksPath` for the pre-commit hook.
+- [x] **P7-10** (H-05) `package.json` `private: true`, license `UNLICENSED`, author; dedupe pbxproj rules to `CLAUDE.md` only; remove duplicate `StoreKit.plist`/`.storekit` under `iap-configuration/`.
+- [x] **P7-11** (T-06) Rewrite `tests/README.md`.
+- [ ] **P7-12** (CF-04) ⛔ `wrangler kv namespace delete` for `SESSIONS` and `SESSIONS_preview` — exact commands: `npx wrangler kv namespace delete --namespace-id cc91d53bedea428587120defc94926f2` (SESSIONS) and `npx wrangler kv namespace delete --namespace-id a8af95c0bda64bca81f016e2899b1c5f` (SESSIONS_preview). Neither is bound in `wrangler.toml` (the Worker uses `REEF_KV`).
+- [ ] **P7-13** (CF-05) ⛔ `npx wrangler pages project delete reefbuddy-site` — orphan; the live site is project `reefbuddy-web` (reefbuddy.aethers.com.au). Also delete the stale probe row `device_credits` `8b629a9b-9907-4d5b-80f9-dc18e3ff3587` (lowercase id, created by my P5-04 smoke test; 0 analyses, 0 credits) with the same go-ahead.
+- [!] **P7-14** (CF-10 follow-up) 🧑 Create the single Free-plan rate-limiting rule on `aethers.com.au` (Security → WAF → Rate limiting rules → Create): name `reefbuddy-auth-purchase`; **expression** `(http.host eq "api.reefbuddy.aethers.com.au" and (starts_with(http.request.uri.path, "/credits/purchase") or starts_with(http.request.uri.path, "/auth/")))`; characteristics: IP; rate 10 requests per 10 seconds; action Block, duration 10 seconds. Tell me when it is in and I will probe it.
 - [x] **P7-15** (CF-09 follow-up) Recorded in the review (CF-09 notes) on 2026-09-07.
-- [ ] **P7-16** (X-01) Regenerate the iOS file tree and endpoint table one last time after Phases 5–6.
+- [x] **P7-16** (X-01) Regenerate the iOS file tree and endpoint table one last time after Phases 5–6.
 
 ---
 
@@ -328,3 +328,7 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P6-07 · `AnalysisView.swift`, `BrutalistPicker`, `BrutalistIconButton` deleted; `AppIconGenerator.swift` moved to `tools/` (out of the target); pbxproj edited by hand, verify script green · 9c9e844
 - 2026-09-07 · P6-08 · simulator Debug build (Swift 6) against production with `API_BASE_URL`: launch clean, no crash reports, tanks list rendered from the migrated `tanks.json`, credit balance fetched (3), no subsystem errors. Version bumped to **1.0.8 build 7** for your archive. Remaining 🧑: TestFlight + device test (also covers P4-28).
 - 2026-09-07 · **Phase 6 code complete.**
+- 2026-09-07 · P7-04, P7-06..P7-10 · nine stale docs + two reports → `docs/archive/`; stray files, `.cursor/`, `count-tables.sh`, `test-iap-fix.sh`, `test-jws-validation.sh` (debug route gone) deleted; `.wrangler/` untracked; `web/tiktok*.txt` committed and `npm run deploy:web` → `reefbuddy-web`; `.claude/agents/` tracked; `package.json` private/UNLICENSED/author/1.0.8; duplicate StoreKit config removed; `scripts/` with parameterised base URL, bash-3.2 screenshot script, `.githooks/pre-commit` + `scripts/setup-hooks.sh` (`core.hooksPath`) · d18311b
+- 2026-09-07 · X-02 follow-up · `/analyze` limiter fails closed on KV error (`onError: 'deny'`), cheap routes still fail open; 3 new tests (243 total) · 73b9688
+- 2026-09-07 · P7-01, P7-02, P7-03, P7-05, P7-11, P7-16 · `migrations/README.md` (+ `lint:migrations` in the deploy chain, 0006/0011 headers fixed); CLAUDE.md/README/iOS README regenerated (endpoint table from `ROUTES`, 39 files, Haiku 4.5, Swift 6/iOS 18); security plan tracker corrected and archived; website copy + privacy policy (Sept 2026); tests/README rewritten · 66a5cd5
+- 2026-09-07 · P7-12, P7-13 · **awaiting your go-ahead** (commands in the task lines). P7-05 mailboxes and P7-14 WAF rule are yours (expression in the task line).
