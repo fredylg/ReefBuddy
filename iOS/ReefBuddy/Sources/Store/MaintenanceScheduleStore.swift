@@ -8,20 +8,17 @@ import Observation
 final class MaintenanceScheduleStore {
     private(set) var schedules: [MaintenanceSchedule] = []
 
-    private let storageKey = "com.reefbuddy.maintenance_schedules"
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
+    @ObservationIgnored
+    private var document = JSONDocument<[MaintenanceSchedule]>(
+        file: "maintenance-schedules.json",
+        legacyDefaultsKey: "com.reefbuddy.maintenance_schedules"
+    )
 
     private let apiClient = APIClient()
 
     init() {
-        encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-
-        decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        load()
+        schedules = document.load() ?? []
+        debugLog("📦 Loaded \(schedules.count) maintenance schedules from local storage")
     }
 
     // MARK: - Public API
@@ -105,28 +102,8 @@ final class MaintenanceScheduleStore {
 
     // MARK: - Persistence
 
-    private func load() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
-            schedules = []
-            return
-        }
-
-        do {
-            schedules = try decoder.decode([MaintenanceSchedule].self, from: data)
-            debugLog("📦 Loaded \(schedules.count) maintenance schedules from local storage")
-        } catch {
-            debugLog("⚠️ Failed to load maintenance schedules: \(error.localizedDescription)")
-            schedules = []
-        }
-    }
-
     private func persist() {
-        do {
-            let data = try encoder.encode(schedules)
-            UserDefaults.standard.set(data, forKey: storageKey)
-        } catch {
-            debugLog("⚠️ Failed to persist maintenance schedules: \(error.localizedDescription)")
-        }
+        document.save(schedules)
     }
 }
 
@@ -137,18 +114,20 @@ final class MaintenanceScheduleStore {
 final class WaterChangeStorage {
     private(set) var waterChangesByTank: [UUID: [WaterChange]] = [:]
 
-    private let storageKey = "com.reefbuddy.water_changes"
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
+    /// String keys: JSON objects need them and the legacy blob was written that way.
+    @ObservationIgnored
+    private var document = JSONDocument<[String: [WaterChange]]>(
+        file: "water-changes.json",
+        legacyDefaultsKey: "com.reefbuddy.water_changes"
+    )
 
     init() {
-        encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-
-        decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        load()
+        let stored = document.load() ?? [:]
+        waterChangesByTank = Dictionary(uniqueKeysWithValues: stored.compactMap { key, value in
+            UUID(uuidString: key).map { ($0, value) }
+        })
+        let total = waterChangesByTank.values.reduce(0) { $0 + $1.count }
+        debugLog("📦 Loaded \(total) water changes from local storage")
     }
 
     func waterChanges(for tankId: UUID) -> [WaterChange] {
@@ -183,38 +162,8 @@ final class WaterChangeStorage {
         persist()
     }
 
-    private func load() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
-            waterChangesByTank = [:]
-            return
-        }
-
-        do {
-            let stringDict = try decoder.decode([String: [WaterChange]].self, from: data)
-            waterChangesByTank = Dictionary(uniqueKeysWithValues:
-                stringDict.compactMap { key, value in
-                    guard let uuid = UUID(uuidString: key) else { return nil }
-                    return (uuid, value)
-                }
-            )
-            let total = waterChangesByTank.values.reduce(0) { $0 + $1.count }
-            debugLog("📦 Loaded \(total) water changes from local storage")
-        } catch {
-            debugLog("⚠️ Failed to load water changes: \(error.localizedDescription)")
-            waterChangesByTank = [:]
-        }
-    }
-
     private func persist() {
-        do {
-            let stringDict = Dictionary(uniqueKeysWithValues:
-                waterChangesByTank.map { ($0.key.uuidString, $0.value) }
-            )
-            let data = try encoder.encode(stringDict)
-            UserDefaults.standard.set(data, forKey: storageKey)
-        } catch {
-            debugLog("⚠️ Failed to persist water changes: \(error.localizedDescription)")
-        }
+        document.save(Dictionary(uniqueKeysWithValues: waterChangesByTank.map { ($0.key.uuidString, $0.value) }))
     }
 }
 

@@ -3,7 +3,7 @@ import Observation
 
 // MARK: - Livestock Storage
 
-/// Manages persistence of livestock and livestock logs using UserDefaults.
+/// Local persistence of livestock and livestock logs (JSON documents in Application Support).
 /// Provides local storage as fallback when backend is unavailable.
 /// Thread-safe and observable for SwiftUI integration.
 @MainActor
@@ -18,15 +18,18 @@ final class LivestockStorage {
     /// All saved livestock logs
     private(set) var livestockLogs: [LivestockLog] = []
     
-    /// Key for UserDefaults storage
-    private let livestockKey = "com.reefbuddy.livestock"
-    private let logsKey = "com.reefbuddy.livestockLogs"
+    /// Documents in Application Support (photos live in ImageStorage, not in the JSON).
+    @ObservationIgnored
+    private var livestockDocument = JSONDocument<[Livestock]>(
+        file: "livestock.json",
+        legacyDefaultsKey: "com.reefbuddy.livestock"
+    )
+    @ObservationIgnored
+    private var logsDocument = JSONDocument<[LivestockLog]>(
+        file: "livestock-logs.json",
+        legacyDefaultsKey: "com.reefbuddy.livestockLogs"
+    )
     
-    /// JSON encoder for persistence
-    private let encoder: JSONEncoder
-    
-    /// JSON decoder for loading
-    private let decoder: JSONDecoder
     
     /// Image storage for livestock photos
     private let imageStorage = ImageStorage()
@@ -34,13 +37,6 @@ final class LivestockStorage {
     // MARK: - Initialization
     
     init() {
-        // Configure JSON coding
-        encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        
-        decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
         loadLivestock()
         loadLogs()
     }
@@ -136,98 +132,48 @@ final class LivestockStorage {
     }
     
     // MARK: - Private Methods
-    
-    /// Load livestock from UserDefaults
-    /// Also loads images from file system
+
+    /// Load livestock from the document, then attach photos from the file system.
     private func loadLivestock() {
-        guard let data = UserDefaults.standard.data(forKey: livestockKey) else {
-            livestock = []
-            return
-        }
-        
-        do {
-            var loadedLivestock = try decoder.decode([Livestock].self, from: data)
-            
-            // Load images from file system for each livestock item (prefer file system over encoded Data)
-            for index in loadedLivestock.indices {
-                if let imageData = imageStorage.loadImage(for: loadedLivestock[index].id) {
-                    loadedLivestock[index].photoData = imageData
-                }
-                // If file system doesn't have it, keep the decoded photoData (if any)
+        var loaded = livestockDocument.load() ?? []
+        for index in loaded.indices {
+            if let imageData = imageStorage.loadImage(for: loaded[index].id) {
+                loaded[index].photoData = imageData
             }
-            
-            livestock = loadedLivestock
-            debugLog("📦 Loaded \(livestock.count) livestock items from local storage")
-        } catch {
-            debugLog("⚠️ Failed to load livestock from local storage: \(error.localizedDescription)")
-            livestock = []
         }
+        livestock = loaded
+        debugLog("📦 Loaded \(livestock.count) livestock items from local storage")
     }
-    
-    /// Persist livestock to UserDefaults
-    /// Images are saved to file system separately (not encoded in UserDefaults to avoid size limits)
+
+    /// Persist livestock; photos go to the file system, the JSON excludes `photoData` via CodingKeys.
     private func persistLivestock() {
-        do {
-            // Save images to file system for each livestock item
-            for item in livestock {
-                if let photoData = item.photoData {
-                    _ = imageStorage.saveImage(photoData, for: item.id)
-                }
+        for item in livestock {
+            if let photoData = item.photoData {
+                _ = imageStorage.saveImage(photoData, for: item.id)
             }
-
-            // Encode livestock (photoData excluded via CodingKeys to prevent UserDefaults size issues)
-            let data = try encoder.encode(livestock)
-            UserDefaults.standard.set(data, forKey: livestockKey)
-            debugLog("💾 Saved \(livestock.count) livestock items to local storage (\(data.count) bytes)")
-        } catch {
-            debugLog("⚠️ Failed to save livestock to local storage: \(error.localizedDescription)")
         }
+        livestockDocument.save(livestock)
     }
-    
-    /// Load logs from UserDefaults
-    /// Also loads images from file system
+
+    /// Load logs from the document, then attach photos from the file system.
     private func loadLogs() {
-        guard let data = UserDefaults.standard.data(forKey: logsKey) else {
-            livestockLogs = []
-            return
-        }
-        
-        do {
-            var loadedLogs = try decoder.decode([LivestockLog].self, from: data)
-            
-            // Load images from file system for each log entry (prefer file system over encoded Data)
-            for index in loadedLogs.indices {
-                if let imageData = imageStorage.loadImage(for: loadedLogs[index].id) {
-                    loadedLogs[index].photoData = imageData
-                }
-                // If file system doesn't have it, keep the decoded photoData (if any)
+        var loaded = logsDocument.load() ?? []
+        for index in loaded.indices {
+            if let imageData = imageStorage.loadImage(for: loaded[index].id) {
+                loaded[index].photoData = imageData
             }
-            
-            livestockLogs = loadedLogs
-            debugLog("📦 Loaded \(livestockLogs.count) livestock logs from local storage")
-        } catch {
-            debugLog("⚠️ Failed to load livestock logs from local storage: \(error.localizedDescription)")
-            livestockLogs = []
         }
+        livestockLogs = loaded
+        debugLog("📦 Loaded \(livestockLogs.count) livestock logs from local storage")
     }
-    
-    /// Persist logs to UserDefaults
-    /// Images are saved to file system separately (not encoded in UserDefaults to avoid size limits)
-    private func persistLogs() {
-        do {
-            // Save images to file system for each log entry
-            for log in livestockLogs {
-                if let photoData = log.photoData {
-                    _ = imageStorage.saveImage(photoData, for: log.id)
-                }
-            }
 
-            // Encode logs (photoData excluded via CodingKeys to prevent UserDefaults size issues)
-            let data = try encoder.encode(livestockLogs)
-            UserDefaults.standard.set(data, forKey: logsKey)
-            debugLog("💾 Saved \(livestockLogs.count) livestock logs to local storage (\(data.count) bytes)")
-        } catch {
-            debugLog("⚠️ Failed to save livestock logs to local storage: \(error.localizedDescription)")
+    /// Persist logs; photos go to the file system, the JSON excludes `photoData` via CodingKeys.
+    private func persistLogs() {
+        for log in livestockLogs {
+            if let photoData = log.photoData {
+                _ = imageStorage.saveImage(photoData, for: log.id)
+            }
         }
+        logsDocument.save(livestockLogs)
     }
 }

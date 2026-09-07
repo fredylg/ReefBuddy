@@ -3,96 +3,71 @@ import Observation
 
 // MARK: - Analysis Storage
 
-/// Manages persistence of saved AI analyses using UserDefaults.
-/// Thread-safe and observable for SwiftUI integration.
+/// Local persistence of saved AI analyses (`saved-analyses.json` in Application Support).
 @MainActor
 @Observable
 final class AnalysisStorage {
-    
+
     // MARK: - Properties
-    
+
     /// All saved analyses, sorted by date (newest first)
     private(set) var savedAnalyses: [SavedAnalysis] = []
-    
-    /// Key for UserDefaults storage
-    private let storageKey = "com.reefbuddy.savedAnalyses"
-    
-    /// JSON encoder for persistence
-    private let encoder = JSONEncoder()
-    
-    /// JSON decoder for loading
-    private let decoder = JSONDecoder()
-    
+
+    /// Dates stay in Foundation's default encoding: that is how the legacy blob was written.
+    @ObservationIgnored
+    private var document = JSONDocument<[SavedAnalysis]>(
+        file: "saved-analyses.json",
+        dates: .foundationDefault,
+        legacyDefaultsKey: "com.reefbuddy.savedAnalyses"
+    )
+
     // MARK: - Initialization
-    
+
     init() {
-        loadAnalyses()
+        savedAnalyses = (document.load() ?? []).sorted { $0.analyzedAt > $1.analyzedAt }
     }
-    
+
     // MARK: - Public Methods
-    
+
     /// Save a new analysis
     func save(_ analysis: SavedAnalysis) {
         savedAnalyses.insert(analysis, at: 0)
-        persistAnalyses()
+        persist()
     }
-    
+
     /// Delete an analysis by ID
     func delete(_ id: UUID) {
         savedAnalyses.removeAll { $0.id == id }
-        persistAnalyses()
+        persist()
     }
-    
+
     /// Delete multiple analyses
     func delete(_ ids: Set<UUID>) {
         savedAnalyses.removeAll { ids.contains($0.id) }
-        persistAnalyses()
+        persist()
     }
-    
+
     /// Get analyses for a specific tank
     func analyses(for tankId: String) -> [SavedAnalysis] {
         savedAnalyses.filter { $0.tankId == tankId }
     }
-    
+
     /// Delete all analyses for a tank
     func deleteAnalyses(for tankId: String) {
         savedAnalyses.removeAll { $0.tankId == tankId }
-        persistAnalyses()
+        persist()
     }
-    
+
     /// Clear all saved analyses
     func clearAll() {
         savedAnalyses.removeAll()
-        persistAnalyses()
+        persist()
     }
-    
+
     // MARK: - Private Methods
-    
-    /// Load analyses from UserDefaults
-    private func loadAnalyses() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
-            savedAnalyses = []
-            return
-        }
-        
-        do {
-            savedAnalyses = try decoder.decode([SavedAnalysis].self, from: data)
-            // Sort by date, newest first
-            savedAnalyses.sort { $0.analyzedAt > $1.analyzedAt }
-        } catch {
-            debugLog("Error loading saved analyses: \(error)")
-            savedAnalyses = []
-        }
-    }
-    
-    /// Persist analyses to UserDefaults
-    private func persistAnalyses() {
-        do {
-            let data = try encoder.encode(savedAnalyses)
-            UserDefaults.standard.set(data, forKey: storageKey)
-        } catch {
-            debugLog("Error saving analyses: \(error)")
-        }
+
+    private func persist() {
+        document.save(savedAnalyses)
     }
 }
 

@@ -3,48 +3,35 @@ import Observation
 
 // MARK: - Tank Storage
 
-/// Manages persistence of tanks using UserDefaults.
+/// Local persistence of tanks (`tanks.json` in Application Support).
 /// Provides local storage as fallback when backend is unavailable.
-/// Thread-safe and observable for SwiftUI integration.
 @MainActor
 @Observable
 final class TankStorage {
-    
+
     // MARK: - Properties
-    
+
     /// All saved tanks
     private(set) var tanks: [Tank] = []
-    
-    /// Key for UserDefaults storage
-    private let storageKey = "com.reefbuddy.tanks"
-    
-    /// JSON encoder for persistence
-    private let encoder: JSONEncoder
-    
-    /// JSON decoder for loading
-    private let decoder: JSONDecoder
-    
+
+    @ObservationIgnored
+    private var document = JSONDocument<[Tank]>(file: "tanks.json", legacyDefaultsKey: "com.reefbuddy.tanks")
+
     // MARK: - Initialization
-    
+
     init() {
-        // Configure JSON coding
-        encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        
-        decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
-        loadTanks()
+        tanks = document.load() ?? []
+        debugLog("📦 Loaded \(tanks.count) tanks from local storage")
     }
-    
+
     // MARK: - Public Methods
-    
+
     /// Save tanks to local storage
     func save(_ tanks: [Tank]) {
         self.tanks = tanks
-        persistTanks()
+        persist()
     }
-    
+
     /// Add or update a tank
     func save(_ tank: Tank) {
         if let index = tanks.firstIndex(where: { $0.id == tank.id }) {
@@ -52,52 +39,29 @@ final class TankStorage {
         } else {
             tanks.append(tank)
         }
-        persistTanks()
+        persist()
     }
-    
+
     /// Delete a tank by ID
     func delete(_ id: UUID) {
         tanks.removeAll { $0.id == id }
-        persistTanks()
+        persist()
     }
-    
+
     /// Get a tank by ID
     func get(_ id: UUID) -> Tank? {
         tanks.first { $0.id == id }
     }
-    
+
     /// Clear all tanks
     func clearAll() {
         tanks.removeAll()
-        persistTanks()
+        persist()
     }
-    
+
     // MARK: - Private Methods
-    
-    /// Load tanks from UserDefaults
-    private func loadTanks() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
-            tanks = []
-            return
-        }
-        
-        do {
-            tanks = try decoder.decode([Tank].self, from: data)
-            debugLog("📦 Loaded \(tanks.count) tanks from local storage")
-        } catch {
-            debugLog("⚠️ Failed to load tanks from local storage: \(error.localizedDescription)")
-            tanks = []
-        }
-    }
-    
-    /// Persist tanks to UserDefaults
-    private func persistTanks() {
-        do {
-            let data = try encoder.encode(tanks)
-            UserDefaults.standard.set(data, forKey: storageKey)
-            debugLog("💾 Saved \(tanks.count) tanks to local storage")
-        } catch {
-            debugLog("⚠️ Failed to save tanks to local storage: \(error.localizedDescription)")
-        }
+
+    private func persist() {
+        document.save(tanks)
     }
 }

@@ -46,6 +46,7 @@
 		8A1B2C3D0000009E /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009F /* KeychainManager.swift */; };
 		8A1B2C3D000000AA /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AB /* DeviceIdentity.swift */; };
 		8A1B2C3D000000AE /* APIDates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AF /* APIDates.swift */; };
+		8A1B2C3D000000B0 /* JSONFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000B1 /* JSONFileStore.swift */; };
 		8A1B2C3D000000A0 /* MaintenanceSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A1 /* MaintenanceSchedule.swift */; };
 		8A1B2C3D000000A2 /* MaintenanceScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A3 /* MaintenanceScheduleStore.swift */; };
 		8A1B2C3D000000A4 /* MaintenanceNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A5 /* MaintenanceNotificationService.swift */; };
@@ -95,6 +96,7 @@
 		8A1B2C3D0000009F /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000AB /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000AF /* APIDates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIDates.swift; sourceTree = "<group>"; };
+		8A1B2C3D000000B1 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A1 /* MaintenanceSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceSchedule.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A3 /* MaintenanceScheduleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceScheduleStore.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A5 /* MaintenanceNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceNotificationService.swift; sourceTree = "<group>"; };
@@ -256,6 +258,7 @@
 				8A1B2C3D00000099 /* LivestockStorage.swift */,
 				8A1B2C3D0000009B /* MeasurementStorage.swift */,
 				8A1B2C3D0000009D /* ImageStorage.swift */,
+				8A1B2C3D000000B1 /* JSONFileStore.swift */,
 				8A1B2C3D000000A3 /* MaintenanceScheduleStore.swift */,
 				8A1B2C3D000000A5 /* MaintenanceNotificationService.swift */,
 			);
@@ -368,6 +371,7 @@
 				8A1B2C3D0000009E /* KeychainManager.swift in Sources */,
 				8A1B2C3D000000AA /* DeviceIdentity.swift in Sources */,
 				8A1B2C3D000000AE /* APIDates.swift in Sources */,
+				8A1B2C3D000000B0 /* JSONFileStore.swift in Sources */,
 				8A1B2C3D000000A0 /* MaintenanceSchedule.swift in Sources */,
 				8A1B2C3D000000A2 /* MaintenanceScheduleStore.swift in Sources */,
 				8A1B2C3D000000A4 /* MaintenanceNotificationService.swift in Sources */,
