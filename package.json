@@ -30,8 +30,10 @@
     "wrangler": "^4.129.0"
   },
   "dependencies": {
+    "@peculiar/x509": "^2.1.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.12",
+    "reflect-metadata": "^0.2.2",
     "zod": "^4.5.4"
   }
 }

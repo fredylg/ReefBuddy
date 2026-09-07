@@ -1,14 +1,22 @@
 /**
  * POST /credits/purchase — StoreKit 2 JWS verification and credit granting.
- * Covers P1-01 (verify before trust), P1-02 (no transaction-id "0" bypass),
- * P1-06 (atomic add + duplicate guard) and the production environment policy.
+ * Covers P1-01 (verify before trust), P1-02 (no transaction-id "0" bypass), P1-06 (atomic add +
+ * duplicate guard), the production environment policy, and P3-10 (x5c chain validation against the
+ * pinned Apple Root CA G3).
+ *
+ * Fixtures: tests/fixtures/apple-sandbox-transaction.jws is a real Apple-signed Sandbox transaction
+ * (chain leaf -> WWDR G6 -> Apple Root CA G3); xcode-transaction.jws is signed by Xcode's local key.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { env, SELF, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import worker, { type Env } from "../src/index";
+import appleSandboxJws from "./fixtures/apple-sandbox-transaction.jws?raw";
+import xcodeJws from "./fixtures/xcode-transaction.jws?raw";
 
 const BUNDLE_ID = "au.com.aethers.reefbuddy";
 const PRODUCT_5 = "com.reefbuddy.credits5";
+const SANDBOX_FIXTURE_TX = "2000001105493644";
+const PRODUCTION: Partial<Env> = { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" };
 
 function b64url(bytes: Uint8Array | string): string {
   const bin = typeof bytes === "string" ? bytes : String.fromCharCode(...bytes);
@@ -49,8 +57,9 @@ function forgedJWS(payload: FakePayload): string {
 }
 
 /**
- * Self-signed JWS: a fresh P-256 key, its SPKI wrapped in a fake "certificate" blob placed in x5c[0],
- * and a valid ECDSA signature. Passes signature verification but NOT chain validation (Phase 3, P3-10).
+ * Self-signed JWS: a fresh P-256 key, its SPKI wrapped in a fake "certificate" blob in x5c[0], and a
+ * valid ECDSA signature. Cannot chain to Apple, so it is only ever accepted outside production and
+ * only when it claims environment=Xcode (Xcode's StoreKit test signing behaves the same way).
  */
 let signer: CryptoKeyPair;
 let fakeCertB64: string;
@@ -94,12 +103,16 @@ async function purchase(body: Record<string, unknown>, envOverride?: Partial<Env
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 
+/** The real fixture has one transaction id; forget it between tests so each can redeem it once. */
+async function forgetFixtureTransaction(): Promise<void> {
+  await env.DB.prepare("DELETE FROM purchase_history WHERE apple_transaction_id = ?").bind(SANDBOX_FIXTURE_TX).run();
+}
+
 describe("POST /credits/purchase — request validation", () => {
   it("rejects a body without jwsRepresentation (legacy receiptData is gone)", async () => {
     const res = await purchase({ deviceId: uid("dev"), productId: PRODUCT_5, receiptData: "base64receipt" });
     expect(res.status).toBe(400);
-    const data = (await res.json()) as { error: string };
-    expect(data.error).toBe("Validation failed");
+    expect(((await res.json()) as { error: string }).error).toBe("Validation failed");
   });
 
   it("rejects invalid JSON with 400", async () => {
@@ -112,8 +125,13 @@ describe("POST /credits/purchase — request validation", () => {
   });
 
   it("rejects an unknown product", async () => {
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox", productId: "com.reefbuddy.unknown" }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode", productId: "com.reefbuddy.unknown" }));
     const res = await purchase({ deviceId: uid("dev"), productId: "com.reefbuddy.unknown", jwsRepresentation: jws });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a malformed device id", async () => {
+    const res = await purchase({ deviceId: "x", productId: PRODUCT_5, jwsRepresentation: xcodeJws });
     expect(res.status).toBe(400);
   });
 });
@@ -121,17 +139,14 @@ describe("POST /credits/purchase — request validation", () => {
 describe("POST /credits/purchase — signature is verified before anything is trusted (P1-01)", () => {
   it("rejects a forged, unsigned Sandbox payload and grants nothing", async () => {
     const deviceId = uid("dev");
-    const before = await balance(deviceId);
     const res = await purchase({
       deviceId,
       productId: "com.reefbuddy.credits50",
       jwsRepresentation: forgedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox", productId: "com.reefbuddy.credits50" })),
     });
     expect(res.status).toBe(400);
-    const data = (await res.json()) as { code: string };
-    expect(data.code).toBe("JWS_INVALID");
-    const after = await balance(deviceId);
-    expect(after.paidCredits).toBe(before.paidCredits);
+    expect(((await res.json()) as { code: string }).code).toBe("JWS_INVALID");
+    expect((await balance(deviceId)).paidCredits).toBe(0);
   });
 
   it("rejects a forged, unsigned Production payload the same way", async () => {
@@ -147,7 +162,7 @@ describe("POST /credits/purchase — signature is verified before anything is tr
 
   it("rejects a correctly signed JWS whose signed product differs from the requested product", async () => {
     const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox", productId: PRODUCT_5 }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode", productId: PRODUCT_5 }));
     const res = await purchase({ deviceId, productId: "com.reefbuddy.credits50", jwsRepresentation: jws });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { code: string }).code).toBe("JWS_PRODUCT");
@@ -156,57 +171,98 @@ describe("POST /credits/purchase — signature is verified before anything is tr
 
   it("rejects a signed JWS for another bundle id", async () => {
     const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox", bundleId: "com.example.other" }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode", bundleId: "com.example.other" }));
     const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { code: string }).code).toBe("JWS_BUNDLE");
   });
 });
 
-describe("POST /credits/purchase — environment policy", () => {
-  it("in production, a Sandbox transaction is refused (SANDBOX_NOT_ALLOWED) and grants nothing", async () => {
+describe("POST /credits/purchase — certificate chain (P3-10)", () => {
+  it("accepts the real Apple-signed Sandbox transaction outside production (chain -> Apple Root CA G3)", async () => {
+    await forgetFixtureTransaction();
+    const deviceId = uid("dev");
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { creditsAdded: number; environment: string };
+    expect(data.creditsAdded).toBe(5);
+    expect(data.environment).toBe("Sandbox");
+    expect((await balance(deviceId)).paidCredits).toBe(5);
+  });
+
+  it("rejects the real transaction when its payload is tampered with", async () => {
+    await forgetFixtureTransaction();
+    const [h, p, s] = appleSandboxJws.split(".");
+    const payload = JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/")));
+    payload.productId = "com.reefbuddy.credits50";
+    const tampered = `${h}.${b64url(JSON.stringify(payload))}.${s}`;
+    const deviceId = uid("dev");
+    const res = await purchase({ deviceId, productId: "com.reefbuddy.credits50", jwsRepresentation: tampered });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe("JWS_INVALID");
+    expect((await balance(deviceId)).paidCredits).toBe(0);
+  });
+
+  it("outside production, a self-signed JWS claiming Sandbox is rejected: untrusted chain (JWS_CHAIN)", async () => {
     const deviceId = uid("dev");
     const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox" }));
-    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<Env>);
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe("JWS_CHAIN");
+    expect((await balance(deviceId)).paidCredits).toBe(0);
+  });
+
+  it("outside production, an Xcode-signed transaction (local Xcode key) is accepted", async () => {
+    await env.DB.prepare("DELETE FROM purchase_history WHERE apple_transaction_id = '0'").run();
+    const deviceId = uid("dev");
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: xcodeJws });
+    expect(res.status).toBe(200);
+    expect((await balance(deviceId)).paidCredits).toBe(5);
+  });
+
+  it("in production, a self-signed JWS claiming environment=Production is rejected (the B-03 gap is closed)", async () => {
+    const deviceId = uid("dev");
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Production" }));
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, PRODUCTION);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe("JWS_INVALID");
+    expect((await balance(deviceId)).paidCredits).toBe(0);
+  });
+
+  it("in production, an Xcode-signed transaction is rejected (untrusted chain)", async () => {
+    const deviceId = uid("dev");
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: xcodeJws }, PRODUCTION);
+    expect(res.status).toBe(400);
+    expect((await balance(deviceId)).paidCredits).toBe(0);
+  });
+});
+
+describe("POST /credits/purchase — environment policy", () => {
+  it("in production, a genuine Sandbox transaction is refused (SANDBOX_NOT_ALLOWED) and grants nothing", async () => {
+    await forgetFixtureTransaction();
+    const deviceId = uid("dev");
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws }, PRODUCTION);
     expect(res.status).toBe(403);
     expect(((await res.json()) as { code: string }).code).toBe("SANDBOX_NOT_ALLOWED");
     expect((await balance(deviceId)).paidCredits).toBe(0);
   });
 
-  it("in production, an Xcode transaction is refused too", async () => {
+  it("in production with ALLOW_SANDBOX_PURCHASES=true, a genuine Sandbox transaction is accepted (TestFlight)", async () => {
+    await forgetFixtureTransaction();
     const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode" }));
-    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<Env>);
-    expect(res.status).toBe(403);
-  });
-
-  it("in production with ALLOW_SANDBOX_PURCHASES=true, a signed Sandbox transaction is accepted (TestFlight)", async () => {
-    const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox" }));
     const res = await purchase(
-      { deviceId, productId: PRODUCT_5, jwsRepresentation: jws },
-      { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "true" } as Partial<Env>
+      { deviceId, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws },
+      { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "true" }
     );
     expect(res.status).toBe(200);
     expect((await balance(deviceId)).paidCredits).toBe(5);
   });
-
-  // Documents the remaining gap closed in Phase 3 (P3-10): without x5c chain validation, a JWS
-  // self-signed by anyone verifies in production when it claims environment=Production.
-  // `it.fails` passes while the gap exists and will start failing once P3-10 lands — then
-  // remove `.fails` and keep the assertion.
-  it.fails("in production, a self-signed JWS claiming environment=Production is rejected (P3-10 chain validation)", async () => {
-    const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Production" }));
-    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, { ENVIRONMENT: "production", ALLOW_SANDBOX_PURCHASES: "false" } as Partial<Env>);
-    expect(res.status).toBe(400);
-  });
 });
 
 describe("POST /credits/purchase — granting and duplicate guard (P1-02, P1-06)", () => {
-  it("accepts a signed Sandbox transaction outside production and adds the product's credits once", async () => {
+  it("accepts a signed Xcode transaction outside production and adds the product's credits once", async () => {
     const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox" }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode" }));
     const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws });
     expect(res.status).toBe(200);
     const data = (await res.json()) as { success: boolean; creditsAdded: number; newBalance: { paidCredits: number } };
@@ -218,7 +274,7 @@ describe("POST /credits/purchase — granting and duplicate guard (P1-02, P1-06)
 
   it("replaying the same signed transaction returns 409 and does not add credits again", async () => {
     const deviceId = uid("dev");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Sandbox" }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid("tx"), environment: "Xcode" }));
     expect((await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws })).status).toBe(200);
     const second = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws });
     expect(second.status).toBe(409);
@@ -227,7 +283,7 @@ describe("POST /credits/purchase — granting and duplicate guard (P1-02, P1-06)
 
   it("the same transaction id cannot be redeemed by a second device", async () => {
     const txId = uid("tx");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: txId, environment: "Sandbox" }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: txId, environment: "Xcode" }));
     const a = uid("dev");
     const b = uid("dev");
     expect((await purchase({ deviceId: a, productId: PRODUCT_5, jwsRepresentation: jws })).status).toBe(200);
@@ -235,23 +291,29 @@ describe("POST /credits/purchase — granting and duplicate guard (P1-02, P1-06)
     expect((await balance(b)).paidCredits).toBe(0);
   });
 
+  it("the genuine Sandbox transaction replayed by another device is a duplicate", async () => {
+    await forgetFixtureTransaction();
+    const a = uid("dev");
+    const b = uid("dev");
+    expect((await purchase({ deviceId: a, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws })).status).toBe(200);
+    expect((await purchase({ deviceId: b, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws })).status).toBe(409);
+    expect((await balance(b)).paidCredits).toBe(0);
+  });
+
   it('transaction id "0" is no longer special: the second "0" transaction is a duplicate', async () => {
+    await env.DB.prepare("DELETE FROM purchase_history WHERE apple_transaction_id = '0'").run();
     const deviceId = uid("dev");
     const first = await selfSignedJWS(payloadFor({ transactionId: "0", environment: "Xcode", purchaseDate: Date.now() - 1000 }));
     const second = await selfSignedJWS(payloadFor({ transactionId: "0", environment: "Xcode" }));
-    const r1 = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: first });
-    // The very first "0" in this test database may or may not have been used by another file; either way the second must be 409.
-    expect([200, 409]).toContain(r1.status);
-    const r2 = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: second });
-    expect(r2.status).toBe(409);
-    const paid = (await balance(deviceId)).paidCredits;
-    expect(paid).toBeLessThanOrEqual(5);
+    expect((await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: first })).status).toBe(200);
+    expect((await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: second })).status).toBe(409);
+    expect((await balance(deviceId)).paidCredits).toBe(5);
   });
 
   it("every granted purchase has an audit row in purchase_history", async () => {
     const deviceId = uid("dev");
     const txId = uid("tx");
-    const jws = await selfSignedJWS(payloadFor({ transactionId: txId, environment: "Sandbox" }));
+    const jws = await selfSignedJWS(payloadFor({ transactionId: txId, environment: "Xcode" }));
     expect((await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws })).status).toBe(200);
     const row = await env.DB.prepare("SELECT credits_added, device_id FROM purchase_history WHERE apple_transaction_id = ?")
       .bind(txId)

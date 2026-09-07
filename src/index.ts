@@ -8,6 +8,9 @@
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { SignJWT, importPKCS8 } from 'jose';
+// @peculiar/x509 uses tsyringe, which needs the Reflect metadata polyfill loaded first.
+import 'reflect-metadata';
+import { X509Certificate, X509ChainBuilder } from '@peculiar/x509';
 import {
   getMeasurementHistory,
   getAllParameterTrends,
@@ -2891,6 +2894,8 @@ interface JWSTransactionPayload {
  * JWS verification result
  */
 interface JWSVerificationResult {
+  /** True when x5c chained to the pinned Apple Root CA G3; false only when an unverified chain was explicitly allowed. */
+  chainVerified?: boolean;
   valid: boolean;
   payload?: JWSTransactionPayload;
   error?: string;
@@ -2988,6 +2993,66 @@ function derSignatureToRaw(derSignature: Uint8Array, keySize: number = 32): Uint
   return rawSignature;
 }
 
+// =============================================================================
+// APPLE CERTIFICATE CHAIN VALIDATION (P3-10)
+// =============================================================================
+
+/** Apple Root CA - G3 (DER, base64). SHA-256 63:34:3A:BF:B8:9A:6A:03:EB:B5:7E:9B:3F:5F:A7:BE:7C:4F:5C:75:6F:30:17:B3:A8:C4:88:C3:65:3E:91:79. Valid to 2039-04-30. */
+const APPLE_ROOT_CA_G3_B64 = 'MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwSQXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcNMTQwNDMwMTgxOTA2WhcNMzkwNDMwMTgxOTA2WjBnMRswGQYDVQQDDBJBcHBsZSBSb290IENBIC0gRzMxJjAkBgNVBAsMHUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzB2MBAGByqGSM49AgEGBSuBBAAiA2IABJjpLz1AcqTtkyJygRMc3RCV8cWjTnHcFBbZDuWmBSp3ZHtfTjjTuxxEtX/1H7YyYl3J6YRbTzBPEVoA/VhYDKX1DyxNB0cTddqXl5dvMVztK517IDvYuVTZXpmkOlEKMaNCMEAwHQYDVR0OBBYEFLuw3qFYM4iapIqZ3r6966/ayySrMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2gAMGUCMQCD6cHEFl4aXTQY2e3v9GwOAEZLuN+yRhHFD/3meoyhpmvOwgPUnPWTxnS4at+qIxUCMG1mihDK1A3UT82NQz60imOlM27jbdoXt2QfyFMm+YhidDkLF1vLUagM6BgD56KyKA==';
+/** Marker OID Apple puts on App Store / iTunes receipt signing leaf certificates. */
+const APPLE_RECEIPT_SIGNING_OID = '1.2.840.113635.100.6.11.1';
+/** Marker OID on the Apple Worldwide Developer Relations intermediate. */
+const APPLE_WWDR_OID = '1.2.840.113635.100.6.2.1';
+
+type ChainResult = { ok: true; leaf: X509Certificate } | { ok: false; error: string };
+
+/**
+ * Validate a StoreKit x5c chain: leaf -> WWDR intermediate -> Apple Root CA G3 (pinned).
+ * Every link's signature and validity window is checked explicitly; the leaf must carry Apple's
+ * receipt-signing marker OID and the chain must contain the WWDR marker.
+ */
+async function verifyAppleCertificateChain(x5c: string[], now: Date = new Date()): Promise<ChainResult> {
+  let certs: X509Certificate[];
+  let root: X509Certificate;
+  try {
+    certs = x5c.map((b64) => new X509Certificate(b64));
+    root = new X509Certificate(APPLE_ROOT_CA_G3_B64);
+  } catch {
+    return { ok: false, error: 'x5c contains an unparsable certificate' };
+  }
+  const leaf = certs[0];
+
+  let chain: X509Certificate[];
+  try {
+    chain = await new X509ChainBuilder({ certificates: [...certs.slice(1), root] }).build(leaf);
+  } catch {
+    return { ok: false, error: 'Could not build certificate chain' };
+  }
+  if (chain.length < 2 || !chain[chain.length - 1].equal(root)) {
+    return { ok: false, error: 'Certificate chain does not end at Apple Root CA G3' };
+  }
+
+  for (let i = 0; i < chain.length; i++) {
+    const cert = chain[i];
+    if (now < cert.notBefore || now > cert.notAfter) {
+      return { ok: false, error: 'Certificate ' + i + ' is outside its validity period' };
+    }
+    const issuer = i + 1 < chain.length ? chain[i + 1] : cert; // the root is self-signed
+    const signatureOk = await cert.verify({ publicKey: issuer.publicKey, signatureOnly: true });
+    if (!signatureOk) {
+      return { ok: false, error: 'Certificate ' + i + ' has an invalid signature' };
+    }
+  }
+
+  if (!leaf.getExtension(APPLE_RECEIPT_SIGNING_OID)) {
+    return { ok: false, error: 'Leaf certificate is not an App Store receipt signing certificate' };
+  }
+  if (!chain.slice(1, -1).some((c) => c.getExtension(APPLE_WWDR_OID))) {
+    return { ok: false, error: 'Certificate chain is missing the Apple WWDR intermediate' };
+  }
+  return { ok: true, leaf };
+}
+
 /**
  * Verify a StoreKit 2 JWS (JSON Web Signature) signed transaction
  *
@@ -2996,7 +3061,10 @@ function derSignatureToRaw(derSignature: Uint8Array, keySize: number = 32): Uint
  * - Payload contains the transaction details
  * - Signature is ECDSA with P-256 and SHA-256
  */
-async function verifyAppleJWS(jwsRepresentation: string): Promise<JWSVerificationResult> {
+async function verifyAppleJWS(
+  jwsRepresentation: string,
+  options: { allowUnverifiedChain: boolean } = { allowUnverifiedChain: false }
+): Promise<JWSVerificationResult> {
   try {
     debugLog(`🔐 Starting JWS verification, JWS length: ${jwsRepresentation.length}`);
 
@@ -3026,18 +3094,29 @@ async function verifyAppleJWS(jwsRepresentation: string): Promise<JWSVerificatio
     const payloadJson = new TextDecoder().decode(payloadBytes);
     const payload = JSON.parse(payloadJson) as JWSTransactionPayload;
 
-    // Signing key comes from the leaf certificate in x5c; StoreKit 2 always includes the chain.
-    // NOTE: chain validation to Apple Root CA G3 is added in P3-10; until then a self-signed leaf
-    // passes this step, which is why production only accepts environment=Production purchases.
+    // The signing key is the x5c leaf, accepted only if the chain reaches the pinned Apple root.
+    // Xcode's StoreKit test transactions are signed by a local certificate that cannot chain to
+    // Apple; callers outside production may opt into accepting those (chainVerified=false).
     if (!header.x5c || header.x5c.length === 0) {
       return { valid: false, error: 'JWS header missing x5c certificate chain' };
     }
     let publicKey: CryptoKey;
-    try {
-      publicKey = await extractPublicKeyFromCert(header.x5c[0]);
-    } catch (certError) {
-      console.warn('Could not extract public key from x5c leaf certificate:', certError);
-      return { valid: false, error: 'Could not read signing certificate' };
+    let chainVerified: boolean;
+    const chain = await verifyAppleCertificateChain(header.x5c);
+    if (chain.ok) {
+      publicKey = await chain.leaf.publicKey.export({ name: 'ECDSA', namedCurve: 'P-256' }, ['verify']);
+      chainVerified = true;
+    } else if (options.allowUnverifiedChain) {
+      debugLog('x5c chain not trusted (' + chain.error + '); accepting unverified chain outside production');
+      try {
+        publicKey = await extractPublicKeyFromCert(header.x5c[0]);
+      } catch {
+        return { valid: false, error: 'Could not read signing certificate' };
+      }
+      chainVerified = false;
+    } else {
+      console.warn('JWS rejected: ' + chain.error);
+      return { valid: false, error: chain.error };
     }
 
     // Decode and convert the signature
@@ -3087,8 +3166,8 @@ async function verifyAppleJWS(jwsRepresentation: string): Promise<JWSVerificatio
       return { valid: false, error: 'Transaction has been revoked' };
     }
 
-    debugLog(`🔐 JWS verification successful!`);
-    return { valid: true, payload };
+    debugLog(`🔐 JWS verification successful (chainVerified=${chainVerified})`);
+    return { valid: true, payload, chainVerified };
 
   } catch (error) {
     console.error('JWS verification error:', error);
@@ -3176,7 +3255,9 @@ async function handleJWSPurchase(
     return jsonResponse({ error: 'Invalid product', message: 'Unknown product ID: ' + productId }, 400);
   }
 
-  const verification = await verifyAppleJWS(jwsRepresentation);
+  const isProduction = env.ENVIRONMENT === 'production';
+  // Outside production, Xcode StoreKit-configuration transactions (local Xcode signing cert) are accepted.
+  const verification = await verifyAppleJWS(jwsRepresentation, { allowUnverifiedChain: !isProduction });
   if (!verification.valid || !verification.payload) {
     console.warn('JWS verification failed for device ' + deviceId + ': ' + (verification.error || 'unknown'));
     return jsonResponse(
@@ -3186,9 +3267,16 @@ async function handleJWSPurchase(
   }
   const payload = verification.payload;
 
+  if (!verification.chainVerified && payload.environment !== 'Xcode') {
+    console.warn('Rejected JWS with untrusted chain claiming environment=' + payload.environment + ' for device ' + deviceId);
+    return jsonResponse(
+      { error: 'Invalid transaction', message: 'Transaction certificate chain is not trusted', code: 'JWS_CHAIN' },
+      400
+    );
+  }
+
   // Environment policy: production accepts App Store (Production) transactions only, unless
   // ALLOW_SANDBOX_PURCHASES=true is set (TestFlight). Dev/test accept Sandbox and Xcode.
-  const isProduction = env.ENVIRONMENT === 'production';
   const allowSandbox = env.ALLOW_SANDBOX_PURCHASES === 'true';
   if (payload.environment !== 'Production' && isProduction && !allowSandbox) {
     console.warn('Rejected ' + payload.environment + ' transaction in production for device ' + deviceId);
