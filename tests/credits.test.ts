@@ -136,9 +136,9 @@ describe("POST /analyze - Credit Tracking", () => {
     };
 
     const analyzeResponse = await postAnalyze(analysisRequest);
-    
-    // Should succeed (200) or fail due to no credits (402), but not 500
-    expect([200, 402]).toContain(analyzeResponse.status);
+
+    // 200 = analysed (credit consumed); 502/503 = AI unavailable or not configured (credit refunded). Never 500.
+    expect([200, 502, 503]).toContain(analyzeResponse.status);
 
     // Get updated balance
     const updatedResponse = await getCreditsBalance(uniqueDeviceId);
@@ -147,9 +147,15 @@ describe("POST /analyze - Credit Tracking", () => {
       totalAnalyses: number;
     };
 
-    // Credit should be consumed
-    expect(updatedData.freeRemaining).toBe(initialFree - 1);
-    expect(updatedData.totalAnalyses).toBe(initialAnalyses + 1);
+    if (analyzeResponse.status === 200) {
+      expect(updatedData.freeRemaining).toBe(initialFree - 1);
+      expect(updatedData.totalAnalyses).toBe(initialAnalyses + 1);
+    } else {
+      const err = (await analyzeResponse.json()) as { creditsRefunded: boolean };
+      expect(err.creditsRefunded).toBe(true);
+      expect(updatedData.freeRemaining).toBe(initialFree);
+      expect(updatedData.totalAnalyses).toBe(initialAnalyses);
+    }
   });
 
   it("should return credit balance in analysis response", async () => {

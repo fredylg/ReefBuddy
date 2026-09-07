@@ -53,6 +53,7 @@ const CORS_HEADERS = {
 };
 
 const SECURITY_HEADERS = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
@@ -84,6 +85,8 @@ export interface Env {
 
   // Environment variables
   ENVIRONMENT: string;
+  /** Set to 'true' to accept Sandbox/Xcode StoreKit transactions in production (TestFlight). Default: Production only. */
+  ALLOW_SANDBOX_PURCHASES?: string;
   FREE_ANALYSIS_LIMIT: string;
   CF_ACCOUNT_ID: string;
 
@@ -395,22 +398,13 @@ const WaterChangeListQuerySchema = z.object({
 });
 
 /**
- * Schema for credit purchase request (Legacy - deprecated)
- */
-const CreditPurchaseSchema = z.object({
-  deviceId: z.string().min(1).describe('iOS device identifier'),
-  receiptData: z.string().min(1).describe('Base64-encoded App Store receipt'),
-  productId: z.string().min(1).describe('Product ID purchased'),
-});
-
-/**
  * Schema for credit purchase request (StoreKit 2 JWS)
  */
 const CreditPurchaseJWSSchema = z.object({
   deviceId: z.string().min(1).describe('iOS device identifier'),
   jwsRepresentation: z.string().min(1).describe('JWS-signed transaction from StoreKit 2'),
-  transactionId: z.string().min(1).describe('Transaction ID'),
-  originalTransactionId: z.string().min(1).describe('Original transaction ID'),
+  transactionId: z.string().optional().describe('Client-reported transaction ID (informational; the signed payload is authoritative)'),
+  originalTransactionId: z.string().optional().describe('Client-reported original transaction ID (informational)'),
   productId: z.string().min(1).describe('Product ID purchased'),
 });
 
@@ -517,7 +511,6 @@ export type AnalysisRequest = z.infer<typeof AnalysisRequestSchema>;
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type CreateMeasurement = z.infer<typeof CreateMeasurementSchema>;
-export type CreditPurchase = z.infer<typeof CreditPurchaseSchema>;
 export type CreditPurchaseJWS = z.infer<typeof CreditPurchaseJWSSchema>;
 export type CreditBalance = z.infer<typeof CreditBalanceSchema>;
 export type LivestockCreate = z.infer<typeof LivestockCreateSchema>;
@@ -915,43 +908,39 @@ async function validateDeviceToken(
   }
 }
 
+/** Outcome of an AI Gateway call. Errors never travel on the same channel as model text. */
+type AIGatewayResult =
+  | { ok: true; text: string; stopReason: string | null; usage: { input: number; output: number } | null }
+  | { ok: false; kind: 'not_configured' | 'upstream' | 'bad_shape' | 'network'; status: number; retryable: boolean; message: string };
+
 /**
  * Call AI Gateway for water chemistry analysis
  * Routes requests through Cloudflare AI Gateway for caching and analytics
- * Includes retry logic for 529 (Service Unavailable) errors
+ * Includes retry logic for 529 (overloaded) and network errors
  */
-async function callAIGateway(env: Env, prompt: string): Promise<string> {
+async function callAIGateway(env: Env, prompt: string): Promise<AIGatewayResult> {
   if (!env.ANTHROPIC_API_KEY || !env.CF_ACCOUNT_ID) {
-    console.log('AI Gateway not fully configured, returning placeholder');
-    return JSON.stringify({
-      status: 'not_configured',
-      message: 'AI Gateway requires ANTHROPIC_API_KEY secret and CF_ACCOUNT_ID.',
-      recommendation: 'Please configure your Cloudflare AI Gateway.',
-    });
+    console.error('AI Gateway not configured: ANTHROPIC_API_KEY and CF_ACCOUNT_ID are required');
+    return { ok: false, kind: 'not_configured', status: 503, retryable: false, message: 'AI analysis is not configured on this server.' };
   }
 
-  const gatewayUrl = `https://gateway.ai.cloudflare.com/v1/${env.CF_ACCOUNT_ID}/${env.AI_GATEWAY.gateway_id}/anthropic/v1/messages`;
+  const gatewayUrl = 'https://gateway.ai.cloudflare.com/v1/' + env.CF_ACCOUNT_ID + '/' + env.AI_GATEWAY.gateway_id + '/anthropic/v1/messages';
 
-  // Retry configuration for 529 errors
   const maxRetries = 3;
-  const baseDelay = 1000; // 1 second base delay
+  const baseDelay = 1000;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // Build headers object
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'x-api-key': env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        // Cloudflare AI Gateway retry headers
         'cf-aig-max-attempts': '3',
         'cf-aig-retry-delay': '1000',
         'cf-aig-backoff': 'exponential',
       };
-
-      // Cloudflare AI Gateway authentication (optional - only if token is set)
       if (env.CF_AI_GATEWAY_TOKEN) {
-        headers['cf-aig-authorization'] = `Bearer ${env.CF_AI_GATEWAY_TOKEN}`;
+        headers['cf-aig-authorization'] = 'Bearer ' + env.CF_AI_GATEWAY_TOKEN;
       }
 
       const response = await fetch(gatewayUrl, {
@@ -966,69 +955,58 @@ async function callAIGateway(env: Env, prompt: string): Promise<string> {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
         const statusCode = response.status;
+        const errorText = (await response.text()).slice(0, 500);
 
-        // Special handling for 529 (Service Unavailable) - retry with exponential backoff
         if (statusCode === 529 && attempt < maxRetries) {
-          const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 1s, 2s, 4s
-          console.warn(`AI Gateway returned 529 (Service Unavailable), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue; // Retry
+          const delay = baseDelay * Math.pow(2, attempt);
+          console.warn('AI Gateway returned 529, retrying in ' + delay + 'ms (attempt ' + (attempt + 1) + '/' + (maxRetries + 1) + ')');
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
         }
 
-        // For other errors or final retry attempt, return error
-        console.error(`AI Gateway error: ${statusCode} - ${errorText}`);
-        return JSON.stringify({
-          status: 'error',
-          statusCode,
-          message: statusCode === 529 
-            ? 'AI service is temporarily unavailable. Please try again in a moment.'
-            : `AI Gateway returned ${statusCode}`,
-          details: errorText,
-          retryable: statusCode === 529,
-        });
+        // Upstream detail goes to logs only; the client gets a generic message.
+        console.error('AI Gateway error ' + statusCode + ': ' + errorText);
+        const retryable = statusCode === 529 || statusCode === 503 || statusCode === 429;
+        return {
+          ok: false,
+          kind: 'upstream',
+          status: statusCode,
+          retryable,
+          message: retryable
+            ? 'The AI service is temporarily unavailable. Please try again in a moment.'
+            : 'The AI service could not process this analysis.',
+        };
       }
 
-      // Success - parse and return response (handles multiple content blocks / thinking before text)
-      const data = await response.json();
+      const data = (await response.json()) as {
+        stop_reason?: string | null;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      };
       const text = extractAnthropicAssistantText(data);
       if (text == null) {
-        const preview = typeof data === 'object' ? JSON.stringify(data).slice(0, 1500) : String(data);
-        console.error(`AI Gateway returned 200 but no assistant text in content blocks. Preview: ${preview}`);
-        return JSON.stringify({
-          status: 'error',
-          statusCode: 200,
-          message: 'AI returned an unexpected response shape (no text content).',
-          retryable: true,
-        });
+        console.error('AI Gateway returned 200 but no assistant text. stop_reason=' + (data?.stop_reason ?? 'n/a'));
+        return { ok: false, kind: 'bad_shape', status: 502, retryable: true, message: 'The AI service returned an unexpected response.' };
       }
-      return text;
+      return {
+        ok: true,
+        text,
+        stopReason: data?.stop_reason ?? null,
+        usage: data?.usage ? { input: data.usage.input_tokens ?? 0, output: data.usage.output_tokens ?? 0 } : null,
+      };
     } catch (error) {
-      // Network errors - retry if we have attempts left
       if (attempt < maxRetries) {
         const delay = baseDelay * Math.pow(2, attempt);
-        console.warn(`AI Gateway network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.warn('AI Gateway network error, retrying in ' + delay + 'ms (attempt ' + (attempt + 1) + '/' + (maxRetries + 1) + '):', error);
+        await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
-
-      // Final attempt failed
       console.error('AI Gateway fetch error:', error);
-      return JSON.stringify({
-        status: 'error',
-        statusCode: 0,
-        message: error instanceof Error ? error.message : 'Unknown error calling AI Gateway',
-        retryable: true,
-      });
+      return { ok: false, kind: 'network', status: 502, retryable: true, message: 'Could not reach the AI service. Please try again.' };
     }
   }
 
-  // Should never reach here, but TypeScript requires a return
-  return JSON.stringify({
-    status: 'error',
-    message: 'AI Gateway request failed after all retry attempts',
-  });
+  return { ok: false, kind: 'upstream', status: 503, retryable: true, message: 'The AI service is temporarily unavailable. Please try again in a moment.' };
 }
 
 // =============================================================================
@@ -1123,44 +1101,36 @@ async function checkDeviceCredits(
   };
 }
 
+/** Which pool a consumed credit came from; needed to refund it to the same pool. */
+type CreditKind = 'free' | 'paid';
+
 /**
- * Consume one credit from device (free first, then paid)
+ * Consume one credit from device (free first, then paid).
+ * Each UPDATE is conditional on the balance, so two concurrent requests can never
+ * take the same credit or drive a balance negative (the second UPDATE affects 0 rows).
+ * Returns which pool was charged, or null when the device has no credits.
  */
-async function consumeDeviceCredit(env: Env, deviceId: string): Promise<boolean> {
+async function consumeDeviceCredit(env: Env, deviceId: string): Promise<CreditKind | null> {
   try {
-    const record = await getOrCreateDeviceCredits(env, deviceId);
+    await getOrCreateDeviceCredits(env, deviceId);
     const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
     const now = new Date().toISOString();
 
-    if (record.free_used < freeLimit) {
-      // Use free credit
-      const updateResult = await env.DB.prepare(
-        'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
-      )
-        .bind(now, deviceId)
-        .run();
-      
-      if (!updateResult.success) {
-        console.error('Failed to consume free credit:', updateResult.error);
-        return false;
-      }
-      return true;
-    } else if (record.paid_credits > 0) {
-      // Use paid credit
-      const updateResult = await env.DB.prepare(
-        'UPDATE device_credits SET paid_credits = paid_credits - 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ?'
-      )
-        .bind(now, deviceId)
-        .run();
-      
-      if (!updateResult.success) {
-        console.error('Failed to consume paid credit:', updateResult.error);
-        return false;
-      }
-      return true;
-    }
+    const freeResult = await env.DB.prepare(
+      'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ? AND free_used < ?'
+    )
+      .bind(now, deviceId, freeLimit)
+      .run();
+    if (freeResult.meta.changes > 0) return 'free';
 
-    return false;
+    const paidResult = await env.DB.prepare(
+      'UPDATE device_credits SET paid_credits = paid_credits - 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ? AND paid_credits > 0'
+    )
+      .bind(now, deviceId)
+      .run();
+    if (paidResult.meta.changes > 0) return 'paid';
+
+    return null;
   } catch (error) {
     console.error('Error in consumeDeviceCredit:', error);
     throw error;
@@ -1168,43 +1138,32 @@ async function consumeDeviceCredit(env: Env, deviceId: string): Promise<boolean>
 }
 
 /**
- * Refund one credit to device (prefer refunding free credit, otherwise add paid credit)
- * Used when AI Gateway fails with retryable errors (e.g., 529)
+ * Refund one credit to the pool it was consumed from.
+ * Used whenever the AI call fails after the credit was taken.
+ * Note: SQLite has no GREATEST(); scalar MAX() is the equivalent.
  */
-async function refundDeviceCredit(env: Env, deviceId: string): Promise<boolean> {
+async function refundDeviceCredit(env: Env, deviceId: string, kind: CreditKind): Promise<boolean> {
   try {
-    const record = await getOrCreateDeviceCredits(env, deviceId);
     const now = new Date().toISOString();
-
-    if (record.free_used > 0) {
-      // Refund a free credit (decrement free_used)
-      const updateResult = await env.DB.prepare(
-        'UPDATE device_credits SET free_used = free_used - 1, total_analyses = GREATEST(0, total_analyses - 1), updated_at = ? WHERE device_id = ? AND free_used > 0'
-      )
-        .bind(now, deviceId)
-        .run();
-      
-      if (updateResult.success && updateResult.meta.changes > 0) {
-        return true;
-      }
-    }
-
-    // If no free credits to refund, add a paid credit instead
-    const updateResult = await env.DB.prepare(
-      'UPDATE device_credits SET paid_credits = paid_credits + 1, total_analyses = GREATEST(0, total_analyses - 1), updated_at = ? WHERE device_id = ?'
-    )
-      .bind(now, deviceId)
-      .run();
-    
-    return updateResult.success;
+    const sql =
+      kind === 'free'
+        ? 'UPDATE device_credits SET free_used = free_used - 1, total_analyses = MAX(0, total_analyses - 1), updated_at = ? WHERE device_id = ? AND free_used > 0'
+        : 'UPDATE device_credits SET paid_credits = paid_credits + 1, total_analyses = MAX(0, total_analyses - 1), updated_at = ? WHERE device_id = ?';
+    const result = await env.DB.prepare(sql).bind(now, deviceId).run();
+    return result.success && result.meta.changes > 0;
   } catch (error) {
     console.error('Error in refundDeviceCredit:', error);
     return false;
   }
 }
 
+type AddCreditsResult = 'added' | 'duplicate' | 'error';
+
 /**
- * Add purchased credits to device
+ * Add purchased credits to a device.
+ * The purchase_history row is inserted first and carries UNIQUE(apple_transaction_id), so it is
+ * the duplicate guard; the balance UPDATE runs in the same D1 batch (atomic), so credits can never
+ * be granted without an audit row and a replayed transaction never grants twice.
  */
 async function addDeviceCredits(
   env: Env,
@@ -1213,63 +1172,31 @@ async function addDeviceCredits(
   productId: string,
   transactionId: string,
   receiptData: string
-): Promise<boolean> {
-  console.log(`💰 Checking for duplicate transaction: ${transactionId}`);
-
-  // For sandbox/XCode transactions with ID "0", allow reprocessing
-  // (sandbox transactions can be reused during testing)
-  if (transactionId !== "0") {
-    const existingPurchase = await env.DB.prepare(
-      'SELECT id FROM purchase_history WHERE apple_transaction_id = ?'
-    )
-      .bind(transactionId)
-      .first();
-
-    if (existingPurchase) {
-      console.log(`Duplicate transaction detected: ${transactionId}`);
-      return false;
-    }
-  } else {
-    console.log(`Sandbox transaction (ID=0), skipping duplicate check`);
-  }
-
+): Promise<AddCreditsResult> {
   const now = new Date().toISOString();
   const purchaseId = crypto.randomUUID();
 
-  // Ensure device record exists
   await getOrCreateDeviceCredits(env, deviceId);
 
-  // Add credits
-  const addCreditsResult = await env.DB.prepare(
-    'UPDATE device_credits SET paid_credits = paid_credits + ?, updated_at = ? WHERE device_id = ?'
-  )
-    .bind(credits, now, deviceId)
-    .run();
-
-  if (!addCreditsResult.success) {
-    console.error('Failed to add credits:', addCreditsResult.error);
-    return false;
-  }
-
-  // For sandbox transactions, skip purchase history to avoid UNIQUE constraint
-  if (transactionId !== "0") {
-    // Record purchase for audit trail
-    const recordPurchaseResult = await env.DB.prepare(
-      'INSERT INTO purchase_history (id, device_id, product_id, credits_added, apple_transaction_id, receipt_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    )
-      .bind(purchaseId, deviceId, productId, credits, transactionId, receiptData, now)
-      .run();
-
-    if (!recordPurchaseResult.success) {
-      console.error('Failed to record purchase:', recordPurchaseResult.error);
-      // Note: Credits were already added, so we don't return false here
-      // This maintains data consistency
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        'INSERT INTO purchase_history (id, device_id, product_id, credits_added, apple_transaction_id, receipt_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).bind(purchaseId, deviceId, productId, credits, transactionId, receiptData, now),
+      env.DB.prepare(
+        'UPDATE device_credits SET paid_credits = paid_credits + ?, updated_at = ? WHERE device_id = ?'
+      ).bind(credits, now, deviceId),
+    ]);
+    return 'added';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/UNIQUE constraint failed/i.test(message)) {
+      console.warn('Duplicate transaction rejected: ' + transactionId);
+      return 'duplicate';
     }
-  } else {
-    console.log(`Sandbox transaction (ID=0), skipping purchase history insertion`);
+    console.error('addDeviceCredits failed:', message);
+    return 'error';
   }
-
-  return true;
 }
 
 // =============================================================================
@@ -2705,7 +2632,9 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     // 1. Localhost (local dev server: npx wrangler dev)
     // 2. Development workers subdomain (if using wrangler dev with --remote)
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    const isDevWorker = hostname.endsWith('.workers.dev') && (hostname.includes('dev') || hostname.includes('staging'));
+    // Only the explicitly named dev Worker may bypass. Every *.workers.dev host contains "dev",
+    // so a substring check would have matched production as well.
+    const isDevWorker = hostname.startsWith('reefbuddy-dev.') && hostname.endsWith('.workers.dev');
     // Only wrangler-style local dev may skip DeviceCheck when credentials are configured.
     // Vitest (ENVIRONMENT=test) and production must enforce DeviceCheck when configured.
     const allowDeviceCheckHostBypass =
@@ -2825,8 +2754,8 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     }
 
     // Consume credit before calling AI
-    const consumed = await consumeDeviceCredit(env, deviceId);
-    if (!consumed) {
+    const consumedKind = await consumeDeviceCredit(env, deviceId);
+    if (!consumedKind) {
       return jsonResponse(
         {
           error: 'No credits available',
@@ -2865,32 +2794,29 @@ One reply only: concise parameter assessment and dosing/husbandry recommendation
       console.log('🔬 No notes in prompt');
     }
 
-    const aiResponse = await callAIGateway(env, prompt);
+    const aiResult = await callAIGateway(env, prompt);
 
-    // Check if AI Gateway returned an error (especially 529)
-    let parsedResponse: { status?: string; statusCode?: number; retryable?: boolean; message?: string };
-    try {
-      parsedResponse = JSON.parse(aiResponse);
-    } catch {
-      parsedResponse = {};
-    }
-
-    // If we got a retryable error (like 529), refund the credit
-    if (parsedResponse.status === 'error' && parsedResponse.retryable) {
-      console.warn(`AI Gateway returned retryable error (${parsedResponse.statusCode}), refunding credit to device ${deviceId}`);
-      // Refund the credit
-      const refunded = await refundDeviceCredit(env, deviceId);
-      
+    if (!aiResult.ok) {
+      // Every failure refunds the credit that was consumed above, to the pool it came from.
+      const refunded = await refundDeviceCredit(env, deviceId, consumedKind);
+      console.warn('AI call failed (' + aiResult.kind + ' ' + aiResult.status + ') for device ' + deviceId + '; credit refunded=' + refunded);
+      const status = aiResult.retryable || aiResult.kind === 'not_configured' ? 503 : 502;
       return jsonResponse(
         {
-          error: 'Service temporarily unavailable',
-          message: parsedResponse.message || 'The AI service is temporarily unavailable. Your credit has been refunded. Please try again in a moment.',
-          statusCode: parsedResponse.statusCode || 503,
+          error: status === 503 ? 'Service temporarily unavailable' : 'Analysis failed',
+          message: aiResult.message + (refunded ? ' Your credit has been refunded.' : ''),
+          code: aiResult.kind === 'not_configured' ? 'AI_NOT_CONFIGURED' : 'AI_UNAVAILABLE',
+          retryable: aiResult.retryable,
           creditsRefunded: refunded,
         },
-        503
+        status
       );
     }
+
+    if (aiResult.usage) {
+      console.log('AI usage: input=' + aiResult.usage.input + ' output=' + aiResult.usage.output + ' stop_reason=' + aiResult.stopReason);
+    }
+    const aiResponse = aiResult.text;
 
     // Get updated credit balance
     const updatedCredits = await checkDeviceCredits(env, deviceId);
@@ -3009,75 +2935,12 @@ interface JWSTransactionPayload {
 }
 
 /**
- * Apple JWKS (JSON Web Key Set) structure
- */
-interface AppleJWKS {
-  keys: Array<{
-    kty: string;
-    kid: string;
-    use: string;
-    alg: string;
-    n?: string;  // For RSA keys
-    e?: string;  // For RSA keys
-    x?: string;  // For EC keys
-    y?: string;  // For EC keys
-    crv?: string; // For EC keys (P-256, etc.)
-  }>;
-}
-
-/**
  * JWS verification result
  */
 interface JWSVerificationResult {
   valid: boolean;
   payload?: JWSTransactionPayload;
   error?: string;
-}
-
-/**
- * Cache for Apple's public keys (in-memory, refreshed periodically)
- */
-let appleJWKSCache: { keys: AppleJWKS; fetchedAt: number } | null = null;
-const JWKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-/**
- * Fetch Apple's public keys for JWS verification
- * Uses JWKS endpoint and caches results
- */
-async function fetchApplePublicKeys(): Promise<AppleJWKS> {
-  const now = Date.now();
-
-  // Return cached keys if still valid
-  if (appleJWKSCache && (now - appleJWKSCache.fetchedAt) < JWKS_CACHE_TTL_MS) {
-    return appleJWKSCache.keys;
-  }
-
-  try {
-    const response = await fetch('https://appleid.apple.com/auth/keys', {
-      headers: { 'Accept': 'application/json' },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Apple JWKS: ${response.status} ${response.statusText}`);
-    }
-
-    const jwks = await response.json() as AppleJWKS;
-
-    // Cache the keys
-    appleJWKSCache = { keys: jwks, fetchedAt: now };
-
-    return jwks;
-  } catch (error) {
-    console.error('Error fetching Apple JWKS:', error);
-
-    // If we have cached keys, return them even if expired (better than failing)
-    if (appleJWKSCache) {
-      console.warn('Using expired Apple JWKS cache due to fetch failure');
-      return appleJWKSCache.keys;
-    }
-
-    throw error;
-  }
 }
 
 /**
@@ -3103,29 +2966,6 @@ function base64UrlDecode(input: string): Uint8Array {
   }
 
   return bytes;
-}
-
-/**
- * Import an EC public key from JWK format for use with Web Crypto API
- */
-async function importECPublicKey(jwk: { x: string; y: string; crv?: string }): Promise<CryptoKey> {
-  const keyData = {
-    kty: 'EC',
-    crv: jwk.crv || 'P-256',
-    x: jwk.x,
-    y: jwk.y,
-  };
-
-  return await crypto.subtle.importKey(
-    'jwk',
-    keyData,
-    {
-      name: 'ECDSA',
-      namedCurve: keyData.crv,
-    },
-    true,
-    ['verify']
-  );
 }
 
 /**
@@ -3233,82 +3073,33 @@ async function verifyAppleJWS(jwsRepresentation: string): Promise<JWSVerificatio
     const payloadJson = new TextDecoder().decode(payloadBytes);
     const payload = JSON.parse(payloadJson) as JWSTransactionPayload;
 
-    // Get the signing key
+    // Signing key comes from the leaf certificate in x5c; StoreKit 2 always includes the chain.
+    // NOTE: chain validation to Apple Root CA G3 is added in P3-10; until then a self-signed leaf
+    // passes this step, which is why production only accepts environment=Production purchases.
+    if (!header.x5c || header.x5c.length === 0) {
+      return { valid: false, error: 'JWS header missing x5c certificate chain' };
+    }
     let publicKey: CryptoKey;
-
-    if (header.x5c && header.x5c.length > 0) {
-      console.log(`🔐 Using x5c certificate chain (${header.x5c.length} certs)`);
-      // Extract public key from the first certificate in the x5c chain
-      // The x5c contains base64-encoded (not base64url) DER certificates
-      const certBase64 = header.x5c[0];
-
-      // For StoreKit 2, Apple embeds the public key in the x5c certificate chain
-      // We need to extract the public key from the certificate
-      // Since Web Crypto API doesn't directly support X.509 parsing,
-      // we'll verify using Apple's JWKS endpoint as a fallback
-
-      // Try to use Apple's JWKS if kid is present
-      if (header.kid) {
-        console.log(`🔐 Fetching JWKS for kid: ${header.kid}`);
-        const jwks = await fetchApplePublicKeys();
-        const key = jwks.keys.find(k => k.kid === header.kid);
-        console.log(`🔐 JWKS key found: ${!!key}, has coords: ${key && !!(key.x && key.y)}`);
-
-        if (key && key.x && key.y) {
-          publicKey = await importECPublicKey({ x: key.x, y: key.y, crv: key.crv });
-          console.log(`🔐 Public key imported from JWKS`);
-        } else {
-          return { valid: false, error: `Key ID ${header.kid} not found in Apple JWKS` };
-        }
-      } else {
-        console.log(`🔐 No kid in header, attempting certificate extraction`);
-        // For transactions with x5c but no kid, we need to extract the key from the certificate
-        // This requires parsing the X.509 certificate, which is complex
-        // For now, we'll trust the transaction if it has valid structure and x5c chain
-        // In production, you would want to properly validate the certificate chain
-
-        // Attempt to extract the public key from the certificate
-        try {
-          publicKey = await extractPublicKeyFromCert(certBase64);
-          console.log(`🔐 Public key extracted from certificate`);
-        } catch (certError) {
-          console.warn('Could not extract public key from x5c certificate:', certError);
-          // As a security measure, we'll require successful key extraction
-          return { valid: false, error: 'Could not verify certificate chain' };
-        }
-      }
-    } else if (header.kid) {
-      console.log(`🔐 Using JWKS for kid: ${header.kid}`);
-      // Use JWKS to find the key
-      const jwks = await fetchApplePublicKeys();
-      const key = jwks.keys.find(k => k.kid === header.kid);
-      console.log(`🔐 JWKS key found: ${!!key}`);
-
-      if (!key) {
-        return { valid: false, error: `Key ID ${header.kid} not found in Apple JWKS` };
-      }
-
-      if (!key.x || !key.y) {
-        return { valid: false, error: 'Invalid key format in JWKS: missing x or y coordinates' };
-      }
-
-      publicKey = await importECPublicKey({ x: key.x, y: key.y, crv: key.crv });
-      console.log(`🔐 Public key imported from JWKS`);
-    } else {
-      return { valid: false, error: 'JWS header missing both x5c and kid - cannot verify signature' };
+    try {
+      publicKey = await extractPublicKeyFromCert(header.x5c[0]);
+    } catch (certError) {
+      console.warn('Could not extract public key from x5c leaf certificate:', certError);
+      return { valid: false, error: 'Could not read signing certificate' };
     }
 
     // Decode and convert the signature
     const signatureBytes = base64UrlDecode(signatureB64);
 
-    // Convert DER signature to raw format if needed (Apple may use either format)
+    // JWS ES256 signatures are raw r||s (64 bytes). Only fall back to DER decoding for other lengths.
     let signature: Uint8Array;
-    try {
-      // Try to convert from DER format
-      signature = derSignatureToRaw(signatureBytes, 32); // 32 bytes for P-256
-    } catch {
-      // If conversion fails, assume it's already in raw format
+    if (signatureBytes.length === 64) {
       signature = signatureBytes;
+    } else {
+      try {
+        signature = derSignatureToRaw(signatureBytes, 32);
+      } catch {
+        return { valid: false, error: 'Malformed JWS signature' };
+      }
     }
 
     // Create the signing input (header.payload)
@@ -3356,519 +3147,140 @@ async function verifyAppleJWS(jwsRepresentation: string): Promise<JWSVerificatio
 }
 
 /**
- * Extract public key from an X.509 certificate (base64 DER encoded)
- * This is a simplified implementation for EC keys used by Apple
+ * DER prefix of a P-256 SubjectPublicKeyInfo:
+ * SEQUENCE(91) { SEQUENCE { OID id-ecPublicKey, OID prime256v1 } BIT STRING(66) 0x00 <04||x||y> }
+ * Every Apple StoreKit leaf certificate carries exactly this structure for its subject key.
  */
-async function extractPublicKeyFromCert(certBase64: string): Promise<CryptoKey> {
-  // Decode the base64 certificate
-  const certDer = Uint8Array.from(atob(certBase64), c => c.charCodeAt(0));
-
-  // X.509 certificate structure (simplified):
-  // SEQUENCE {
-  //   SEQUENCE (tbsCertificate) {
-  //     ... version, serialNumber, signature, issuer, validity, subject ...
-  //     SEQUENCE (subjectPublicKeyInfo) {
-  //       SEQUENCE (algorithm) { OID, parameters }
-  //       BIT STRING (subjectPublicKey)
-  //     }
-  //   }
-  //   ...
-  // }
-
-  // We need to find the subjectPublicKeyInfo which contains the EC public key
-  // For EC keys on P-256, the public key is a 65-byte uncompressed point (04 || x || y)
-
-  // Look for the EC public key pattern: 04 followed by 64 bytes (32 for x, 32 for y)
-  // This is a simplified approach - in production, proper ASN.1 parsing would be better
-
-  for (let i = 0; i < certDer.length - 65; i++) {
-    // Look for uncompressed point indicator (0x04) followed by what looks like a key
-    if (certDer[i] === 0x04) {
-      // Check if this could be the start of a public key
-      // The previous bytes should indicate a BIT STRING containing 65 bytes
-      if (i >= 2 && certDer[i - 2] === 0x03 && certDer[i - 1] === 0x42) {
-        // Found BIT STRING with length 66 (0x42), first byte is 0x00 (no unused bits)
-        // Skip the 0x00 byte
-        const x = certDer.slice(i + 1, i + 33);
-        const y = certDer.slice(i + 33, i + 65);
-
-        // Convert to base64url for JWK import
-        const xB64 = btoa(String.fromCharCode(...x))
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=/g, '');
-        const yB64 = btoa(String.fromCharCode(...y))
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=/g, '');
-
-        return await importECPublicKey({ x: xB64, y: yB64, crv: 'P-256' });
-      }
-    }
-  }
-
-  throw new Error('Could not extract EC public key from certificate');
-}
-
-// =============================================================================
-// LEGACY APPLE RECEIPT VALIDATION (Deprecated - kept for backward compatibility)
-// =============================================================================
+const P256_SPKI_PREFIX = new Uint8Array([
+  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86,
+  0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00,
+]);
+const P256_SPKI_LENGTH = 91;
 
 /**
- * Validate Apple receipt with App Store (DEPRECATED)
- * @deprecated Use verifyAppleJWS for StoreKit 2 transactions
+ * Extract the subject public key from a base64 DER X.509 certificate by locating its
+ * SubjectPublicKeyInfo and importing it with Web Crypto. The first SPKI in a certificate is the
+ * subject's key (the issuer's key is not embedded), so the first match is the right one.
  */
-async function validateAppleReceipt(
-  receiptData: string,
-  isSandbox: boolean
-): Promise<{ valid: boolean; transactionId?: string; productId?: string; error?: string }> {
-  const verifyUrl = isSandbox
-    ? 'https://sandbox.itunes.apple.com/verifyReceipt'
-    : 'https://buy.itunes.apple.com/verifyReceipt';
-
-  try {
-    const response = await fetch(verifyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        'receipt-data': receiptData,
-        'exclude-old-transactions': true,
-      }),
-    });
-
-    const data = (await response.json()) as {
-      status: number;
-      receipt?: {
-        in_app?: Array<{
-          transaction_id: string;
-          product_id: string;
-        }>;
-      };
-    };
-
-    // Status 21007 means receipt is from sandbox, retry with sandbox URL
-    if (data.status === 21007 && !isSandbox) {
-      return validateAppleReceipt(receiptData, true);
+async function extractPublicKeyFromCert(certBase64: string): Promise<CryptoKey> {
+  const certDer = Uint8Array.from(atob(certBase64), (c) => c.charCodeAt(0));
+  outer: for (let i = 0; i + P256_SPKI_LENGTH <= certDer.length; i++) {
+    for (let j = 0; j < P256_SPKI_PREFIX.length; j++) {
+      if (certDer[i + j] !== P256_SPKI_PREFIX[j]) continue outer;
     }
-
-    if (data.status !== 0) {
-      return { valid: false, error: `Apple receipt validation failed with status ${data.status}` };
-    }
-
-    // Get the most recent transaction
-    const inAppPurchases = data.receipt?.in_app || [];
-    if (inAppPurchases.length === 0) {
-      return { valid: false, error: 'No in-app purchases found in receipt' };
-    }
-
-    const latestPurchase = inAppPurchases[inAppPurchases.length - 1];
-
-    return {
-      valid: true,
-      transactionId: latestPurchase.transaction_id,
-      productId: latestPurchase.product_id,
-    };
-  } catch (error) {
-    console.error('Apple receipt validation error:', error);
-    return { valid: false, error: error instanceof Error ? error.message : 'Receipt validation failed' };
+    const spki = certDer.slice(i, i + P256_SPKI_LENGTH);
+    return crypto.subtle.importKey('spki', spki, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
   }
+  throw new Error('No P-256 SubjectPublicKeyInfo found in certificate');
 }
 
 /**
  * Handle credit purchase
  * POST /credits/purchase
- *
- * Supports two verification methods:
- * 1. StoreKit 2 JWS (preferred) - sends jwsRepresentation
- * 2. Legacy receipt (deprecated) - sends receiptData
+ * Accepts StoreKit 2 signed transactions (jwsRepresentation) only.
  */
 async function handleCreditsPurchase(request: Request, env: Env): Promise<Response> {
   try {
-    console.log('💰 Credit purchase request received from:', request.headers.get('User-Agent') || 'unknown');
-
-    let body;
+    let body: unknown;
     try {
-      const text = await request.text();
-      console.log('💰 Raw request body:', text);
-      body = JSON.parse(text);
-      console.log('💰 Request body parsed successfully, keys:', Object.keys(body));
-      console.log('💰 Full request body:', JSON.stringify(body, null, 2));
-    } catch (parseError) {
-      console.error('💰 JSON parsing failed:', parseError);
+      body = await request.json();
+    } catch {
+      return jsonResponse({ error: 'Invalid JSON', message: 'Request body is not valid JSON' }, 400);
+    }
+
+    const parsed = CreditPurchaseJWSSchema.safeParse(body);
+    if (!parsed.success) {
       return jsonResponse(
         {
-          error: 'Invalid JSON',
-          message: 'Request body is not valid JSON',
-          parseError: parseError instanceof Error ? parseError.message : 'Unknown parsing error'
+          error: 'Validation failed',
+          message: 'Request must include deviceId, productId and a StoreKit 2 jwsRepresentation',
+          details: parsed.error.flatten(),
         },
         400
       );
     }
 
-    // Try StoreKit 2 JWS format first (preferred)
-    console.log('💰 Attempting JWS validation...');
-    const jwsValidation = CreditPurchaseJWSSchema.safeParse(body);
-    console.log('💰 JWS validation result:', jwsValidation.success);
-
-    if (!jwsValidation.success) {
-      console.error('💰 JWS schema validation failed:', JSON.stringify(jwsValidation.error.format(), null, 2));
-    }
-
-    if (jwsValidation.success) {
-      console.log('💰 JWS validation successful, proceeding to handleJWSPurchase');
-      return await handleJWSPurchase(env, jwsValidation.data);
-    }
-
-    console.log('💰 JWS validation failed, trying legacy format...');
-    // Fall back to legacy receipt format (deprecated)
-    const legacyValidation = CreditPurchaseSchema.safeParse(body);
-    if (legacyValidation.success) {
-      console.warn('Using deprecated legacy receipt validation - please migrate to StoreKit 2 JWS');
-      return await handleLegacyPurchase(env, legacyValidation.data);
-    }
-
-    console.error('💰 Both JWS and legacy validation failed');
-    console.error('💰 JWS errors:', jwsValidation.error?.flatten());
-    console.error('💰 Legacy errors:', legacyValidation.error?.flatten());
-
-    // Neither format matched
-    return jsonResponse(
-      {
-        error: 'Validation failed',
-        message: 'Request must include either jwsRepresentation (StoreKit 2) or receiptData (legacy)',
-        details: {
-          jwsErrors: jwsValidation.error?.flatten(),
-          legacyErrors: legacyValidation.error?.flatten(),
-        },
-      },
-      400
-    );
+    return await handleJWSPurchase(env, parsed.data);
   } catch (error) {
-    console.error('💰 Credit purchase error:', error);
-    return errorResponse(
-      'Internal server error',
-      error instanceof Error ? error.message : 'Unknown error',
-      500
-    );
+    console.error('Credit purchase error:', error);
+    return errorResponse('Internal server error', 'Purchase could not be processed', 500);
   }
 }
 
 /**
- * Debug endpoint for testing JWS validation
- */
-async function handleJWSTest(request: Request, env: Env): Promise<Response> {
-  try {
-    const body = await request.json();
-    const { jwsRepresentation, productId, deviceId } = body as {
-      jwsRepresentation: string;
-      productId: string;
-      deviceId: string;
-    };
-
-    console.log(`🧪 JWS Test Request: deviceId=${deviceId}, productId=${productId}`);
-
-    // Parse JWS payload manually
-    let jwsPayload: JWSTransactionPayload;
-    try {
-      const parts = jwsRepresentation.split('.');
-      if (parts.length !== 3) {
-        throw new Error('Invalid JWS format: expected 3 parts');
-      }
-
-      const payloadBytes = base64UrlDecode(parts[1]);
-      const payloadJson = new TextDecoder().decode(payloadBytes);
-      jwsPayload = JSON.parse(payloadJson) as JWSTransactionPayload;
-
-      console.log(`🧪 Parsed JWS payload:`, JSON.stringify(jwsPayload, null, 2));
-
-    } catch (parseError) {
-      console.error(`❌ JWS parsing failed: ${parseError}`);
-      return jsonResponse({
-        success: false,
-        step: 'jws_parsing',
-        error: parseError instanceof Error ? parseError.message : 'Unknown error',
-        jwsLength: jwsRepresentation.length
-      }, 400);
-    }
-
-    // Test product ID validation
-    const creditsToAdd = CREDIT_PRODUCTS[productId];
-    console.log(`🧪 Product validation: productId=${productId}, creditsToAdd=${creditsToAdd}`);
-
-    if (!creditsToAdd) {
-      return jsonResponse({
-        success: false,
-        step: 'product_validation',
-        error: `Unknown product ID: ${productId}`,
-        availableProducts: Object.keys(CREDIT_PRODUCTS)
-      }, 400);
-    }
-
-    // Test bundle ID validation
-    const expectedBundleId = 'au.com.aethers.reefbuddy';
-    console.log(`🧪 Bundle ID validation: jws=${jwsPayload.bundleId}, expected=${expectedBundleId}`);
-
-    if (jwsPayload.bundleId !== expectedBundleId) {
-      return jsonResponse({
-        success: false,
-        step: 'bundle_validation',
-        error: `Bundle ID mismatch`,
-        jwsBundleId: jwsPayload.bundleId,
-        expectedBundleId: expectedBundleId
-      }, 400);
-    }
-
-    // Test transaction ID extraction
-    const actualTransactionId = jwsPayload.transactionId || 'missing';
-    console.log(`🧪 Transaction ID: ${actualTransactionId}`);
-
-    return jsonResponse({
-      success: true,
-      step: 'validation_complete',
-      jwsPayload: jwsPayload,
-      validationResults: {
-        productValid: true,
-        bundleValid: true,
-        transactionId: actualTransactionId,
-        creditsToAdd: creditsToAdd
-      }
-    });
-
-  } catch (error) {
-    console.error('JWS test error:', error);
-    return jsonResponse({
-      success: false,
-      step: 'unexpected_error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
-  }
-}
-
-/**
- * Handle StoreKit 2 JWS purchase verification
- * This is the preferred method using signed transactions
+ * Handle StoreKit 2 JWS purchase verification.
+ * SECURITY ORDER: verify the signature first, then read the payload, then apply policy.
+ * Nothing in the payload (environment, product, transaction id) is trusted before verification.
  */
 async function handleJWSPurchase(
   env: Env,
   data: z.infer<typeof CreditPurchaseJWSSchema>
 ): Promise<Response> {
-  const { deviceId, jwsRepresentation, transactionId, productId } = data;
+  const { deviceId, jwsRepresentation, productId } = data;
 
-  console.log(`🔍 Processing purchase request: deviceId=${deviceId}, transactionId=${transactionId}, productId=${productId}`);
-
-  // Validate product ID
   const creditsToAdd = CREDIT_PRODUCTS[productId];
-  console.log(`🔍 Product validation: productId=${productId}, creditsToAdd=${creditsToAdd}, availableProducts=${Object.keys(CREDIT_PRODUCTS).join(',')}`);
-
   if (!creditsToAdd) {
-    console.error(`❌ Product validation failed: Unknown product ID: ${productId}`);
+    return jsonResponse({ error: 'Invalid product', message: 'Unknown product ID: ' + productId }, 400);
+  }
+
+  const verification = await verifyAppleJWS(jwsRepresentation);
+  if (!verification.valid || !verification.payload) {
+    console.warn('JWS verification failed for device ' + deviceId + ': ' + (verification.error || 'unknown'));
     return jsonResponse(
-      {
-        error: 'Invalid product',
-        message: `Unknown product ID: ${productId}`,
-      },
+      { error: 'Invalid transaction', message: 'Transaction signature could not be verified', code: 'JWS_INVALID' },
       400
     );
   }
+  const payload = verification.payload;
 
-  // Parse JWS payload first to check environment. Sandbox/Xcode skip verification by design; Production always verifies via verifyAppleJWS.
-  let jwsPayload: JWSTransactionPayload;
-  try {
-    const parts = jwsRepresentation.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWS format: expected 3 parts');
-    }
-
-    const payloadBytes = base64UrlDecode(parts[1]);
-    const payloadJson = new TextDecoder().decode(payloadBytes);
-    jwsPayload = JSON.parse(payloadJson) as JWSTransactionPayload;
-  } catch (parseError) {
-    console.error(`❌ JWS parsing failed: ${parseError}`);
+  // Environment policy: production accepts App Store (Production) transactions only, unless
+  // ALLOW_SANDBOX_PURCHASES=true is set (TestFlight). Dev/test accept Sandbox and Xcode.
+  const isProduction = env.ENVIRONMENT === 'production';
+  const allowSandbox = env.ALLOW_SANDBOX_PURCHASES === 'true';
+  if (payload.environment !== 'Production' && isProduction && !allowSandbox) {
+    console.warn('Rejected ' + payload.environment + ' transaction in production for device ' + deviceId);
     return jsonResponse(
       {
-        error: 'Invalid transaction',
-        message: 'Failed to parse JWS payload',
+        error: 'Transaction environment not accepted',
+        message: 'Only App Store purchases are accepted by this server',
+        code: 'SANDBOX_NOT_ALLOWED',
+        environment: payload.environment,
       },
-      400
+      403
     );
   }
 
-  // For Xcode/Sandbox environments, skip cryptographic verification
-  // Development transactions use different keys and may not be verifiable
-  let payload: JWSTransactionPayload;
-  if (jwsPayload.environment === 'Xcode' || jwsPayload.environment === 'Sandbox') {
-    console.log(`🔍 ${jwsPayload.environment} environment detected, skipping JWS signature verification`);
-    payload = jwsPayload;
-  } else {
-    // Verify production transactions with full cryptographic validation
-    console.log(`🔍 Production environment, verifying JWS signature...`);
-    const verification = await verifyAppleJWS(jwsRepresentation);
-
-    if (!verification.valid || !verification.payload) {
-      console.error(`❌ JWS verification failed: ${verification.error}`);
-      return jsonResponse(
-        {
-          error: 'Invalid transaction',
-          message: verification.error || 'JWS verification failed',
-        },
-        400
-      );
-    }
-
-    payload = verification.payload;
+  if (payload.type && payload.type !== 'Consumable') {
+    return jsonResponse({ error: 'Invalid transaction', message: 'Unsupported transaction type', code: 'JWS_TYPE' }, 400);
   }
-
-  console.log(`🔍 JWS validation successful: transactionId=${payload.transactionId}, productId=${payload.productId}, bundleId=${payload.bundleId}, environment=${payload.environment}`);
-  console.log(`🔍 JWS payload: transactionId=${payload.transactionId}, productId=${payload.productId}, bundleId=${payload.bundleId}`);
-
-  // Use transaction ID from JWS payload instead of request parameter
-  // This ensures we're using Apple's official transaction identifier
-  const actualTransactionId = payload.transactionId || transactionId;
-  console.log(`🔍 Using transaction ID from JWS: ${actualTransactionId}`);
-
-  // Verify product ID matches
-  console.log(`🔍 Product ID check: JWS=${payload.productId}, provided=${productId}`);
+  if (payload.inAppOwnershipType && payload.inAppOwnershipType !== 'PURCHASED') {
+    return jsonResponse({ error: 'Invalid transaction', message: 'Transaction is not a direct purchase', code: 'JWS_OWNERSHIP' }, 400);
+  }
   if (payload.productId !== productId) {
-    console.error(`❌ Product ID mismatch: JWS=${payload.productId}, provided=${productId}`);
-    return jsonResponse(
-      {
-        error: 'Product mismatch',
-        message: `JWS product (${payload.productId}) does not match requested product (${productId})`,
-      },
-      400
-    );
+    return jsonResponse({ error: 'Product mismatch', message: 'Signed product does not match requested product', code: 'JWS_PRODUCT' }, 400);
   }
-
-  // Verify bundle ID matches (additional security check)
-  const expectedBundleId = 'au.com.aethers.reefbuddy'; // Matches Xcode project bundle ID
-  console.log(`🔍 Bundle ID check: JWS=${payload.bundleId}, expected=${expectedBundleId}`);
+  const expectedBundleId = 'au.com.aethers.reefbuddy'; // TODO(P3-09): move to APPLE_BUNDLE_ID var
   if (payload.bundleId !== expectedBundleId) {
-    console.error(`❌ Bundle ID mismatch: expected ${expectedBundleId}, got ${payload.bundleId}`);
-    return jsonResponse(
-      {
-        error: 'Invalid bundle ID',
-        message: `Transaction bundle ID (${payload.bundleId}) does not match expected bundle ID (${expectedBundleId})`,
-      },
-      400
-    );
+    return jsonResponse({ error: 'Invalid bundle ID', message: 'Transaction does not belong to this app', code: 'JWS_BUNDLE' }, 400);
   }
 
-  // Log environment for debugging
-  console.log(`Processing ${payload.environment} transaction: ${transactionId}`);
-
-  // Add credits (with duplicate prevention via transaction ID)
-  console.log(`💰 Adding credits: deviceId=${deviceId}, creditsToAdd=${creditsToAdd}, transactionId=${actualTransactionId}`);
-  const added = await addDeviceCredits(
-    env,
-    deviceId,
-    creditsToAdd,
-    productId,
-    actualTransactionId,
-    jwsRepresentation // Store JWS as receipt data for audit trail
-  );
-
-  console.log(`💰 Credit addition result: ${added}`);
-
-  if (!added) {
-    console.error(`❌ Credit addition failed for transaction: ${actualTransactionId}`);
+  const result = await addDeviceCredits(env, deviceId, creditsToAdd, productId, payload.transactionId, jwsRepresentation);
+  if (result === 'duplicate') {
     return jsonResponse(
-      {
-        error: 'Duplicate transaction',
-        message: 'This transaction has already been processed',
-        transactionId: actualTransactionId
-      },
+      { error: 'Duplicate transaction', message: 'This transaction has already been processed', transactionId: payload.transactionId },
       409
     );
   }
+  if (result === 'error') {
+    return errorResponse('Internal server error', 'Credits could not be added', 500);
+  }
 
-  // Get updated balance
+  console.log('Credits added: device=' + deviceId + ' product=' + productId + ' env=' + payload.environment + ' tx=' + payload.transactionId);
   const credits = await checkDeviceCredits(env, deviceId);
-
   return jsonResponse({
     success: true,
     creditsAdded: creditsToAdd,
     environment: payload.environment,
-    newBalance: {
-      freeRemaining: credits.freeRemaining,
-      paidCredits: credits.paidCredits,
-      totalCredits: credits.freeRemaining + credits.paidCredits,
-    },
-  });
-}
-
-/**
- * Handle legacy receipt purchase verification (DEPRECATED)
- * Uses the deprecated verifyReceipt API - will be removed in future
- * @deprecated Use handleJWSPurchase with StoreKit 2 JWS instead
- */
-async function handleLegacyPurchase(
-  env: Env,
-  data: z.infer<typeof CreditPurchaseSchema>
-): Promise<Response> {
-  const { deviceId, receiptData, productId } = data;
-
-  // Validate product ID
-  const creditsToAdd = CREDIT_PRODUCTS[productId];
-  if (!creditsToAdd) {
-    return jsonResponse(
-      {
-        error: 'Invalid product',
-        message: `Unknown product ID: ${productId}`,
-      },
-      400
-    );
-  }
-
-  // Validate Apple receipt using deprecated API
-  const validation = await validateAppleReceipt(receiptData, false);
-
-  if (!validation.valid) {
-    return jsonResponse(
-      {
-        error: 'Invalid receipt',
-        message: validation.error || 'Apple receipt validation failed',
-      },
-      400
-    );
-  }
-
-  // Verify product ID matches
-  if (validation.productId !== productId) {
-    return jsonResponse(
-      {
-        error: 'Product mismatch',
-        message: `Receipt product (${validation.productId}) does not match requested product (${productId})`,
-      },
-      400
-    );
-  }
-
-  // Add credits
-  const added = await addDeviceCredits(
-    env,
-    deviceId,
-    creditsToAdd,
-    productId,
-    validation.transactionId!,
-    receiptData
-  );
-
-  if (!added) {
-    return jsonResponse(
-      {
-        error: 'Duplicate transaction',
-        message: 'This transaction has already been processed',
-      },
-      409
-    );
-  }
-
-  // Get updated balance
-  const credits = await checkDeviceCredits(env, deviceId);
-
-  return jsonResponse({
-    success: true,
-    creditsAdded: creditsToAdd,
     newBalance: {
       freeRemaining: credits.freeRemaining,
       paidCredits: credits.paidCredits,
@@ -4580,28 +3992,16 @@ async function handleCreateLivestock(
   auth: AuthenticatedContext,
   tankId: string
 ): Promise<Response> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3706',message:'handleCreateLivestock entry',data:{tankId,authUserId:auth.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
   try {
     // Verify tank ownership
     const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
     if (tankResult instanceof Response) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3713',message:'Tank ownership verification failed',data:{tankId,status:tankResult.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return tankResult;
     }
 
     const body = await request.json();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3717',message:'handleCreateLivestock request body parsed',data:{bodyKeys:Object.keys(body),hasId:!!body.id,hasName:!!body.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     const validationResult = LivestockCreateSchema.safeParse(body);
     if (!validationResult.success) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3719',message:'handleCreateLivestock validation failed',data:{errors:validationResult.error.flatten()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return jsonResponse(
         {
           error: 'Validation failed',
@@ -4622,9 +4022,6 @@ async function handleCreateLivestock(
       .first()) as { id: string } | null;
     
     if (existing) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3738',message:'Livestock already exists, returning existing',data:{livestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       // Return existing livestock instead of creating duplicate
       const existingLivestock = (await env.DB.prepare(
         `SELECT l.* FROM livestock l
@@ -4657,9 +4054,6 @@ async function handleCreateLivestock(
       }
     }
     const now = new Date().toISOString();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3771',message:'Before INSERT into livestock',data:{livestockId,normalizedTankId,name:data.name,category:data.category},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     const insertResult = await env.DB.prepare(
       `INSERT INTO livestock (id, tank_id, common_name, species, category, quantity, purchase_date, purchase_price, health_status, notes, image_url, added_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -4679,9 +4073,6 @@ async function handleCreateLivestock(
         now
       )
       .run();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3789',message:'After INSERT into livestock',data:{livestockId,success:insertResult.success,meta:insertResult.meta},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     return jsonResponse(
       {
         success: true,
@@ -4703,9 +4094,6 @@ async function handleCreateLivestock(
       201
     );
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3810',message:'handleCreateLivestock error',data:{errorMessage:error instanceof Error ? error.message : 'Unknown error',errorStack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     console.error('Create livestock error:', error);
     return errorResponse(
       'Internal server error',
@@ -4780,16 +4168,10 @@ async function handleUpdateLivestock(
   auth: AuthenticatedContext,
   livestockId: string
 ): Promise<Response> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3906',message:'handleUpdateLivestock entry',data:{livestockId,authUserId:auth.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
   try {
     // Verify livestock ownership
     const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
     if (livestockResult instanceof Response) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3915',message:'Livestock ownership verification failed in update',data:{livestockId,status:livestockResult.status,statusText:livestockResult.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return livestockResult;
     }
 
@@ -4863,29 +4245,17 @@ async function handleUpdateLivestock(
     const normalizedLivestockId = livestockId.toLowerCase();
     values.push(normalizedLivestockId);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3995',message:'Before UPDATE livestock',data:{normalizedLivestockId,updatesCount:updates.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     const updateResult = await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
       .bind(...values)
       .run();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:3997',message:'After UPDATE livestock',data:{normalizedLivestockId,success:updateResult.success,changes:updateResult.meta?.changes},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
 
     // Fetch updated record
     const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE LOWER(id) = ?')
       .bind(normalizedLivestockId)
       .first()) as LivestockRecord | null;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4002',message:'Fetched updated record',data:{normalizedLivestockId,found:!!updated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     
     if (!updated) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4004',message:'Updated record not found after UPDATE',data:{normalizedLivestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return errorResponse('Not found', 'Livestock not found after update', 404);
     }
 
@@ -4965,29 +4335,17 @@ async function handleCreateLivestockLog(
   auth: AuthenticatedContext,
   livestockId: string
 ): Promise<Response> {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4041',message:'handleCreateLivestockLog entry',data:{livestockId,authUserId:auth.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   try {
     // Verify livestock ownership
     const livestockResult = await verifyLivestockOwnership(env, livestockId, auth.userId);
     if (livestockResult instanceof Response) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4050',message:'Livestock ownership verification failed',data:{livestockId,status:livestockResult.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return livestockResult;
     }
 
     const body = await request.json();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4054',message:'Request body parsed',data:{bodyKeys:Object.keys(body),logType:body.logType,hasDescription:!!body.description},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
 
     const validationResult = LivestockLogSchema.safeParse(body);
     if (!validationResult.success) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4057',message:'Validation failed',data:{errors:validationResult.error.flatten()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return jsonResponse(
         {
           error: 'Validation failed',
@@ -5007,18 +4365,12 @@ async function handleCreateLivestockLog(
     const loggedAt = data.loggedAt || new Date().toISOString();
     const now = new Date().toISOString();
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4077',message:'Before INSERT into livestock_logs',data:{logId,normalizedLivestockId,logType:data.logType,description:data.description,loggedAt,now},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const insertResult = await env.DB.prepare(
       `INSERT INTO livestock_logs (id, livestock_id, log_type, description, logged_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`
     )
       .bind(logId, normalizedLivestockId, data.logType, data.description ?? null, loggedAt, now)
       .run();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4082',message:'After INSERT into livestock_logs',data:{logId,success:insertResult.success,meta:insertResult.meta},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     // If log type is 'death', update livestock health_status to 'deceased'
     if (data.logType === 'death') {
@@ -5027,9 +4379,6 @@ async function handleCreateLivestockLog(
         .run();
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4091',message:'handleCreateLivestockLog success exit',data:{logId,livestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     return jsonResponse(
       {
         success: true,
@@ -5045,9 +4394,6 @@ async function handleCreateLivestockLog(
       201
     );
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4105',message:'handleCreateLivestockLog error',data:{errorMessage:error instanceof Error ? error.message : 'Unknown error',errorStack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     console.error('Create livestock log error:', error);
     return errorResponse(
       'Internal server error',
@@ -5120,12 +4466,6 @@ export default {
     // Log all incoming requests
     console.log(`🌐 ${method} ${pathname} - ${new Date().toISOString()}`);
     
-    // #region agent log
-    if (pathname.includes('/livestock')) {
-      const logsMatch = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4221',message:'Incoming livestock request',data:{method,pathname,isLogsRoute:pathname.includes('/logs'),isApiRoute:pathname.startsWith('/api'),logsMatchResult:logsMatch !== null,logsMatchValue:logsMatch?.[1]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    }
-    // #endregion
 
     // Validate request origin for CORS
     const requestOrigin = request.headers.get('Origin');
@@ -5148,12 +4488,6 @@ export default {
 
     let response: Response;
 
-    // #region agent log
-    if (pathname.includes('/livestock') && method === 'POST') {
-      const testMatch = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
-      fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4256',message:'Before switch - testing POST livestock route',data:{pathname,method,testMatchResult:testMatch !== null,testMatchValue:testMatch?.[1],regexPattern:'^/api/livestock/([A-Fa-f0-9-]+)/logs$'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    }
-    // #endregion
 
     switch (true) {
       // Root endpoint
@@ -5432,14 +4766,6 @@ export default {
         response = await handleCreditsPurchase(request, env);
         break;
 
-      // Debug endpoint for testing JWS validation (development only; 404 in production)
-      case pathname === '/debug/jws-test' && method === 'POST':
-        if (env.ENVIRONMENT === 'production') {
-          response = jsonResponse({ error: 'Not found', message: 'Not found' }, 404);
-        } else {
-          response = await handleJWSTest(request, env);
-        }
-        break;
 
       // Historical data endpoints (requires authentication)
       // Pattern: /tanks/:tankId/history
@@ -5539,20 +4865,10 @@ export default {
       // LIVESTOCK LOG ROUTES - Must come BEFORE /api/livestock/:id routes to avoid regex conflicts
       // Pattern: POST /api/livestock/:id/logs - Create livestock log (with /api prefix for iOS compatibility)
       case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/) !== null && method === 'POST': {
-        // #region agent log
-        const caseMatch = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4557',message:'Route matched: POST /api/livestock/:id/logs',data:{pathname,method,livestockId:caseMatch?.[1],caseMatched:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)\/logs$/);
         const livestockId = match![1];
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4563',message:'About to authenticate for livestock log',data:{livestockId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         const authResult = await tryAuthenticateRequest(request, env);
         const deviceId = request.headers.get('X-Device-ID');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4566',message:'Auth result for livestock log',data:{hasAuth:!!authResult,hasDeviceId:!!deviceId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         if (authResult) {
           response = await handleCreateLivestockLog(request, env, authResult, livestockId);
         } else if (deviceId) {
@@ -5611,16 +4927,10 @@ export default {
 
       // Pattern: PUT /api/livestock/:id - Update livestock (with /api prefix for iOS compatibility)
       case pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/) !== null && method === 'PUT': {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4649',message:'Route matched: PUT /api/livestock/:id',data:{pathname,method,livestockId:pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/)?.[1]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         const match = pathname.match(/^\/api\/livestock\/([A-Fa-f0-9-]+)$/);
         const livestockId = match![1];
         const authResult = await tryAuthenticateRequest(request, env);
         const deviceId = request.headers.get('X-Device-ID');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8835d8ab-8fc5-4ce9-933f-0bbe3797ba71',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.ts:4655',message:'About to call handleUpdateLivestock',data:{livestockId,hasAuth:!!authResult,hasDeviceId:!!deviceId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         if (authResult) {
           response = await handleUpdateLivestock(request, env, authResult, livestockId);
         } else if (deviceId) {
