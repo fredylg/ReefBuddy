@@ -795,6 +795,8 @@ async function checkIPRateLimit(
 interface DeviceCheckResult {
   valid: boolean;
   error?: string;
+  /** DeviceCheck bit0: set once this physical device has used its free analyses (B-04). */
+  freeTierConsumed?: boolean;
 }
 
 /**
@@ -827,11 +829,58 @@ async function generateAppleJWT(env: Env): Promise<string> {
   return jwt;
 }
 
+type DeviceCheckEndpoint = 'query_two_bits' | 'update_two_bits';
+
+async function deviceCheckRequest(
+  env: Env,
+  isDevelopment: boolean,
+  endpoint: DeviceCheckEndpoint,
+  deviceToken: string,
+  extra: Record<string, unknown> = {}
+): Promise<{ status: number; text: string; json: Record<string, unknown> | null }> {
+  const base = isDevelopment
+    ? 'https://api.development.devicecheck.apple.com/v1/'
+    : 'https://api.devicecheck.apple.com/v1/';
+  const jwt = await generateAppleJWT(env);
+  const response = await fetch(base + endpoint, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + jwt, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ device_token: deviceToken, timestamp: Date.now(), transaction_id: crypto.randomUUID(), ...extra }),
+  });
+  const text = await response.text();
+  let json: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') json = parsed as Record<string, unknown>;
+  } catch {
+    /* Apple returns plain text for some outcomes, e.g. "Failed to find bit state" */
+  }
+  return { status: response.status, text, json };
+}
+
+function deviceCheckFailure(status: number, text: string, json: Record<string, unknown> | null): DeviceCheckResult {
+  const reason = (json && typeof json.reason === 'string' ? json.reason : text) || 'DeviceCheck returned ' + status;
+  if (status === 400) {
+    console.error('DeviceCheck rejected token (400): ' + reason);
+    return { valid: false, error: 'Invalid device token format: ' + reason };
+  }
+  if (status === 401) {
+    console.error('DeviceCheck authentication failed (401): ' + reason);
+    return { valid: false, error: 'DeviceCheck authentication failed: ' + reason };
+  }
+  console.error('DeviceCheck returned ' + status + ': ' + reason);
+  return { valid: false, error: 'DeviceCheck returned ' + status + ': ' + reason };
+}
+
 /**
- * Validate a device token with Apple's DeviceCheck API
- * @param env - Worker environment
- * @param deviceToken - Base64-encoded device token from iOS
- * @param isDevelopment - Use sandbox environment if true
+ * Validate a device token with Apple's DeviceCheck API and read the device's free-tier bit.
+ *
+ * 1. query_two_bits: 200 with {bit0, bit1} means a genuine device we have seen before; bit0 is the
+ *    "free analyses consumed" marker that follows the physical device across reinstalls and
+ *    rotated device ids (B-04).
+ * 2. 200 without bit state means a genuine device we have never marked; update_two_bits(bit1=true)
+ *    then both validates the token (Apple rejects invalid tokens with 400) and records first sight.
+ * 3. 400/401 mean an invalid token or a bad server credential.
  */
 async function validateDeviceToken(
   env: Env,
@@ -839,105 +888,49 @@ async function validateDeviceToken(
   isDevelopment: boolean = false
 ): Promise<DeviceCheckResult> {
   if (!isDeviceCheckConfigured(env)) {
-    // DeviceCheck not configured - skip validation (for backward compatibility)
     console.warn('DeviceCheck not configured - skipping device validation');
     return { valid: true };
   }
-
-  // Basic token format validation
-  // DeviceCheck tokens are base64-encoded and typically 1000+ characters
+  // DeviceCheck tokens are base64 and typically 1000+ characters
   if (!deviceToken || deviceToken.length < 500) {
-    console.error(`❌ DeviceCheck token too short (${deviceToken?.length || 0} chars) - likely invalid`);
     return { valid: false, error: 'Invalid device token format - token too short' };
   }
-  
-  // Check if token is valid base64
   try {
-    // Try to decode base64 (DeviceCheck tokens are base64-encoded)
-    atob(deviceToken.substring(0, 100)); // Test first 100 chars
+    atob(deviceToken.substring(0, 100));
   } catch {
-    console.error(`❌ DeviceCheck token is not valid base64 - likely invalid`);
     return { valid: false, error: 'Invalid device token format - not valid base64' };
   }
 
-  // SECURITY FIX: Use update_two_bits instead of query_two_bits for validation
-  // query_two_bits returns 200 with "Failed to find bit state" for both valid and invalid tokens
-  // update_two_bits will only succeed (200) if the token is valid, and fail (400/401) if invalid
-  // We set bits to 0,0 to validate - if token is invalid, this will fail
-  const apiUrl = isDevelopment
-    ? 'https://api.development.devicecheck.apple.com/v1/update_two_bits'
-    : 'https://api.devicecheck.apple.com/v1/update_two_bits';
-
   try {
-    const jwt = await generateAppleJWT(env);
-    const timestamp = Date.now();
-    const transactionId = crypto.randomUUID();
-
-    debugLog(`🔐 DeviceCheck validation: Attempting to update bits (bit0=false, bit1=false) with transaction ${transactionId}`);
-
-    // Attempt to update bits to 0,0 to validate the token
-    // If token is valid: returns 200 (success)
-    // If token is invalid: returns 400 or 401 (failure)
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        device_token: deviceToken,
-        timestamp: timestamp,
-        transaction_id: transactionId,
-        bit0: false,
-        bit1: false,
-      }),
-    });
-
-    // CRITICAL: Read response body for ALL status codes to properly validate
-    const responseText = await response.text();
-    let responseData: any = null;
-    
-    try {
-      responseData = JSON.parse(responseText);
-    } catch {
-      // Response is not JSON, use raw text
-      responseData = { raw: responseText };
+    const query = await deviceCheckRequest(env, isDevelopment, 'query_two_bits', deviceToken);
+    if (query.status === 200 && query.json && typeof query.json.bit0 === 'boolean') {
+      debugLog('DeviceCheck bits: bit0=' + query.json.bit0 + ' bit1=' + query.json.bit1);
+      return { valid: true, freeTierConsumed: query.json.bit0 === true };
     }
-
-    debugLog(`🔐 DeviceCheck UPDATE response: Status ${response.status}, Body: ${JSON.stringify(responseData)}`);
-
-    // Handle all possible status codes
-    // NOTE: update_two_bits may return 200 for both valid and invalid tokens (Apple API limitation)
-    // We rely on status codes: 200 = accepted, 400/401 = rejected
-    // This is not perfect but is the best we can do with Apple's API
-    if (response.status === 200) {
-      // Success - Apple accepted the update request
-      // Note: This doesn't guarantee the token is from a genuine device, but it's the best validation available
-      debugLog(`✅ DeviceCheck validation successful (update_two_bits returned 200) for transaction ${transactionId}`);
-      return { valid: true };
-    } else if (response.status === 400) {
-      // Bad request - invalid token format or missing parameters
-      const errorMsg = responseData?.reason || responseData?.raw || responseText || 'Invalid device token format';
-      console.error(`❌ DeviceCheck validation failed (400): ${errorMsg}`);
-      return { valid: false, error: `Invalid device token format: ${errorMsg}` };
-    } else if (response.status === 401) {
-      // Unauthorized - JWT authentication failed
-      const errorMsg = responseData?.reason || responseData?.raw || responseText || 'DeviceCheck authentication failed';
-      console.error(`❌ DeviceCheck authentication failed (401): ${errorMsg}`);
-      return { valid: false, error: `DeviceCheck authentication failed: ${errorMsg}` };
-    } else if (response.status === 404) {
-      // Endpoint not found - this should never happen with correct endpoint
-      console.error(`❌ DeviceCheck endpoint not found (404): ${responseText}`);
-      return { valid: false, error: 'DeviceCheck endpoint not found - API configuration error' };
-    } else {
-      // Other error status codes
-      const errorMsg = responseData?.reason || responseData?.raw || responseText || `DeviceCheck returned ${response.status}`;
-      console.error(`❌ DeviceCheck validation failed (${response.status}): ${errorMsg}`);
-      return { valid: false, error: `DeviceCheck returned ${response.status}: ${errorMsg}` };
+    if (query.status === 200) {
+      const update = await deviceCheckRequest(env, isDevelopment, 'update_two_bits', deviceToken, { bit0: false, bit1: true });
+      if (update.status === 200) {
+        debugLog('DeviceCheck: first sight of device, bits initialised');
+        return { valid: true, freeTierConsumed: false };
+      }
+      return deviceCheckFailure(update.status, update.text, update.json);
     }
+    return deviceCheckFailure(query.status, query.text, query.json);
   } catch (error) {
-    console.error('❌ DeviceCheck validation error:', error);
+    console.error('DeviceCheck validation error:', error);
     return { valid: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/** Record on the physical device that its free analyses are used up (DeviceCheck bit0). Best effort. */
+async function markDeviceFreeTierConsumed(env: Env, deviceToken: string, isDevelopment: boolean): Promise<boolean> {
+  try {
+    const update = await deviceCheckRequest(env, isDevelopment, 'update_two_bits', deviceToken, { bit0: true, bit1: true });
+    if (update.status !== 200) console.warn('DeviceCheck: could not set free-tier bit (' + update.status + ')');
+    return update.status === 200;
+  } catch (error) {
+    console.warn('DeviceCheck: could not set free-tier bit:', error);
+    return false;
   }
 }
 
@@ -1143,18 +1136,24 @@ type CreditKind = 'free' | 'paid';
  * take the same credit or drive a balance negative (the second UPDATE affects 0 rows).
  * Returns which pool was charged, or null when the device has no credits.
  */
-async function consumeDeviceCredit(env: Env, deviceId: string): Promise<CreditKind | null> {
+async function consumeDeviceCredit(
+  env: Env,
+  deviceId: string,
+  options: { allowFree?: boolean } = {}
+): Promise<CreditKind | null> {
   try {
     await getOrCreateDeviceCredits(env, deviceId);
     const freeLimit = parseInt(env.FREE_ANALYSIS_LIMIT || '3', 10);
     const now = new Date().toISOString();
 
-    const freeResult = await env.DB.prepare(
-      'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ? AND free_used < ?'
-    )
-      .bind(now, deviceId, freeLimit)
-      .run();
-    if (freeResult.meta.changes > 0) return 'free';
+    if (options.allowFree !== false) {
+      const freeResult = await env.DB.prepare(
+        'UPDATE device_credits SET free_used = free_used + 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ? AND free_used < ?'
+      )
+        .bind(now, deviceId, freeLimit)
+        .run();
+      if (freeResult.meta.changes > 0) return 'free';
+    }
 
     const paidResult = await env.DB.prepare(
       'UPDATE device_credits SET paid_credits = paid_credits - 1, total_analyses = total_analyses + 1, updated_at = ? WHERE device_id = ? AND paid_credits > 0'
@@ -2610,6 +2609,8 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     // Vitest (ENVIRONMENT=test) and production must enforce DeviceCheck when configured.
     const allowDeviceCheckHostBypass =
       env.ENVIRONMENT === 'development' && (isLocalhost || isDevWorker);
+    // True when DeviceCheck says this physical device already used its free analyses (B-04).
+    let freeTierConsumedOnDevice = false;
     if (isDeviceCheckConfigured(env)) {
       if (!deviceToken) {        // SECURITY: Only allow bypass in actual development environments (server-side check)
         // DeviceCheck doesn't work in iOS Simulator, so this is expected for local development
@@ -2637,7 +2638,11 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       if (deviceToken) {
         // Use client's isDevelopment flag only for DeviceCheck API selection (sandbox vs production API)
         // This doesn't affect security - it just tells DeviceCheck which API endpoint to use
-        const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);        if (!deviceCheckResult.valid) {
+        const deviceCheckResult = await validateDeviceToken(env, deviceToken, isDevelopment);
+        if (deviceCheckResult.valid && deviceCheckResult.freeTierConsumed) {
+          freeTierConsumedOnDevice = true;
+        }
+        if (!deviceCheckResult.valid) {
           console.warn(`DeviceCheck failed for ${deviceId}: ${deviceCheckResult.error}`);
           return jsonResponse(
             {
@@ -2675,15 +2680,16 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       }
     }
 
-    // Check device credits
+    // Check device credits. A device whose DeviceCheck bit0 is set has no free analyses left,
+    // whatever its (possibly rotated) device id says.
     const creditCheck = await checkDeviceCredits(env, deviceId);
-
-    if (!creditCheck.allowed) {
+    const freeRemainingForDevice = freeTierConsumedOnDevice ? 0 : creditCheck.freeRemaining;
+    if (freeRemainingForDevice <= 0 && creditCheck.paidCredits <= 0) {
       return jsonResponse(
         {
           error: 'No credits available',
           message: 'You have used all your free analyses. Purchase credits to continue.',
-          freeRemaining: creditCheck.freeRemaining,
+          freeRemaining: 0,
           paidCredits: creditCheck.paidCredits,
         },
         402
@@ -2725,7 +2731,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
     }
 
     // Consume credit before calling AI
-    const consumedKind = await consumeDeviceCredit(env, deviceId);
+    const consumedKind = await consumeDeviceCredit(env, deviceId, { allowFree: !freeTierConsumedOnDevice });
     if (!consumedKind) {
       return jsonResponse(
         {
@@ -2781,6 +2787,14 @@ One reply only: concise parameter assessment and dosing/husbandry recommendation
       console.log('AI usage: input=' + aiResult.usage.input + ' output=' + aiResult.usage.output + ' stop_reason=' + aiResult.stopReason);
     }
     const aiResponse = aiResult.text;
+
+    // Last free analysis on this device: remember it on the device itself (survives reinstalls).
+    if (consumedKind === 'free' && deviceToken && isDeviceCheckConfigured(env)) {
+      const afterConsume = await checkDeviceCredits(env, deviceId);
+      if (afterConsume.freeRemaining <= 0) {
+        await markDeviceFreeTierConsumed(env, deviceToken, isDevelopment);
+      }
+    }
 
     // Get updated credit balance
     const updatedCredits = await checkDeviceCredits(env, deviceId);

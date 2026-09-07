@@ -1,15 +1,15 @@
 /**
- * Deterministic, offline stand-in for the Anthropic call through Cloudflare AI Gateway.
+ * Deterministic, offline stand-in for every outbound request the Worker makes.
  *
  * Tests and the Worker run in one isolate under the Vitest plugin, so spying on the global `fetch`
- * intercepts the Worker's outbound gateway request. `SELF.fetch` is a service binding and is not
- * affected. Any outbound fetch to another origin throws, which keeps the suite hermetic: no test
- * can reach Anthropic, Apple, or anything else by accident.
+ * intercepts the Worker's outbound calls (AI Gateway, Apple DeviceCheck). `SELF.fetch` is a service
+ * binding and is not affected. Any outbound fetch to an origin without a handler throws, which
+ * keeps the suite hermetic: no test can reach Anthropic, Apple, or anything else by accident.
  *
  * Usage (top level of a test file):
- *   installGatewayMock(successReply("Parameters look fine."));   // default reply for every call
- *   ...
- *   queueGatewayReply(500, {});   // one-off reply for the next call, consumed in order
+ *   installGatewayMock(successReply("Parameters look fine."));   // default AI reply for every call
+ *   queueGatewayReply(500, {});                                   // one-off reply for the next AI call
+ *   mockOrigin("https://api.devicecheck.apple.com", (req) => ...) // any other origin
  */
 import { afterEach, vi } from "vitest";
 
@@ -37,28 +37,40 @@ export function successReply(text: string, extra: Record<string, unknown> = {}):
   };
 }
 
+type OriginHandler = (request: Request) => Promise<Response> | Response;
+
 let defaultReply: GatewayReply | null = null;
 const queue: GatewayReply[] = [];
 let calls = 0;
 let installed = false;
+const originHandlers = new Map<string, OriginHandler>();
 
-export function installGatewayMock(reply: GatewayReply | null = successReply("Parameters look fine.")): void {
-  defaultReply = reply;
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(typeof body === "string" ? body : JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function ensureInstalled(): void {
   if (installed) return;
   installed = true;
 
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (!url.startsWith(GATEWAY_ORIGIN)) {
-      throw new Error("Unexpected outbound fetch in test (suite must stay offline): " + url);
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init);
+    const origin = new URL(request.url).origin;
+
+    if (origin === GATEWAY_ORIGIN) {
+      calls++;
+      const next = queue.shift() ?? defaultReply;
+      if (!next) throw new Error("No mocked gateway reply available; queue one with queueGatewayReply()");
+      return jsonResponse(next.status, next.body);
     }
-    calls++;
-    const next = queue.shift() ?? defaultReply;
-    if (!next) throw new Error("No mocked gateway reply available; queue one with queueGatewayReply()");
-    return new Response(JSON.stringify(next.body), {
-      status: next.status,
-      headers: { "content-type": "application/json" },
-    });
+
+    const handler = originHandlers.get(origin);
+    if (handler) return handler(request);
+
+    throw new Error("Unexpected outbound fetch in test (suite must stay offline): " + request.url);
   });
 
   afterEach(() => {
@@ -67,6 +79,12 @@ export function installGatewayMock(reply: GatewayReply | null = successReply("Pa
     calls = 0;
     if (pending > 0) throw new Error(pending + " queued gateway replies were never consumed");
   });
+}
+
+/** Install the fetch spy with a default AI Gateway reply (null = every call must be queued). */
+export function installGatewayMock(reply: GatewayReply | null = successReply("Parameters look fine.")): void {
+  defaultReply = reply;
+  ensureInstalled();
 }
 
 /** Reply for the next gateway call only (consumed in order before the default). */
@@ -83,3 +101,11 @@ export function setDefaultGatewayReply(reply: GatewayReply | null): void {
 export function gatewayCallCount(): number {
   return calls;
 }
+
+/** Route every outbound request to `origin` through `handler` (for the rest of the file). */
+export function mockOrigin(origin: string, handler: OriginHandler): void {
+  ensureInstalled();
+  originHandlers.set(new URL(origin).origin, handler);
+}
+
+export { jsonResponse as mockJsonResponse };
