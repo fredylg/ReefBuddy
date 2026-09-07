@@ -41,8 +41,9 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
-# Claude IDE settings
-.claude/
+# Claude Code: keep the shared agent definitions, ignore local settings
+.claude/*
+!.claude/agents/
 
 # Security - Private keys (NEVER commit these!)
 *.p8

@@ -1,0 +1,53 @@
+#!/bin/bash
+# Pre-commit hook for ReefBuddy project
+# Ensures Xcode project integrity before allowing commits
+
+set -e
+
+echo "🔍 Running pre-commit validation..."
+
+# Check if Xcode project file exists and is valid
+if [ -f "iOS/ReefBuddy.xcodeproj/project.pbxproj" ]; then
+    echo "✅ Xcode project file exists"
+
+    # Validate plist syntax
+    if ! plutil -lint "iOS/ReefBuddy.xcodeproj/project.pbxproj" > /dev/null 2>&1; then
+        echo "❌ ERROR: Xcode project file has invalid syntax!"
+        echo "Run: plutil -lint iOS/ReefBuddy.xcodeproj/project.pbxproj"
+        exit 1
+    fi
+    echo "✅ Xcode project file syntax is valid"
+
+    # Check for UUID collisions
+    DUPLICATES=$(grep "8A1B2C3D000000" "iOS/ReefBuddy.xcodeproj/project.pbxproj" | sort | uniq -d)
+    if [ -n "$DUPLICATES" ]; then
+        echo "❌ ERROR: UUID collisions found in Xcode project!"
+        echo "Duplicate UUIDs:"
+        echo "$DUPLICATES"
+        echo ""
+        echo "Fix UUID collisions before committing. See .cursorrules for details."
+        exit 1
+    fi
+    echo "✅ No UUID collisions detected"
+
+    # Verify all Swift files are referenced
+    SWIFT_FILES=$(find iOS/ReefBuddy/Sources -name "*.swift" 2>/dev/null | wc -l)
+    SWIFT_REFS=$(grep -c "\.swift" "iOS/ReefBuddy.xcodeproj/project.pbxproj" || true)
+    SWIFT_REFS=$((SWIFT_REFS / 2))  # Divide by 2 since each file has 2 references
+
+    if [ "$SWIFT_FILES" -ne "$SWIFT_REFS" ]; then
+        echo "⚠️  WARNING: Swift file count mismatch!"
+        echo "Files in Sources/: $SWIFT_FILES"
+        echo "References in pbxproj: $SWIFT_REFS"
+        echo ""
+        echo "This may be okay, but verify with ./verify-xcode-project.sh"
+    fi
+
+else
+    echo "⚠️  WARNING: Xcode project file not found"
+    echo "Expected: iOS/ReefBuddy.xcodeproj/project.pbxproj"
+fi
+
+echo "🟢 Pre-commit validation passed!"
+echo ""
+echo "Remember to run ./verify-xcode-project.sh after any iOS changes."

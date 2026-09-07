@@ -1,6 +1,6 @@
 {
   "name": "reefbuddy",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "High-contrast, New Brutalist iOS app for saltwater aquarium hobbyists",
   "type": "module",
   "main": "src/index.ts",
@@ -15,7 +15,8 @@
     "db:migrate": "wrangler d1 migrations apply reef-db --local --env dev",
     "db:migrate:remote": "wrangler d1 migrations apply reef-db --remote",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "deploy:web": "wrangler pages deploy web --project-name reefbuddy-web"
   },
   "keywords": [
     "cloudflare-workers",
@@ -23,8 +24,8 @@
     "reef",
     "water-chemistry"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Fredy Lievano (Aethers)",
+  "license": "UNLICENSED",
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.1.4",
     "prettier": "^3.9.6",
@@ -38,5 +39,6 @@
     "jose": "^6.2.12",
     "reflect-metadata": "^0.2.2",
     "zod": "^4.5.4"
-  }
+  },
+  "private": true
 }

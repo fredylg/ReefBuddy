@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to capture and process App Store screenshots from iOS Simulator
-# Usage: ./capture-app-screenshots.sh [simulator-name] [view-name]
+# Usage: ./scripts/capture-app-screenshots.sh [simulator-name] [view-name]
 
 set -e
 
@@ -11,12 +11,25 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # App Store screenshot sizes (width x height)
-declare -A SCREENSHOT_SIZES=(
-    ["iphone_67_portrait"]="1284x2778"
-    ["iphone_67_landscape"]="2778x1284"
-    ["iphone_65_portrait"]="1242x2688"
-    ["iphone_65_landscape"]="2688x1242"
+# key=WIDTHxHEIGHT pairs (plain array: macOS ships bash 3.2, which has no associative arrays)
+SCREENSHOT_SIZES=(
+    "iphone_67_portrait=1284x2778"
+    "iphone_67_landscape=2778x1284"
+    "iphone_65_portrait=1242x2688"
+    "iphone_65_landscape=2688x1242"
 )
+
+# size_for KEY -> WIDTHxHEIGHT
+size_for() {
+    local entry
+    for entry in "${SCREENSHOT_SIZES[@]}"; do
+        if [ "${entry%%=*}" = "$1" ]; then
+            echo "${entry#*=}"
+            return 0
+        fi
+    done
+    return 1
+}
 
 OUTPUT_DIR="assets/upload-store/real-screenshots"
 SIMULATOR_NAME="${1:-iPhone 15 Pro Max}"
@@ -77,7 +90,8 @@ echo ""
 process_screenshot() {
     local input_file="$1"
     local size_key="$2"
-    local size="${SCREENSHOT_SIZES[$size_key]}"
+    local size
+    size=$(size_for "$size_key")
     local width=$(echo $size | cut -d'x' -f1)
     local height=$(echo $size | cut -d'x' -f2)
     local output_file="$OUTPUT_DIR/${size_key}_${VIEW_NAME}.png"
@@ -123,8 +137,8 @@ read -p "Screenshot file path (or Enter to skip): " screenshot_path
 
 if [ -n "$screenshot_path" ] && [ -f "$screenshot_path" ]; then
     # Process for each required size
-    for size_key in "${!SCREENSHOT_SIZES[@]}"; do
-        process_screenshot "$screenshot_path" "$size_key"
+    for entry in "${SCREENSHOT_SIZES[@]}"; do
+        process_screenshot "$screenshot_path" "${entry%%=*}"
     done
     echo ""
     echo -e "${GREEN}✅ Screenshots processed!${NC}"
@@ -133,7 +147,7 @@ else
     echo -e "${YELLOW}⏭ Skipping processing.${NC}"
     echo ""
     echo "To process screenshots later, run:"
-    echo "  ./capture-app-screenshots.sh"
+    echo "  ./scripts/capture-app-screenshots.sh"
     echo ""
     echo "Or manually resize screenshots using:"
     echo "  sips -z 2778 1284 input.png --out output.png"
@@ -172,7 +186,7 @@ echo "2. Run this script again with screenshot path, OR"
 echo "3. Use the helper script: $OUTPUT_DIR/resize-screenshots.sh <screenshot.png>"
 echo ""
 echo "Required App Store screenshot sizes:"
-for size_key in "${!SCREENSHOT_SIZES[@]}"; do
-    echo "  - $size_key: ${SCREENSHOT_SIZES[$size_key]}"
+for entry in "${SCREENSHOT_SIZES[@]}"; do
+    echo "  - ${entry%%=*}: ${entry#*=}"
 done
 echo ""

@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration - Use main worker URL
-WORKER_URL="https://reefbuddy.fredylg.workers.dev"
+WORKER_URL="${1:-https://api.reefbuddy.aethers.com.au}"
 TEST_DEVICE_ID="test-device-12345"
 
 # Test counter
