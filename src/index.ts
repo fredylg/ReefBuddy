@@ -76,33 +76,27 @@ function getAllHeaders(corsHeaders: Record<string, string>): Record<string, stri
 /**
  * Environment bindings for the Worker
  */
-export interface Env {
-  // D1 Database for persistent storage
-  DB: D1Database;
-
-  // KV Namespace for session tracking
-  REEF_KV: KVNamespace;
-
-  // Environment variables
-  ENVIRONMENT: string;
+/**
+ * Worker bindings. The binding names and types come from `worker-configuration.d.ts`, which is
+ * generated from wrangler.toml by `npm run types` (rerun after changing wrangler.toml or .dev.vars).
+ * Only the fields whose generated type is too loose (AI_GATEWAY) or wrongly required (optional
+ * secrets/vars) are re-declared here.
+ */
+export interface Env
+  extends Omit<
+    Cloudflare.Env,
+    'AI_GATEWAY' | 'ALLOW_SANDBOX_PURCHASES' | 'CF_AI_GATEWAY_TOKEN' | 'APPLE_KEY_ID' | 'APPLE_PRIVATE_KEY' | 'APPLE_TEAM_ID'
+  > {
+  /** AI Gateway configuration (table-valued var; flattened to AI_GATEWAY_ID in P3-25) */
+  AI_GATEWAY: { gateway_id: string };
   /** Set to 'true' to accept Sandbox/Xcode StoreKit transactions in production (TestFlight). Default: Production only. */
   ALLOW_SANDBOX_PURCHASES?: string;
-  FREE_ANALYSIS_LIMIT: string;
-  CF_ACCOUNT_ID: string;
-
-  // Secrets (set via wrangler secret)
-  ANTHROPIC_API_KEY: string;
-  CF_AI_GATEWAY_TOKEN?: string; // Optional: AI Gateway authentication token
-
-  // Apple DeviceCheck secrets (optional - set via wrangler secret)
+  /** Optional: AI Gateway authentication token */
+  CF_AI_GATEWAY_TOKEN?: string;
+  /** Apple DeviceCheck secrets (optional; DeviceCheck is skipped when unset outside production) */
   APPLE_KEY_ID?: string;
   APPLE_PRIVATE_KEY?: string;
   APPLE_TEAM_ID?: string;
-
-  // AI Gateway configuration
-  AI_GATEWAY: {
-    gateway_id: string;
-  };
 }
 
 /**
@@ -162,7 +156,7 @@ const WaterParametersSchema = z
   )
   .superRefine((data, ctx) => {
     const add = (path: (string | number)[], message: string) =>
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path });
+      ctx.addIssue({ code: 'custom', message, path });
 
     if (data.ph != null && (data.ph < 7.8 || data.ph > 8.6)) {
       add(['ph'], 'pH must be between 7.8 and 8.6');
@@ -194,7 +188,7 @@ const WaterParametersSchema = z
  * Schema for analysis request
  */
 const AnalysisRequestSchema = z.object({
-  tankId: z.string().uuid(),
+  tankId: z.uuid(),
   parameters: WaterParametersSchema,
   tankVolume: z.number().positive().describe('Tank volume in gallons'),
 });
@@ -203,7 +197,7 @@ const AnalysisRequestSchema = z.object({
  * Schema for user signup request
  */
 const SignupRequestSchema = z.object({
-  email: z.string().email().max(255),
+  email: z.email().max(255),
   password: z.string().min(8).max(128),
 });
 
@@ -211,7 +205,7 @@ const SignupRequestSchema = z.object({
  * Schema for user login request
  */
 const LoginRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string(),
 });
 
@@ -222,7 +216,7 @@ const LoginRequestSchema = z.object({
  */
 const CreateMeasurementSchema = z
   .object({
-    tank_id: z.string().uuid(),
+    tank_id: z.uuid(),
     ph: z.coerce.number().optional(),
     alkalinity: z.coerce.number().optional(),
     calcium: z.coerce.number().optional(),
@@ -234,7 +228,7 @@ const CreateMeasurementSchema = z
     temperature: z.coerce.number().optional(),
     ammonia: z.coerce.number().optional(),
     nitrite: z.coerce.number().optional(),
-    measured_at: z.string().datetime().optional(),
+    measured_at: z.iso.datetime().optional(),
     notes: z.string().optional(),
   })
   .refine(
@@ -281,7 +275,7 @@ const TimeLocalSchema = z
 
 const MaintenanceScheduleCreateSchema = z
   .object({
-    tankId: z.string().uuid(),
+    tankId: z.uuid(),
     type: MaintenanceScheduleTypeEnum,
     enabled: z.boolean().optional().default(true),
     scheduleKind: MaintenanceScheduleKindEnum,
@@ -295,14 +289,14 @@ const MaintenanceScheduleCreateSchema = z
     if (data.scheduleKind === 'interval_days') {
       if (data.intervalDays == null) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'intervalDays is required when scheduleKind=interval_days',
           path: ['intervalDays'],
         });
       }
       if (data.weekdays != null) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'weekdays is not allowed when scheduleKind=interval_days',
           path: ['weekdays'],
         });
@@ -313,14 +307,14 @@ const MaintenanceScheduleCreateSchema = z
     // weekly
     if (data.weekdays == null || data.weekdays.length === 0) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'weekdays is required when scheduleKind=weekly',
         path: ['weekdays'],
       });
     }
     if (data.intervalDays != null) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'intervalDays is not allowed when scheduleKind=weekly',
         path: ['intervalDays'],
       });
@@ -329,7 +323,7 @@ const MaintenanceScheduleCreateSchema = z
 
 const MaintenanceScheduleUpdateSchema = z
   .object({
-    tankId: z.string().uuid().optional(),
+    tankId: z.uuid().optional(),
     type: MaintenanceScheduleTypeEnum.optional(),
     enabled: z.boolean().optional(),
     scheduleKind: MaintenanceScheduleKindEnum.optional(),
@@ -347,7 +341,7 @@ const MaintenanceScheduleUpdateSchema = z
     if (kind === 'interval_days') {
       if (data.weekdays != null) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'weekdays is not allowed when scheduleKind=interval_days',
           path: ['weekdays'],
         });
@@ -358,7 +352,7 @@ const MaintenanceScheduleUpdateSchema = z
     if (kind === 'weekly') {
       if (data.intervalDays != null) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'intervalDays is not allowed when scheduleKind=weekly',
           path: ['intervalDays'],
         });
@@ -368,7 +362,7 @@ const MaintenanceScheduleUpdateSchema = z
 
     if (data.intervalDays != null && data.weekdays != null) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'Provide only one of intervalDays or weekdays',
         path: ['intervalDays'],
       });
@@ -377,16 +371,16 @@ const MaintenanceScheduleUpdateSchema = z
 
 const WaterChangeCreateSchema = z
   .object({
-    performedAt: z.string().datetime().optional(),
+    performedAt: z.iso.datetime().optional(),
     percentReplaced: z.coerce.number().positive().max(100).optional(),
     gallonsReplaced: z.coerce.number().positive().optional(),
     notes: z.string().max(10000).optional(),
-    sourceScheduleId: z.string().uuid().optional(),
+    sourceScheduleId: z.uuid().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.percentReplaced == null && data.gallonsReplaced == null) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'percentReplaced or gallonsReplaced is required',
         path: ['percentReplaced'],
       });
@@ -419,8 +413,8 @@ const CreditBalanceSchema = z.object({
  * Schema for historical data query parameters
  */
 const HistoryQuerySchema = z.object({
-  start: z.string().datetime().describe('Start date in ISO 8601 format'),
-  end: z.string().datetime().describe('End date in ISO 8601 format'),
+  start: z.iso.datetime().describe('Start date in ISO 8601 format'),
+  end: z.iso.datetime().describe('End date in ISO 8601 format'),
 });
 
 /**
@@ -442,8 +436,8 @@ const AveragesQuerySchema = z.object({
  * Schema for CSV export query parameters
  */
 const ExportQuerySchema = z.object({
-  start: z.string().datetime().describe('Start date in ISO 8601 format'),
-  end: z.string().datetime().describe('End date in ISO 8601 format'),
+  start: z.iso.datetime().describe('Start date in ISO 8601 format'),
+  end: z.iso.datetime().describe('End date in ISO 8601 format'),
 });
 
 // =============================================================================
@@ -473,12 +467,12 @@ const LivestockCreateSchema = z.object({
   species: z.string().max(255).optional().describe('Scientific or common species name'),
   category: LivestockCategoryEnum.describe('Type of livestock: SPS, LPS, Soft, Fish, or Invertebrate'),
   quantity: z.number().int().min(1).default(1).describe('Number of individuals'),
-  purchaseDate: z.string().datetime().optional().describe('Date of purchase in ISO 8601 format'),
+  purchaseDate: z.iso.datetime().optional().describe('Date of purchase in ISO 8601 format'),
   purchasePrice: z.number().min(0).optional().describe('Purchase price'),
   healthStatus: HealthStatusEnum.optional().default('healthy').describe('Current health status'),
   notes: z.string().max(2000).optional().describe('Additional notes or observations'),
-  imageUrl: z.string().url().max(2048).optional().describe('URL to livestock image'),
-  id: z.string().uuid().optional().describe('Optional livestock ID (for retroactive compatibility with local-only livestock)'),
+  imageUrl: z.url().max(2048).optional().describe('URL to livestock image'),
+  id: z.uuid().optional().describe('Optional livestock ID (for retroactive compatibility with local-only livestock)'),
 });
 
 /**
@@ -489,11 +483,11 @@ const LivestockUpdateSchema = z.object({
   species: z.string().max(255).optional().describe('Scientific or common species name'),
   category: LivestockCategoryEnum.optional().describe('Type of livestock'),
   quantity: z.number().int().min(0).optional().describe('Number of individuals (0 for deceased)'),
-  purchaseDate: z.string().datetime().optional().describe('Date of purchase in ISO 8601 format'),
+  purchaseDate: z.iso.datetime().optional().describe('Date of purchase in ISO 8601 format'),
   purchasePrice: z.number().min(0).optional().describe('Purchase price'),
   healthStatus: HealthStatusEnum.optional().describe('Current health status'),
   notes: z.string().max(2000).optional().describe('Additional notes or observations'),
-  imageUrl: z.string().url().max(2048).optional().describe('URL to livestock image'),
+  imageUrl: z.url().max(2048).optional().describe('URL to livestock image'),
 });
 
 /**
@@ -502,7 +496,7 @@ const LivestockUpdateSchema = z.object({
 const LivestockLogSchema = z.object({
   logType: LogTypeEnum.describe('Type of log entry: feeding, observation, treatment, or death'),
   description: z.string().max(2000).optional().describe('Details about the event'),
-  loggedAt: z.string().datetime().optional().describe('When the event occurred (defaults to now)'),
+  loggedAt: z.iso.datetime().optional().describe('When the event occurred (defaults to now)'),
 });
 
 // Export schemas for external use
@@ -565,6 +559,18 @@ function errorResponse(error: string, message: string, status: number): Response
       ...SECURITY_HEADERS,
     },
   });
+}
+
+/**
+ * Parse a JSON request body. Malformed JSON is a client error (400), never a 500.
+ * Usage: const parsed = await readJson(request); if (!parsed.ok) return parsed.response;
+ */
+async function readJson(request: Request): Promise<{ ok: true; body: unknown } | { ok: false; response: Response }> {
+  try {
+    return { ok: true, body: await request.json() };
+  } catch {
+    return { ok: false, response: jsonResponse({ error: 'Invalid JSON', message: 'Request body is not valid JSON' }, 400) };
+  }
 }
 
 // =============================================================================
@@ -1347,14 +1353,16 @@ async function getOrCreateDeviceUser(
  */
 async function handleSignup(request: Request, env: Env): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const validationResult = SignupRequestSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -1414,14 +1422,16 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
  */
 async function handleLogin(request: Request, env: Env): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const validationResult = LoginRequestSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -1554,9 +1564,9 @@ async function handleListTanks(
       'SELECT * FROM tanks WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
       .bind(userId)
-      .all();
+      .all<TankRecord>();
 
-    const tanks = result.results as TankRecord[];
+    const tanks = result.results;
 
     return jsonResponse({
       success: true,
@@ -1636,14 +1646,16 @@ async function handleCreateTank(
   deviceId: string | null
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const validationResult = TankCreateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -1727,14 +1739,18 @@ async function handleUpdateTank(
       return errorResponse('Not found', 'Tank not found', 404);
     }
 
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.body;
 
     const validationResult = TankUpdateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -1918,10 +1934,10 @@ async function handleListMaintenanceSchedules(
     const tankId = url.searchParams.get('tankId');
 
     if (tankId) {
-      const parsed = z.string().uuid().safeParse(tankId);
+      const parsed = z.uuid().safeParse(tankId);
       if (!parsed.success) {
         return jsonResponse(
-          { error: 'Validation failed', details: parsed.error.flatten() },
+          { error: 'Validation failed', details: z.flattenError(parsed.error) },
           400
         );
       }
@@ -1935,9 +1951,9 @@ async function handleListMaintenanceSchedules(
          ORDER BY created_at DESC`
       )
         .bind(auth.userId, tankResult.id)
-        .all();
+        .all<MaintenanceScheduleRecord>();
 
-      const schedules = (result.results as MaintenanceScheduleRecord[]).map(scheduleRecordToApi);
+      const schedules = result.results.map(scheduleRecordToApi);
       return jsonResponse({ success: true, schedules });
     }
 
@@ -1947,9 +1963,9 @@ async function handleListMaintenanceSchedules(
        ORDER BY created_at DESC`
     )
       .bind(auth.userId)
-      .all();
+      .all<MaintenanceScheduleRecord>();
 
-    const schedules = (result.results as MaintenanceScheduleRecord[]).map(scheduleRecordToApi);
+    const schedules = result.results.map(scheduleRecordToApi);
     return jsonResponse({ success: true, schedules });
   } catch (error) {
     console.error('List maintenance schedules error:', error);
@@ -1970,11 +1986,13 @@ async function handleCreateMaintenanceSchedule(
   auth: AuthenticatedContext
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
     const validationResult = MaintenanceScheduleCreateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
-        { error: 'Validation failed', details: validationResult.error.flatten() },
+        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
         400
       );
     }
@@ -2042,11 +2060,15 @@ async function handleUpdateMaintenanceSchedule(
       return errorResponse('Not found', 'Schedule not found', 404);
     }
 
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.body;
     const validationResult = MaintenanceScheduleUpdateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
-        { error: 'Validation failed', details: validationResult.error.flatten() },
+        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
         400
       );
     }
@@ -2248,11 +2270,13 @@ async function handleCreateWaterChange(
   tankId: string
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
     const validationResult = WaterChangeCreateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
-        { error: 'Validation failed', details: validationResult.error.flatten() },
+        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
         400
       );
     }
@@ -2331,7 +2355,7 @@ async function handleListWaterChanges(
     });
     if (!validationResult.success) {
       return jsonResponse(
-        { error: 'Validation failed', details: validationResult.error.flatten() },
+        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
         400
       );
     }
@@ -2419,7 +2443,7 @@ async function handleCreateMeasurement(
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -2547,7 +2571,7 @@ const AnalysisRequestWithDeviceSchema = z.object({
     .nullish()
     .transform((v) => v ?? false)
     .describe('Use DeviceCheck sandbox environment'),
-  tankId: z.string().uuid(),
+  tankId: z.uuid(),
   parameters: WaterParametersSchema,
   tankVolume: z.coerce.number().positive().describe('Tank volume in gallons'),
   temperatureUnit: z
@@ -2578,31 +2602,9 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
       );
     }
 
-    // Log request body for debugging (including notes field)
-    console.log('🔬 Analysis request received from:', request.headers.get('User-Agent') || 'unknown');
-    let body;
-    try {
-      const text = await request.text();
-      console.log('🔬 Raw request body:', text);
-      body = JSON.parse(text);
-      console.log('🔬 Request body parsed successfully, keys:', Object.keys(body));
-      console.log('🔬 Full request body:', JSON.stringify(body, null, 2));
-      // Specifically log notes if present
-      if (body.parameters?.notes) {
-        console.log('🔬 Notes field present:', body.parameters.notes);
-      } else {
-        console.log('🔬 Notes field: not present or empty');
-      }
-    } catch (parseError) {
-      console.error('🔬 JSON parsing failed:', parseError);
-      return jsonResponse(
-        {
-          error: 'Invalid JSON',
-          message: 'Request body is not valid JSON.',
-        },
-        400
-      );
-    }
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const validationResult = AnalysisRequestWithDeviceSchema.safeParse(body);
     if (!validationResult.success) {
@@ -2614,7 +2616,7 @@ async function handleAnalysis(request: Request, env: Env): Promise<Response> {
         {
           error: 'Validation failed',
           message: summary || 'Request body did not match the expected format.',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3194,7 +3196,7 @@ async function handleCreditsPurchase(request: Request, env: Env): Promise<Respon
         {
           error: 'Validation failed',
           message: 'Request must include deviceId, productId and a StoreKit 2 jwsRepresentation',
-          details: parsed.error.flatten(),
+          details: z.flattenError(parsed.error),
         },
         400
       );
@@ -3346,7 +3348,7 @@ async function handleGetHistory(
         {
           error: 'Validation failed',
           message: 'start and end query parameters are required in ISO 8601 format',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3404,7 +3406,7 @@ async function handleGetTrends(
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3460,7 +3462,7 @@ async function handleGetAverages(
         {
           error: 'Validation failed',
           message: 'period query parameter is required (daily or weekly)',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3524,7 +3526,7 @@ async function handleExportCSV(
         {
           error: 'Validation failed',
           message: 'start and end query parameters are required in ISO 8601 format',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3572,14 +3574,16 @@ async function handleRegisterPushToken(
   auth: AuthenticatedContext
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const validationResult = RegisterTokenSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3621,7 +3625,9 @@ async function handleUnregisterPushToken(
   auth: AuthenticatedContext
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const tokenSchema = z.object({ token: z.string().min(1) });
     const validationResult = tokenSchema.safeParse(body);
@@ -3629,7 +3635,7 @@ async function handleUnregisterPushToken(
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3725,14 +3731,16 @@ async function handleUpdateNotificationSettings(
   auth: AuthenticatedContext
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const validationResult = UpdateSettingsSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3815,7 +3823,7 @@ async function handleGetNotificationHistory(
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3870,10 +3878,12 @@ async function handleMarkNotificationsRead(
   auth: AuthenticatedContext
 ): Promise<Response> {
   try {
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.body;
 
     const markReadSchema = z.object({
-      notificationIds: z.array(z.string().uuid()).optional(),
+      notificationIds: z.array(z.uuid()).optional(),
     });
 
     const validationResult = markReadSchema.safeParse(body);
@@ -3881,7 +3891,7 @@ async function handleMarkNotificationsRead(
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -3999,13 +4009,17 @@ async function handleCreateLivestock(
       return tankResult;
     }
 
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.body;
     const validationResult = LivestockCreateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -4124,9 +4138,9 @@ async function handleListLivestock(
       `SELECT * FROM livestock WHERE LOWER(tank_id) = ? AND deleted_at IS NULL ORDER BY added_at DESC`
     )
       .bind(normalizedTankId)
-      .all();
+      .all<LivestockRecord>();
 
-    const livestock = result.results as LivestockRecord[];
+    const livestock = result.results;
 
     return jsonResponse({
       success: true,
@@ -4175,14 +4189,18 @@ async function handleUpdateLivestock(
       return livestockResult;
     }
 
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.body;
 
     const validationResult = LivestockUpdateSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -4342,14 +4360,18 @@ async function handleCreateLivestockLog(
       return livestockResult;
     }
 
-    const body = await request.json();
+    const parsedBody = await readJson(request);
+
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const body = parsedBody.body;
 
     const validationResult = LivestockLogSchema.safeParse(body);
     if (!validationResult.success) {
       return jsonResponse(
         {
           error: 'Validation failed',
-          details: validationResult.error.flatten(),
+          details: z.flattenError(validationResult.error),
         },
         400
       );
@@ -4425,9 +4447,9 @@ async function handleGetLivestockLogs(
       `SELECT * FROM livestock_logs WHERE LOWER(livestock_id) = ? ORDER BY logged_at DESC`
     )
       .bind(normalizedLivestockId)
-      .all();
+      .all<LivestockLogRecord>();
 
-    const logs = result.results as LivestockLogRecord[];
+    const logs = result.results;
 
     return jsonResponse({
       success: true,
