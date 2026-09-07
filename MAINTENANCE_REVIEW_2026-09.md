@@ -133,7 +133,7 @@ The two headline findings:
 
 **B-28 · Low ·** `derSignatureToRaw` **mangles ~1/256 legitimate ES256 signatures** (any raw signature starting with `0x30`). `:3140-3143`. Fix: if `length === 64` use as-is. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-29 · Low · Malformed JSON → 500 instead of 400 across ~15 handlers; several lines have multiple statements merged (bad merge).** `:2483-2488,2504-2510,2599,3892-3901,4614,4727,5299-5302,5406-5418,5499-5501`. Fix: central `readJson()` helper + run Prettier. Recommended: YES → Decision: [ x] YES  [ ] NO **readJson() done 2026-09-07 (P2-05); Prettier pass pending (P5-03).**
+**B-29 · Low · Malformed JSON → 500 instead of 400 across ~15 handlers; several lines have multiple statements merged (bad merge).** `:2483-2488,2504-2510,2599,3892-3901,4614,4727,5299-5302,5406-5418,5499-5501`. Fix: central `readJson()` helper + run Prettier. Recommended: YES → Decision: [ x] YES  [ ] NO **readJson() done 2026-09-07 (P2-05); Prettier pass pending (P5-03).** **Done 2026-09-07 (P5-03, ff7d232: Prettier; malformed JSON → 400 via `readJson` in P3).**
 
 **B-30 · Low · Assorted small bugs:** soft-deleted livestock ID gives false 409 (`:4620-4657`); signup race → 500 not 409 (`:1439-1456`); `errorResponse` at `:5410` bypasses CORS pass; `historical.ts:225` "slope" is first-vs-last delta and `:271` runs 9 sequential queries; `v_weekly_averages` mixes Monday/Sunday week starts (`0006:463-483`); N+1 in `:4335`; no `AbortSignal` timeout on the gateway fetch (`:957`). Recommended: YES (bundle) → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
@@ -151,9 +151,9 @@ The two headline findings:
 
 **B-34 · Low · Remove unused symbols:** `getMonthlyAverages`, `getAllHeaders`, `CreditBalanceSchema`, `AnalysisRequestSchema` (`:193`), `ALLOWED_ORIGINS` fallback, `SessionData.created_at`, `APNsConfig`/`FCMConfig`. Add `noUnusedLocals` to tsconfig. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-35 · Low · Collapse the duplicate route families.** `/tanks/:id/livestock`, `/livestock/:id`, `/livestock/:id/logs`, `/measurements` (session-only) duplicate the `/api/...` versions the app uses. Keep `/api/`*, delete the rest. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-35 · Low · Collapse the duplicate route families.** `/tanks/:id/livestock`, `/livestock/:id`, `/livestock/:id/logs`, `/measurements` (session-only) duplicate the `/api/...` versions the app uses. Keep `/api/`*, delete the rest. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P5-01, 5355475).**
 
-**B-36 · Medium · Split** `src/index.ts` **(5,759 lines) into modules.** Proposed: `index.ts` (router only) · `env.ts` · `http.ts` · `schemas/`* · `auth/{session,devicecheck}.ts` · `ai/gateway.ts` · `credits/{store,storekit}.ts` · `routes/{auth,tanks,measurements,analysis,credits,maintenance,water-changes,livestock,notifications,history}.ts`. Do it *after* the bug fixes so the diff is reviewable. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-36 · Medium · Split** `src/index.ts` **(5,759 lines) into modules.** Proposed: `index.ts` (router only) · `env.ts` · `http.ts` · `schemas/`* · `auth/{session,devicecheck}.ts` · `ai/gateway.ts` · `credits/{store,storekit}.ts` · `routes/{auth,tanks,measurements,analysis,credits,maintenance,water-changes,livestock,notifications,history}.ts`. Do it *after* the bug fixes so the diff is reviewable. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P5-02, 5355475: 19 modules, `index.ts` 221 lines).**
 
 **B-37 · Medium · Normalise UUIDs to lowercase at the boundary and drop** `WHERE LOWER(id) = ?` (23 sites). Those comparisons defeat every index. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P3-29).**
 
@@ -209,7 +209,7 @@ The two headline findings:
 
 **I-05 · High · Livestock create/list/update decoding fails on every call.** `Livestock.swift:411-456`: `createdAt` required but server sends only `added_at`; `category` optionality differs across three duplicate `LivestockDBRecord` structs. Users see "Saved locally, but failed to sync" on every add. Fix: one DTO, optional `createdAt`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-06 · High · Health status and category enums don't match the backend.** iOS sends `thriving|stressed|declining|critical`; server accepts `healthy|sick|deceased|quarantine` → 400. `.anemone` and `.other` are silently sent as `Invertebrate`. Fix: extend server enums (preferred) or map in the DTO. **Live evidence:** all 81 livestock rows in production have `health_status = healthy`; no other value has ever been stored. Recommended: YES → Decision: [ x] YES  [ ] NO **Server side done 2026-09-07 (migration 0016); iOS DTO mapping in P4-06.**
+**I-06 · High · Health status and category enums don't match the backend.** iOS sends `thriving|stressed|declining|critical`; server accepts `healthy|sick|deceased|quarantine` → 400. `.anemone` and `.other` are silently sent as `Invertebrate`. Fix: extend server enums (preferred) or map in the DTO. **Live evidence:** all 81 livestock rows in production have `health_status = healthy`; no other value has ever been stored. Recommended: YES → Decision: [ x] YES  [ ] NO **Server side done 2026-09-07 (migration 0016); iOS DTO mapping in P4-06.** **Done 2026-09-07 (P3-02 follow-up ff9c3be + P4-06: server enums extended by migration 0016).**
 
 **I-07 · Medium ·** `Measurement.pH` **has no** `CodingKeys`**, so** `ph` **from the server decodes as nil.** `Measurement.swift:31`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
@@ -255,7 +255,7 @@ The two headline findings:
 
 **I-22 · Low · Weekly triggers omit** `timeZone`**; deep-link handler runs twice per tap.** `MaintenanceNotificationService.swift:105-121`, `ContentView.swift:32-40`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
-**I-23 · Medium ·** `NotificationSettingsView` **(550 lines) is unreachable and non-functional**: `@State` only, never persisted, sample history hardcoded, entry point commented out; the app never registers for remote notifications so the backend `/notifications/`* pipeline receives nothing, and `sendPushNotification` is a stub. Your call: see P-02. → Decision: [ x] YES wire it  [ ] NO delete it **Deferred to the push-notifications plan (see P-02).**
+**I-23 · Medium ·** `NotificationSettingsView` **(550 lines) is unreachable and non-functional**: `@State` only, never persisted, sample history hardcoded, entry point commented out; the app never registers for remote notifications so the backend `/notifications/`* pipeline receives nothing, and `sendPushNotification` is a stub. Your call: see P-02. → Decision: [ x] YES wire it  [ ] NO delete it **Deferred to the push-notifications plan (see P-02).** **Deferred 2026-09-07 (Phase 9: push notifications get a separate plan; view stays unreachable).**
 
 ---
 
@@ -279,17 +279,17 @@ The two headline findings:
 
 ## 11. iOS — modernisation (no user-visible change, reduces future breakage)
 
-**I-29 · Medium · Swift 6 readiness in Swift 5 mode.** Enable `SWIFT_STRICT_CONCURRENCY = complete`, fix the ~8 known blockers (`Task.detached` self capture, `UIDevice.current` inside `actor APIClient`, non-Sendable singletons `MaintenanceNotificationService`/`KeychainManager`/`ImageStorage`, `AppDelegate` isolation, `Timer.publish` in a View). Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-29 · Medium · Swift 6 readiness in Swift 5 mode.** Enable `SWIFT_STRICT_CONCURRENCY = complete`, fix the ~8 known blockers (`Task.detached` self capture, `UIDevice.current` inside `actor APIClient`, non-Sendable singletons `MaintenanceNotificationService`/`KeychainManager`/`ImageStorage`, `AppDelegate` isolation, `Timer.publish` in a View). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P6-01, 2068d34: 20 strict-concurrency warnings → 0).**
 
-**I-30 · Low · Flip** `SWIFT_VERSION` **to 6** after I-29. Your call. → Decision: [ x] YES  [ ] NO
+**I-30 · Low · Flip** `SWIFT_VERSION` **to 6** after I-29. Your call. → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P6-02, d253944: Swift 6 mode, zero warnings).**
 
-**I-31 · Low · Mechanical deprecation sweep**: 345× `.foregroundColor` → `.foregroundStyle`; `.navigationBarLeading/Trailing` → `.topBarLeading/Trailing` (7 sites); `NavigationLink(destination:)` → value-based; `sendAction(resignFirstResponder)` → `@FocusState`; `DispatchQueue.main.async` + completion handlers → async APIs. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-31 · Low · Mechanical deprecation sweep**: 345× `.foregroundColor` → `.foregroundStyle`; `.navigationBarLeading/Trailing` → `.topBarLeading/Trailing` (7 sites); `NavigationLink(destination:)` → value-based; `sendAction(resignFirstResponder)` → `@FocusState`; `DispatchQueue.main.async` + completion handlers → async APIs. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P6-03, 0ceb9e6; async notification APIs in P6-01).**
 
-**I-32 · Medium · Migrate** `ObservableObject`**/**`@Published`**/**`@EnvironmentObject` **to** `@Observable`**/**`@Environment`**.** iOS 17 floor allows it; fixes over-invalidation from `AppState` publishing seven arrays. Larger refactor. Your call. → Decision: [ x] YES  [ ] NO
+**I-32 · Medium · Migrate** `ObservableObject`**/**`@Published`**/**`@EnvironmentObject` **to** `@Observable`**/**`@Environment`**.** iOS 17 floor allows it; fixes over-invalidation from `AppState` publishing seven arrays. Larger refactor. Your call. → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P6-04, b101bc3).**
 
-**I-33 · Low · Storage:** `ObservableObject` **stores held as** `let` **in** `AppState` **(their** `@Published` **never drives views); unbounded measurement history in UserDefaults; every livestock save rewrites every photo to disk.** Move to JSON files in Application Support (or SwiftData); write photos only when changed. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-33 · Low · Storage:** `ObservableObject` **stores held as** `let` **in** `AppState` **(their** `@Published` **never drives views); unbounded measurement history in UserDefaults; every livestock save rewrites every photo to disk.** Move to JSON files in Application Support (or SwiftData); write photos only when changed. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P6-05, 1a8c691: `JSONFileStore` actor, one-time UserDefaults migration verified on the simulator).**
 
-**I-34 · Low · Replace hand-drawn** `Path` **charts (~300 lines in** `ChartView`**/**`HistoryView`**) with Swift Charts.** Your call. → Decision: [x ] YES  [ ] NO
+**I-34 · Low · Replace hand-drawn** `Path` **charts (~300 lines in** `ChartView`**/**`HistoryView`**) with Swift Charts.** Your call. → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P6-06, 5e58891).**
 
 ---
 
@@ -297,7 +297,7 @@ The two headline findings:
 
 ## 12. iOS — dead code and small bugs
 
-**I-35 · Medium · Delete unused files/views**: `AnalysisView.swift` (445 lines, never instantiated; `AnalysisResultSheet` duplicates it), `User.swift` + `KeychainManager.swift` (no login UI; see P-01), `AppIconGenerator.swift` from the shipping target, `BrutalistPicker`, `BrutalistIconButton`. Recommended: YES (except keep `KeychainManager` if I-11 uses it) → Decision: [ x] YES  [ ] NO **Adjusted for P-01 (b): `User.swift` and `KeychainManager.swift` are kept.**
+**I-35 · Medium · Delete unused files/views**: `AnalysisView.swift` (445 lines, never instantiated; `AnalysisResultSheet` duplicates it), `User.swift` + `KeychainManager.swift` (no login UI; see P-01), `AppIconGenerator.swift` from the shipping target, `BrutalistPicker`, `BrutalistIconButton`. Recommended: YES (except keep `KeychainManager` if I-11 uses it) → Decision: [ x] YES  [ ] NO **Adjusted for P-01 (b): `User.swift` and `KeychainManager.swift` are kept.** **Done 2026-09-07 (P6-07, 9c9e844; `User.swift`/`KeychainManager.swift` kept per P-01 b).**
 
 **I-36 · Low · Small bugs bundle**: unreachable `catch` blocks around a non-throwing `requestAnalysis` (`MeasurementEntryView.swift:552-601`); `hasAnyValue` ignores ammonia/nitrite (`:516-525`); stale-copy double PUT in `LivestockDetailView.swift:86-97`; `Double(volumeText)!` in `TankListView.swift:231`; "Last updated: Today" hardcoded; CSV escaping not RFC 4180 (`ExportView.swift:298`); dead state `isRefreshing`/`showingSubscription`; previews missing environment objects; `Tab.logWaterChange` duplicates the modal sheet. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 4).**
 
@@ -314,9 +314,9 @@ The two headline findings:
 
 **M-02 · Low · Migration 0015: drop redundant indexes** (4 overlapping on `measurements(tank_id, measured_at)`; 3 duplicating UNIQUE constraints), add `water_changes(source_schedule_id)` index, drop unused view `v_parameter_stats`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P3-26).**
 
-**M-03 · Low · Document that 0008 never existed** (confirmed via git history and the D1 comparison) and fix misleading headers (0006 says "0003"; 0011 says "skip locally"). Recommended: YES → Decision: [ x] YES  [ ] NO
+**M-03 · Low · Document that 0008 never existed** (confirmed via git history and the D1 comparison) and fix misleading headers (0006 says "0003"; 0011 says "skip locally"). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-01, 66a5cd5: `migrations/README.md`, 0006/0011 headers).**
 
-**M-04 · Low · Document "soft-delete only" and grep-guard** `DELETE FROM`**.** Recommended: YES → Decision: [x ] YES  [ ] NO
+**M-04 · Low · Document "soft-delete only" and grep-guard** `DELETE FROM`**.** Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P7-01, 66a5cd5: `npm run lint:migrations` in the deploy chain).**
 
 ---
 
@@ -334,7 +334,7 @@ The two headline findings:
 
 **T-05 · Low · Move** `devicecheck-production.test.ts` **to** `tests/e2e/` **excluded from default** `include`**; fix random-IP collisions (**`Math.random()` **in a /24 with a 10/min limit); remove unused imports; remove the phantom** `FREE_TIER_LIMIT` **binding.** Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**T-06 · Low · Rewrite** `tests/README.md` (describes a "3/month" limit and "Premium Bypass" that no longer exist). Recommended: YES → Decision: [ x] YES  [ ] NO
+**T-06 · Low · Rewrite** `tests/README.md` (describes a "3/month" limit and "Premium Bypass" that no longer exist). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-11, 66a5cd5).**
 
 ---
 
@@ -342,13 +342,13 @@ The two headline findings:
 
 ## 15. Documentation
 
-**X-01 · High · Fix** `CLAUDE.md` **and** `README.md`: model is Haiku 4.5 not "Claude 3.5 Sonnet"; deploy command; 38 iOS files not 28; regenerate the API endpoint table (`GET /tanks` does not exist; 20+ routes missing); iOS min version 17.0 not 18.0. Recommended: YES → Decision: [ x] YES  [ ] NO
+**X-01 · High · Fix** `CLAUDE.md` **and** `README.md`: model is Haiku 4.5 not "Claude 3.5 Sonnet"; deploy command; 38 iOS files not 28; regenerate the API endpoint table (`GET /tanks` does not exist; 20+ routes missing); iOS min version 17.0 not 18.0. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-02/P7-16, 66a5cd5).**
 
-**X-02 · Medium · Correct** `SECURITY_REMEDIATION_PLAN.md` **tracker**: H3 "fail-closed" is ticked but the rate limiter fails open; C3 "CORS restricted" but `*` is returned without `Origin`; M2/L2/L3 open. Then decide which open items survive (H1 prompt-injection hardening and H3 are worth it). Recommended: YES → Decision: [ x] YES  [ ] NO
+**X-02 · Medium · Correct** `SECURITY_REMEDIATION_PLAN.md` **tracker**: H3 "fail-closed" is ticked but the rate limiter fails open; C3 "CORS restricted" but `*` is returned without `Origin`; M2/L2/L3 open. Then decide which open items survive (H1 prompt-injection hardening and H3 are worth it). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-03, 66a5cd5; H3 actually fixed in 73b9688; tracker archived).**
 
-**X-03 · Low · Archive to** `docs/archive/`: `REQUIREMENTS.md`, `REQUIREMENT-ANSWERS.md`, `SECURITY_AUDIT.md`, `MANUAL_TESTING_GUIDE.md`, `APP_ATTEST_IMPLEMENTATION_PLAN.md` (0% implemented; backlog), `MAINTENANCE_SCHEDULES_PLAN.md` (implemented), `PLAN.md`, `iOS/SETUP.md`, `iOS/VERIFICATION.md`. Keep `AI_GATEWAY_AUTH_SETUP.md` (accurate). Recommended: YES → Decision: [ x] YES  [ ] NO
+**X-03 · Low · Archive to** `docs/archive/`: `REQUIREMENTS.md`, `REQUIREMENT-ANSWERS.md`, `SECURITY_AUDIT.md`, `MANUAL_TESTING_GUIDE.md`, `APP_ATTEST_IMPLEMENTATION_PLAN.md` (0% implemented; backlog), `MAINTENANCE_SCHEDULES_PLAN.md` (implemented), `PLAN.md`, `iOS/SETUP.md`, `iOS/VERIFICATION.md`. Keep `AI_GATEWAY_AUTH_SETUP.md` (accurate). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-04, d18311b).**
 
-**X-04 · Low · Website copy**: soften "Smart Alerts" (server push does not exist; only local reminders do); refresh privacy policy data inventory for schedules/water changes (still "January 2026"); verify `privacy@reefbuddy.app` / `support@reefbuddy.app` are real. Recommended: YES → Decision: [ x] YES  [ ] NO
+**X-04 · Low · Website copy**: soften "Smart Alerts" (server push does not exist; only local reminders do); refresh privacy policy data inventory for schedules/water changes (still "January 2026"); verify `privacy@reefbuddy.app` / `support@reefbuddy.app` are real. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-05, 66a5cd5) — mailbox check `privacy@`/`support@reefbuddy.app` still yours.**
 
 ---
 
@@ -356,15 +356,15 @@ The two headline findings:
 
 ## 16. Repo hygiene
 
-**H-01 · Low · Delete**: `test.txt`, `src/test.txt` (empty), `src/verification/tiktok*.txt` (Worker serves no static files), untracked `TEST_FAILURE_REPORT.md` (fully resolved), `D1_LOCAL_VS_REMOTE_COMPARISON.md`, `CLOUDFLARE_SECURITY_BACKFILL.md` (or archive), `.cursor/` (empty), `count-tables.sh` (stale). Recommended: YES → Decision: [ x] YES  [ ] NO
+**H-01 · Low · Delete**: `test.txt`, `src/test.txt` (empty), `src/verification/tiktok*.txt` (Worker serves no static files), untracked `TEST_FAILURE_REPORT.md` (fully resolved), `D1_LOCAL_VS_REMOTE_COMPARISON.md`, `CLOUDFLARE_SECURITY_BACKFILL.md` (or archive), `.cursor/` (empty), `count-tables.sh` (stale). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-06, d18311b).**
 
 **H-02 · Low ·** `web/tiktok*.txt`: commit if the TikTok developer app is still wanted, otherwise delete. Your call. **Live evidence:** the file is already served at `https://reefbuddy.aethers.com.au/tiktok….txt` (200), so it was deployed from the working tree; the repo is behind the live site. Recommended: commit. → Decision: [ x] Commit  [ ] Delete
 
-**H-03 · Low · Fix** `.claude/` **tracking**: `.gitignore` ignores `.claude/` but four `agents/*.md` are tracked (edits show, new files won't). Add `!.claude/agents/` or `git rm --cached`. Recommended: YES (`!.claude/agents/`) → Decision: [x ] YES  [ ] NO
+**H-03 · Low · Fix** `.claude/` **tracking**: `.gitignore` ignores `.claude/` but four `agents/*.md` are tracked (edits show, new files won't). Add `!.claude/agents/` or `git rm --cached`. Recommended: YES (`!.claude/agents/`) → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P7-08, d18311b).**
 
-**H-04 · Low · Scripts**: move survivors to `scripts/`, parameterise the base URL (4 scripts hard-code the personal workers.dev host), delete `test-jws-validation.sh`/`test-iap-fix.sh` (target the deleted debug route), fix `capture-app-screenshots.sh` (bash 4 `declare -A` fails on macOS bash 3.2), version the pre-commit hook via `core.hooksPath`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**H-04 · Low · Scripts**: move survivors to `scripts/`, parameterise the base URL (4 scripts hard-code the personal workers.dev host), delete `test-jws-validation.sh`/`test-iap-fix.sh` (target the deleted debug route), fix `capture-app-screenshots.sh` (bash 4 `declare -A` fails on macOS bash 3.2), version the pre-commit hook via `core.hooksPath`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-09, d18311b).**
 
-**H-05 · Low ·** `package.json`: `"private": true`, fix `"license": "ISC"` on a proprietary app, `"author"`. Dedupe the pbxproj-protection rules (four copies across CLAUDE.md, README, iOS/README, .cursorrules) and the duplicate `StoreKit.plist`/`.storekit` pairs. Recommended: YES → Decision: [ x] YES  [ ] NO
+**H-05 · Low ·** `package.json`: `"private": true`, fix `"license": "ISC"` on a proprietary app, `"author"`. Dedupe the pbxproj-protection rules (four copies across CLAUDE.md, README, iOS/README, .cursorrules) and the duplicate `StoreKit.plist`/`.storekit` pairs. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-10, d18311b).**
 
 ---
 
@@ -453,7 +453,7 @@ Read-only inspection with your logged-in wrangler session: deployments, versions
 
 **CF-02 · Medium · Clean up the test purchases and credits in production.** 8 sandbox rows in `purchase_history` and 298 unpaid credits on 10 devices. Options: leave as-is (they are your own test devices), or zero the sandbox-derived `paid_credits` and delete the 8 rows once B-01 is deployed. Your call. → Decision: [ x] Clean  [ ] Leave **Resolved 2026-09-07: clean, but exclude the owner's test device (ID to be supplied before the cleanup task runs).** **Done 2026-09-07 (P1-15).**
 
-**CF-03 · Low · Prune the 105 probe-only** `device_credits` **rows** (no analyses, no purchases) after B-07 lands. Recommended: YES → Decision: [ x] YES  [ ] NO
+**CF-03 · Low · Prune the 105 probe-only** `device_credits` **rows** (no analyses, no purchases) after B-07 lands. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P1-16: 39 probe-only rows deleted, data change).**
 
 **CF-04 · Low · Delete orphan KV namespaces** `SESSIONS` **and** `SESSIONS_preview`**.** Empty, unreferenced. Recommended: YES → Decision: [ x] YES  [ ] NO
 
@@ -461,9 +461,9 @@ Read-only inspection with your logged-in wrangler session: deployments, versions
 
 **CF-06 · Medium · Add** `Strict-Transport-Security` **to the security headers** (`src/index.ts:56-57`). Both hosts serve without HSTS today. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**CF-07 · Low · Version the website deploy.** `reefbuddy-web` was pushed from a working tree that included the untracked TikTok file; add `npm run deploy:web` = `wrangler pages deploy web --project-name reefbuddy-web` and commit `web/tiktok*.txt` (H-02). Recommended: YES → Decision: [ x] YES  [ ] NO
+**CF-07 · Low · Version the website deploy.** `reefbuddy-web` was pushed from a working tree that included the untracked TikTok file; add `npm run deploy:web` = `wrangler pages deploy web --project-name reefbuddy-web` and commit `web/tiktok*.txt` (H-02). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-07, d18311b).**
 
-**CF-08 · Low · Enable D1 Time Travel awareness / take a backup before the fix batch.** `wrangler d1 export reef-db --remote --output backups/reef-db-2026-09-07.sql` before deploying B-01/B-16/B-20 and before any CF-02/CF-03 cleanup. Recommended: YES → Decision: [ x] YES  [ ] NO
+**CF-08 · Low · Enable D1 Time Travel awareness / take a backup before the fix batch.** `wrangler d1 export reef-db --remote --output backups/reef-db-2026-09-07.sql` before deploying B-01/B-16/B-20 and before any CF-02/CF-03 cleanup. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P0-02: `backups/` export before Phase 1; folder is git-ignored).**
 
 **CF-09 · Manual check (dashboard) · AI Gateway** `reefbuddy-ai-gateway`**.** Not reachable via wrangler. Please confirm in the dashboard: Authenticated Gateway is ON (the Worker sends `cf-aig-authorization`, A-06 context); caching is OFF for `/v1/messages` (each analysis is unique; a cache hit would return another tank's advice); logging retention and whether logs store request bodies (they contain user notes); rate limiting at the gateway; and the last-30-days request count and error rate to corroborate the ~2–7 analyses/month seen in D1. Report back and I fold it into the plan.
 → Checked: [x] Auth ON  [x] Cache OFF  [ ] Log bodies OFF (**it is ON**: "Collect Logs" stores request and response payloads, limit 100,000, delete oldest)  [ ] Rate limit set (**OFF**)   Confirmed from dashboard screenshots 2026-09-07. Analytics (last 30 days, checked 2026-09-07): 33 requests, 29.3k tokens, $0.07, 0 errors, 0 cached; 32 of them were the 2026-09-07 vitest run against the real gateway, so genuine app traffic was ~1 request in 30 days.

@@ -22,7 +22,7 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 5 | Backend structure | 4 | 4 | done (branch `maint/p5-structure`, live `e667dee4`) |
 | 6 | iOS modernisation | 8 | 7 | code complete (branch `maint/p6-ios`); **P6-08 TestFlight 1.0.8 is yours** |
 | 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 12 | branch `maint/p7-hygiene`; **P7-12/P7-13 need your go-ahead, P7-05 mailboxes and P7-14 WAF rule are yours** |
-| 8 | Final verification and handover | 5 | 0 | not started |
+| 8 | Final verification and handover | 5 | 3 | gates green; **P8-03 needs the deploy go-ahead** |
 | 9 | Deferred / declined (no work) | — | — | — |
 
 ## Standing rules for every task
@@ -256,11 +256,11 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 
 ## Phase 8 — Final verification and handover
 
-- [ ] **P8-01** Full backend gate: `npm run typecheck`, `npx vitest run` offline, `npm audit`, `wrangler deploy --dry-run` (prod and dev).
-- [ ] **P8-02** Full iOS gate: `./verify-xcode-project.sh`, Swift 6 build, simulator regression list.
-- [ ] **P8-03** Production smoke with the owner device: health, balance, analyze (one credit), tank list, history, livestock list, schedule list.
-- [ ] **P8-04** Update `MAINTENANCE_REVIEW_2026-09.md`: every YES item marked `Done (task-id, commit)`.
-- [ ] **P8-05** Handover note in `docs/maintenance/2026-09-handover.md`: what changed, how to deploy, what is deferred, next maintenance window suggestion (quarterly compat-date bump, wrangler update).
+- [x] **P8-01** Full backend gate: `npm run typecheck`, `npx vitest run` offline, `npm audit`, `wrangler deploy --dry-run` (prod and dev).
+- [x] **P8-02** Full iOS gate: `./verify-xcode-project.sh`, Swift 6 build, simulator regression list.
+- [ ] **P8-03** ⛔ (after deploying 73b9688) Production smoke with the owner device: health, balance, analyze (one credit), tank list, history, livestock list, schedule list.
+- [x] **P8-04** Update `MAINTENANCE_REVIEW_2026-09.md`: every YES item marked `Done (task-id, commit)`.
+- [!] **P8-05** (draft written 2026-09-07; final after P7-12/13 and the deploy) Handover note in `docs/maintenance/2026-09-handover.md`: what changed, how to deploy, what is deferred, next maintenance window suggestion (quarterly compat-date bump, wrangler update).
 
 ---
 
@@ -332,3 +332,8 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · X-02 follow-up · `/analyze` limiter fails closed on KV error (`onError: 'deny'`), cheap routes still fail open; 3 new tests (243 total) · 73b9688
 - 2026-09-07 · P7-01, P7-02, P7-03, P7-05, P7-11, P7-16 · `migrations/README.md` (+ `lint:migrations` in the deploy chain, 0006/0011 headers fixed); CLAUDE.md/README/iOS README regenerated (endpoint table from `ROUTES`, 39 files, Haiku 4.5, Swift 6/iOS 18); security plan tracker corrected and archived; website copy + privacy policy (Sept 2026); tests/README rewritten · 66a5cd5
 - 2026-09-07 · P7-12, P7-13 · **awaiting your go-ahead** (commands in the task lines). P7-05 mailboxes and P7-14 WAF rule are yours (expression in the task line).
+- 2026-09-07 · P8-01 · backend gate: tsc 0, 243 passed / 6 skipped, `npm audit` 0 vulnerabilities, dry-run prod and dev 1444.71 KiB / 245.47 KiB, lint:migrations OK, Prettier clean · (gate)
+- 2026-09-07 · P8-02 · iOS gate: verify script green, Swift 6 Debug and Release simulator builds succeed with 0 warnings; simulator regression recorded under P6-08 · (gate)
+- 2026-09-07 · P8-04 · review: 26 more items marked Done/Deferred with task ids and commits; only CF-04/CF-05 (P7-12/P7-13) remain, awaiting go-ahead · (this commit)
+- 2026-09-07 · P8-05 · draft `docs/maintenance/2026-09-handover.md` · (this commit)
+- 2026-09-07 · **Waiting on you:** deploy go-ahead for 73b9688 (then P8-03 smoke), P7-12/P7-13 deletions, TestFlight 1.0.8, mailboxes, WAF rule.
