@@ -105,7 +105,9 @@ export function stripTrailingAssistantChatter(text: string): string {
 
 /** Normalize assistant reply: plain text discipline for the ReefBuddy UI. */
 export function sanitizeModelOutput(text: string): string {
-  let t = stripAssistantEmojis(text).replace(/\*{2,}|_{2,}/g, '').trim();
+  let t = stripAssistantEmojis(text)
+    .replace(/\*{2,}|_{2,}/g, '')
+    .trim();
   t = stripTrailingAssistantChatter(t);
   t = t.replace(/\n{4,}/g, '\n\n\n').trim();
   return t;
@@ -124,4 +126,3 @@ export function sanitizeAnalysisStringsDeep(value: unknown): unknown {
   }
   return value;
 }
-

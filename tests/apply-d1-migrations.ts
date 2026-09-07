@@ -4,13 +4,13 @@
  * suites use unique device ids / client IPs per test instead of relying on per-test rollback.
  * Migrations come from the TEST_MIGRATIONS binding injected in vitest.config.ts.
  */
-import { applyD1Migrations, env } from "cloudflare:test";
-import { beforeAll } from "vitest";
+import { applyD1Migrations, env } from 'cloudflare:test';
+import { beforeAll } from 'vitest';
 
 beforeAll(async () => {
   const migrations = env.TEST_MIGRATIONS;
   if (!migrations?.length) {
-    throw new Error("TEST_MIGRATIONS binding missing; check vitest.config.ts");
+    throw new Error('TEST_MIGRATIONS binding missing; check vitest.config.ts');
   }
   await applyD1Migrations(env.DB, migrations);
 });

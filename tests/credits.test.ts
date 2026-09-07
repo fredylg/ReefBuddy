@@ -4,22 +4,17 @@
  * @tester-agent - Quality Assurance Lead
  */
 
-import { describe, it, expect } from "vitest";
-import { installGatewayMock, successReply } from "./helpers/mock-gateway";
-import {
-
-
-
-  SELF,
-} from "cloudflare:test";
+import { describe, it, expect } from 'vitest';
+import { installGatewayMock, successReply } from './helpers/mock-gateway';
+import { SELF } from 'cloudflare:test';
 
 // =============================================================================
 // TEST DATA
 // =============================================================================
 
-installGatewayMock(successReply("Parameters look fine."));
+installGatewayMock(successReply('Parameters look fine.'));
 
-const TEST_DEVICE_ID = "TEST-DEVICE-CREDITS-001";
+const TEST_DEVICE_ID = 'TEST-DEVICE-CREDITS-001';
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -30,7 +25,7 @@ const TEST_DEVICE_ID = "TEST-DEVICE-CREDITS-001";
  */
 async function getCreditsBalance(deviceId: string): Promise<Response> {
   return SELF.fetch(`http://localhost/credits/balance?deviceId=${deviceId}`, {
-    method: "GET",
+    method: 'GET',
   });
 }
 
@@ -38,9 +33,9 @@ async function getCreditsBalance(deviceId: string): Promise<Response> {
  * Make a POST request to the analyze endpoint
  */
 async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
-  return SELF.fetch("http://localhost/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  return SELF.fetch('http://localhost/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 }
@@ -49,8 +44,8 @@ async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
 // TEST SUITES
 // =============================================================================
 
-describe("GET /credits/balance", () => {
-  it("should return credit balance for a device", async () => {
+describe('GET /credits/balance', () => {
+  it('should return credit balance for a device', async () => {
     const response = await getCreditsBalance(TEST_DEVICE_ID);
     expect(response.status).toBe(200);
 
@@ -74,9 +69,9 @@ describe("GET /credits/balance", () => {
     expect(data.totalCredits).toBe(data.freeRemaining + data.paidCredits);
   });
 
-  it("should return 400 if deviceId is missing", async () => {
-    const response = await SELF.fetch("http://localhost/credits/balance", {
-      method: "GET",
+  it('should return 400 if deviceId is missing', async () => {
+    const response = await SELF.fetch('http://localhost/credits/balance', {
+      method: 'GET',
     });
 
     expect(response.status).toBe(400);
@@ -85,11 +80,11 @@ describe("GET /credits/balance", () => {
       error: string;
       message: string;
     };
-    expect(data.error).toBe("Validation failed");
-    expect(data.message).toContain("deviceId");
+    expect(data.error).toBe('Validation failed');
+    expect(data.message).toContain('deviceId');
   });
 
-  it("should create device record on first access", async () => {
+  it('should create device record on first access', async () => {
     const uniqueDeviceId = `TEST-DEVICE-${Date.now()}`;
     const response = await getCreditsBalance(uniqueDeviceId);
 
@@ -109,8 +104,8 @@ describe("GET /credits/balance", () => {
   });
 });
 
-describe("POST /analyze - Credit Tracking", () => {
-  it("should consume a free credit when analyzing", async () => {
+describe('POST /analyze - Credit Tracking', () => {
+  it('should consume a free credit when analyzing', async () => {
     const uniqueDeviceId = `TEST-DEVICE-${Date.now()}`;
 
     // Get initial balance
@@ -125,7 +120,7 @@ describe("POST /analyze - Credit Tracking", () => {
     // Submit analysis
     const analysisRequest = {
       deviceId: uniqueDeviceId,
-      tankId: "550e8400-e29b-41d4-a716-446655440000",
+      tankId: '550e8400-e29b-41d4-a716-446655440000',
       parameters: {
         salinity: 1.025,
         temperature: 78,
@@ -160,12 +155,12 @@ describe("POST /analyze - Credit Tracking", () => {
     }
   });
 
-  it("should return credit balance in analysis response", async () => {
+  it('should return credit balance in analysis response', async () => {
     const uniqueDeviceId = `TEST-DEVICE-${Date.now()}`;
 
     const analysisRequest = {
       deviceId: uniqueDeviceId,
-      tankId: "550e8400-e29b-41d4-a716-446655440000",
+      tankId: '550e8400-e29b-41d4-a716-446655440000',
       parameters: {
         salinity: 1.025,
         temperature: 78,
@@ -194,12 +189,12 @@ describe("POST /analyze - Credit Tracking", () => {
     }
   });
 
-  it("should not return 500 error when database operations succeed", async () => {
+  it('should not return 500 error when database operations succeed', async () => {
     const uniqueDeviceId = `TEST-DEVICE-${Date.now()}`;
 
     const analysisRequest = {
       deviceId: uniqueDeviceId,
-      tankId: "550e8400-e29b-41d4-a716-446655440000",
+      tankId: '550e8400-e29b-41d4-a716-446655440000',
       parameters: {
         salinity: 1.025,
         temperature: 78,
@@ -218,16 +213,16 @@ describe("POST /analyze - Credit Tracking", () => {
 
     if (response.status === 500) {
       const data = (await response.json()) as { error: string; message: string };
-      console.error("Unexpected 500 error:", data);
+      console.error('Unexpected 500 error:', data);
     }
   });
 });
 
-describe("Error Handling - Database Operations", () => {
-  it("should handle database errors gracefully in getCreditsBalance", async () => {
+describe('Error Handling - Database Operations', () => {
+  it('should handle database errors gracefully in getCreditsBalance', async () => {
     // This test verifies error handling is in place
     // Even if database fails, we should get a proper error response, not crash
-    const response = await getCreditsBalance("VALID-DEVICE-ID");
+    const response = await getCreditsBalance('VALID-DEVICE-ID');
 
     // Should return either success (200) or a proper error (not 500)
     expect([200, 400, 500]).toContain(response.status);

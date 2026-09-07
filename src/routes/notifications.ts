@@ -1,5 +1,20 @@
 import { z } from 'zod';
-import { RegisterTokenSchema, UpdateSettingsSchema, getUserNotificationSettings, initializeDefaultSettings, upsertNotificationSetting, getUserPushTokens, registerPushToken, unregisterPushToken, getNotificationHistory, markNotificationsRead, DEFAULT_THRESHOLDS, type ParameterName, type NotificationSetting, HistoryQuerySchema as NotificationHistoryQuerySchema } from '../notifications';
+import {
+  RegisterTokenSchema,
+  UpdateSettingsSchema,
+  getUserNotificationSettings,
+  initializeDefaultSettings,
+  upsertNotificationSetting,
+  getUserPushTokens,
+  registerPushToken,
+  unregisterPushToken,
+  getNotificationHistory,
+  markNotificationsRead,
+  DEFAULT_THRESHOLDS,
+  type ParameterName,
+  type NotificationSetting,
+  HistoryQuerySchema as NotificationHistoryQuerySchema,
+} from '../notifications';
 import { AuthenticatedContext, Env } from '../env';
 import { errorResponse, internalError, jsonResponse, readJson } from '../http';
 import { LowercaseUuid } from '../schemas';
@@ -111,10 +126,7 @@ export async function handleUnregisterPushToken(
  * Handle getting notification settings
  * GET /notifications/settings (authenticated)
  */
-export async function handleGetNotificationSettings(
-  env: Env,
-  auth: AuthenticatedContext
-): Promise<Response> {
+export async function handleGetNotificationSettings(env: Env, auth: AuthenticatedContext): Promise<Response> {
   try {
     let settings = await getUserNotificationSettings(env.DB, auth.userId);
 
@@ -124,13 +136,16 @@ export async function handleGetNotificationSettings(
     }
 
     // Transform settings to a more user-friendly format
-    const settingsMap: Record<string, {
-      minThreshold: number | null;
-      maxThreshold: number | null;
-      enabled: boolean;
-      defaultMin: number | null;
-      defaultMax: number | null;
-    }> = {};
+    const settingsMap: Record<
+      string,
+      {
+        minThreshold: number | null;
+        maxThreshold: number | null;
+        enabled: boolean;
+        defaultMin: number | null;
+        defaultMax: number | null;
+      }
+    > = {};
 
     for (const setting of settings) {
       const defaults = DEFAULT_THRESHOLDS[setting.parameter];
@@ -187,17 +202,13 @@ export async function handleUpdateNotificationSettings(
       const existing = existingSettings.find((s) => s.parameter === setting.parameter);
       const defaults = DEFAULT_THRESHOLDS[setting.parameter as ParameterName];
 
-      const minThreshold = setting.minThreshold !== undefined
-        ? setting.minThreshold
-        : (existing?.min_threshold ?? defaults?.min ?? null);
+      const minThreshold =
+        setting.minThreshold !== undefined ? setting.minThreshold : (existing?.min_threshold ?? defaults?.min ?? null);
 
-      const maxThreshold = setting.maxThreshold !== undefined
-        ? setting.maxThreshold
-        : (existing?.max_threshold ?? defaults?.max ?? null);
+      const maxThreshold =
+        setting.maxThreshold !== undefined ? setting.maxThreshold : (existing?.max_threshold ?? defaults?.max ?? null);
 
-      const enabled = setting.enabled !== undefined
-        ? setting.enabled
-        : (existing?.enabled ?? true);
+      const enabled = setting.enabled !== undefined ? setting.enabled : (existing?.enabled ?? true);
 
       const updated = await upsertNotificationSetting(
         env.DB,
@@ -258,14 +269,7 @@ export async function handleGetNotificationHistory(
 
     const { limit, offset, type, unreadOnly } = validationResult.data;
 
-    const { notifications, total } = await getNotificationHistory(
-      env.DB,
-      auth.userId,
-      limit,
-      offset,
-      type,
-      unreadOnly
-    );
+    const { notifications, total } = await getNotificationHistory(env.DB, auth.userId, limit, offset, type, unreadOnly);
 
     return jsonResponse({
       success: true,

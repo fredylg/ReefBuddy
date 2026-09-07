@@ -140,7 +140,8 @@ export function derSignatureToRaw(derSignature: Uint8Array, keySize: number = 32
 // =============================================================================
 
 /** Apple Root CA - G3 (DER, base64). SHA-256 63:34:3A:BF:B8:9A:6A:03:EB:B5:7E:9B:3F:5F:A7:BE:7C:4F:5C:75:6F:30:17:B3:A8:C4:88:C3:65:3E:91:79. Valid to 2039-04-30. */
-export const APPLE_ROOT_CA_G3_B64 = 'MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwSQXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcNMTQwNDMwMTgxOTA2WhcNMzkwNDMwMTgxOTA2WjBnMRswGQYDVQQDDBJBcHBsZSBSb290IENBIC0gRzMxJjAkBgNVBAsMHUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzB2MBAGByqGSM49AgEGBSuBBAAiA2IABJjpLz1AcqTtkyJygRMc3RCV8cWjTnHcFBbZDuWmBSp3ZHtfTjjTuxxEtX/1H7YyYl3J6YRbTzBPEVoA/VhYDKX1DyxNB0cTddqXl5dvMVztK517IDvYuVTZXpmkOlEKMaNCMEAwHQYDVR0OBBYEFLuw3qFYM4iapIqZ3r6966/ayySrMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2gAMGUCMQCD6cHEFl4aXTQY2e3v9GwOAEZLuN+yRhHFD/3meoyhpmvOwgPUnPWTxnS4at+qIxUCMG1mihDK1A3UT82NQz60imOlM27jbdoXt2QfyFMm+YhidDkLF1vLUagM6BgD56KyKA==';
+export const APPLE_ROOT_CA_G3_B64 =
+  'MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwSQXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcNMTQwNDMwMTgxOTA2WhcNMzkwNDMwMTgxOTA2WjBnMRswGQYDVQQDDBJBcHBsZSBSb290IENBIC0gRzMxJjAkBgNVBAsMHUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzB2MBAGByqGSM49AgEGBSuBBAAiA2IABJjpLz1AcqTtkyJygRMc3RCV8cWjTnHcFBbZDuWmBSp3ZHtfTjjTuxxEtX/1H7YyYl3J6YRbTzBPEVoA/VhYDKX1DyxNB0cTddqXl5dvMVztK517IDvYuVTZXpmkOlEKMaNCMEAwHQYDVR0OBBYEFLuw3qFYM4iapIqZ3r6966/ayySrMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2gAMGUCMQCD6cHEFl4aXTQY2e3v9GwOAEZLuN+yRhHFD/3meoyhpmvOwgPUnPWTxnS4at+qIxUCMG1mihDK1A3UT82NQz60imOlM27jbdoXt2QfyFMm+YhidDkLF1vLUagM6BgD56KyKA==';
 /** Marker OID Apple puts on App Store / iTunes receipt signing leaf certificates. */
 export const APPLE_RECEIPT_SIGNING_OID = '1.2.840.113635.100.6.11.1';
 /** Marker OID on the Apple Worldwide Developer Relations intermediate. */
@@ -218,7 +219,9 @@ export async function verifyAppleJWS(
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
-    debugLog(`🔐 Header length: ${headerB64.length}, Payload length: ${payloadB64.length}, Signature length: ${signatureB64.length}`);
+    debugLog(
+      `🔐 Header length: ${headerB64.length}, Payload length: ${payloadB64.length}, Signature length: ${signatureB64.length}`
+    );
 
     // Decode the header
     const headerBytes = base64UrlDecode(headerB64);
@@ -298,7 +301,9 @@ export async function verifyAppleJWS(
     }
 
     // Validate payload structure
-    debugLog(`🔐 Payload validation: transactionId=${!!payload.transactionId}, productId=${!!payload.productId}, bundleId=${!!payload.bundleId}`);
+    debugLog(
+      `🔐 Payload validation: transactionId=${!!payload.transactionId}, productId=${!!payload.productId}, bundleId=${!!payload.bundleId}`
+    );
     if (!payload.transactionId || !payload.productId || !payload.bundleId) {
       return { valid: false, error: 'Invalid payload: missing required fields' };
     }
@@ -310,7 +315,6 @@ export async function verifyAppleJWS(
 
     debugLog(`🔐 JWS verification successful (chainVerified=${chainVerified})`);
     return { valid: true, payload, chainVerified };
-
   } catch (error) {
     console.error('JWS verification error:', error);
     return {
@@ -326,8 +330,8 @@ export async function verifyAppleJWS(
  * Every Apple StoreKit leaf certificate carries exactly this structure for its subject key.
  */
 export const P256_SPKI_PREFIX = new Uint8Array([
-  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86,
-  0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00,
+  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce,
+  0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00,
 ]);
 export const P256_SPKI_LENGTH = 91;
 
@@ -386,10 +390,7 @@ export async function handleCreditsPurchase(request: Request, env: Env): Promise
  * SECURITY ORDER: verify the signature first, then read the payload, then apply policy.
  * Nothing in the payload (environment, product, transaction id) is trusted before verification.
  */
-export async function handleJWSPurchase(
-  env: Env,
-  data: z.infer<typeof CreditPurchaseJWSSchema>
-): Promise<Response> {
+export async function handleJWSPurchase(env: Env, data: z.infer<typeof CreditPurchaseJWSSchema>): Promise<Response> {
   const { deviceId, jwsRepresentation, productId } = data;
 
   const creditsToAdd = CREDIT_PRODUCTS[productId];
@@ -410,7 +411,9 @@ export async function handleJWSPurchase(
   const payload = verification.payload;
 
   if (!verification.chainVerified && payload.environment !== 'Xcode') {
-    console.warn('Rejected JWS with untrusted chain claiming environment=' + payload.environment + ' for device ' + deviceId);
+    console.warn(
+      'Rejected JWS with untrusted chain claiming environment=' + payload.environment + ' for device ' + deviceId
+    );
     return jsonResponse(
       { error: 'Invalid transaction', message: 'Transaction certificate chain is not trusted', code: 'JWS_CHAIN' },
       400
@@ -434,23 +437,46 @@ export async function handleJWSPurchase(
   }
 
   if (payload.type && payload.type !== 'Consumable') {
-    return jsonResponse({ error: 'Invalid transaction', message: 'Unsupported transaction type', code: 'JWS_TYPE' }, 400);
+    return jsonResponse(
+      { error: 'Invalid transaction', message: 'Unsupported transaction type', code: 'JWS_TYPE' },
+      400
+    );
   }
   if (payload.inAppOwnershipType && payload.inAppOwnershipType !== 'PURCHASED') {
-    return jsonResponse({ error: 'Invalid transaction', message: 'Transaction is not a direct purchase', code: 'JWS_OWNERSHIP' }, 400);
+    return jsonResponse(
+      { error: 'Invalid transaction', message: 'Transaction is not a direct purchase', code: 'JWS_OWNERSHIP' },
+      400
+    );
   }
   if (payload.productId !== productId) {
-    return jsonResponse({ error: 'Product mismatch', message: 'Signed product does not match requested product', code: 'JWS_PRODUCT' }, 400);
+    return jsonResponse(
+      { error: 'Product mismatch', message: 'Signed product does not match requested product', code: 'JWS_PRODUCT' },
+      400
+    );
   }
   const expectedBundleId = env.APPLE_BUNDLE_ID || DEFAULT_BUNDLE_ID;
   if (payload.bundleId !== expectedBundleId) {
-    return jsonResponse({ error: 'Invalid bundle ID', message: 'Transaction does not belong to this app', code: 'JWS_BUNDLE' }, 400);
+    return jsonResponse(
+      { error: 'Invalid bundle ID', message: 'Transaction does not belong to this app', code: 'JWS_BUNDLE' },
+      400
+    );
   }
 
-  const result = await addDeviceCredits(env, deviceId, creditsToAdd, productId, payload.transactionId, jwsRepresentation);
+  const result = await addDeviceCredits(
+    env,
+    deviceId,
+    creditsToAdd,
+    productId,
+    payload.transactionId,
+    jwsRepresentation
+  );
   if (result === 'duplicate') {
     return jsonResponse(
-      { error: 'Duplicate transaction', message: 'This transaction has already been processed', transactionId: payload.transactionId },
+      {
+        error: 'Duplicate transaction',
+        message: 'This transaction has already been processed',
+        transactionId: payload.transactionId,
+      },
       409
     );
   }
@@ -458,7 +484,16 @@ export async function handleJWSPurchase(
     return errorResponse('Internal server error', 'Credits could not be added', 500);
   }
 
-  console.log('Credits added: device=' + deviceId + ' product=' + productId + ' env=' + payload.environment + ' tx=' + payload.transactionId);
+  console.log(
+    'Credits added: device=' +
+      deviceId +
+      ' product=' +
+      productId +
+      ' env=' +
+      payload.environment +
+      ' tx=' +
+      payload.transactionId
+  );
   const credits = await checkDeviceCredits(env, deviceId);
   return jsonResponse({
     success: true,

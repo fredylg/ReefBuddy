@@ -198,10 +198,7 @@ export async function getParameterTrends(
     ORDER BY measured_at ASC
   `;
 
-  const result = await db
-    .prepare(query)
-    .bind(tankId, startDate, endDate)
-    .all<{ value: number; measured_at: string }>();
+  const result = await db.prepare(query).bind(tankId, startDate, endDate).all<{ value: number; measured_at: string }>();
 
   const values = result.results.filter((r) => r.value !== null);
 
@@ -269,11 +266,7 @@ export async function getParameterTrends(
  * @param days - Number of days to analyze
  * @returns All parameter trends
  */
-export async function getAllParameterTrends(
-  db: D1Database,
-  tankId: string,
-  days: number
-): Promise<TankTrends> {
+export async function getAllParameterTrends(db: D1Database, tankId: string, days: number): Promise<TankTrends> {
   const endDate = new Date().toISOString();
   const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -301,11 +294,7 @@ export async function getAllParameterTrends(
  * @param days - Number of days to retrieve
  * @returns Array of daily aggregate data
  */
-export async function getDailyAverages(
-  db: D1Database,
-  tankId: string,
-  days: number
-): Promise<AggregateData[]> {
+export async function getDailyAverages(db: D1Database, tankId: string, days: number): Promise<AggregateData[]> {
   const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const query = `
@@ -342,14 +331,8 @@ export async function getDailyAverages(
  * @param weeks - Number of weeks to retrieve
  * @returns Array of weekly aggregate data
  */
-export async function getWeeklyAverages(
-  db: D1Database,
-  tankId: string,
-  weeks: number
-): Promise<AggregateData[]> {
-  const startDate = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split('T')[0];
+export async function getWeeklyAverages(db: D1Database, tankId: string, weeks: number): Promise<AggregateData[]> {
+  const startDate = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const query = `
     SELECT
@@ -377,4 +360,3 @@ export async function getWeeklyAverages(
 
   return result.results;
 }
-

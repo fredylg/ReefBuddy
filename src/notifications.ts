@@ -166,10 +166,7 @@ export const HistoryQuerySchema = z.object({
  * Default alert thresholds for reef aquarium parameters
  * Based on best practices for saltwater reef tanks
  */
-export const DEFAULT_THRESHOLDS: Record<
-  ParameterName,
-  { min: number | null; max: number | null; unit: string }
-> = {
+export const DEFAULT_THRESHOLDS: Record<ParameterName, { min: number | null; max: number | null; unit: string }> = {
   ph: { min: 7.8, max: 8.4, unit: '' },
   alkalinity: { min: 7, max: 11, unit: 'dKH' },
   calcium: { min: 380, max: 450, unit: 'ppm' },
@@ -208,10 +205,7 @@ const PARAMETER_NAMES: Record<ParameterName, string> = {
  * @param settings - User's notification settings for each parameter
  * @returns Array of alerts for parameters that are out of range
  */
-export function checkParameterAlerts(
-  measurement: MeasurementData,
-  settings: NotificationSetting[]
-): ParameterAlert[] {
+export function checkParameterAlerts(measurement: MeasurementData, settings: NotificationSetting[]): ParameterAlert[] {
   const alerts: ParameterAlert[] = [];
 
   // Create a map of settings by parameter for efficient lookup
@@ -368,9 +362,7 @@ export async function sendToAllDevices(
   body: string,
   data?: Record<string, string>
 ): Promise<PushResult[]> {
-  const results = await Promise.all(
-    tokens.map((t) => sendPushNotification(t.token, t.platform, title, body, data))
-  );
+  const results = await Promise.all(tokens.map((t) => sendPushNotification(t.token, t.platform, title, body, data)));
 
   return results;
 }
@@ -383,10 +375,7 @@ export async function sendToAllDevices(
  * Get notification settings for a user
  * If the user has no settings, returns empty array (defaults should be created via API)
  */
-export async function getUserNotificationSettings(
-  db: D1Database,
-  userId: string
-): Promise<NotificationSetting[]> {
+export async function getUserNotificationSettings(db: D1Database, userId: string): Promise<NotificationSetting[]> {
   const result = await db
     .prepare(
       `SELECT id, user_id, parameter, min_threshold, max_threshold, enabled, created_at, updated_at
@@ -463,10 +452,7 @@ export async function upsertNotificationSetting(
  * Initialize default notification settings for a user
  * Called when user first accesses notification settings
  */
-export async function initializeDefaultSettings(
-  db: D1Database,
-  userId: string
-): Promise<NotificationSetting[]> {
+export async function initializeDefaultSettings(db: D1Database, userId: string): Promise<NotificationSetting[]> {
   const settings: NotificationSetting[] = [];
 
   for (const [param, defaults] of Object.entries(DEFAULT_THRESHOLDS)) {

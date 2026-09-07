@@ -53,10 +53,7 @@ export async function handleCreateWaterChange(
     const body = parsedBody.body;
     const validationResult = WaterChangeCreateSchema.safeParse(body);
     if (!validationResult.success) {
-      return jsonResponse(
-        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
-        400
-      );
+      return jsonResponse({ error: 'Validation failed', details: z.flattenError(validationResult.error) }, 400);
     }
 
     const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
@@ -128,10 +125,7 @@ export async function handleListWaterChanges(
       limit: url.searchParams.get('limit') ?? undefined,
     });
     if (!validationResult.success) {
-      return jsonResponse(
-        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
-        400
-      );
+      return jsonResponse({ error: 'Validation failed', details: z.flattenError(validationResult.error) }, 400);
     }
 
     const result = await env.DB.prepare(
@@ -171,9 +165,7 @@ export async function handleDeleteWaterChange(
     }
 
     const now = new Date().toISOString();
-    await env.DB.prepare(
-      'UPDATE water_changes SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ?'
-    )
+    await env.DB.prepare('UPDATE water_changes SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ?')
       .bind(now, now, waterChangeId.toLowerCase(), auth.userId)
       .run();
 

@@ -38,9 +38,7 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     }
 
     // Check if user already exists
-    const existingUser = await env.DB.prepare('SELECT id FROM users WHERE email = ?')
-      .bind(email.toLowerCase())
-      .first();
+    const existingUser = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email.toLowerCase()).first();
 
     if (existingUser) {
       return errorResponse('Conflict', 'A user with this email already exists', 409);
@@ -52,9 +50,7 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     // Create user
     const userId = generateUUID();
     try {
-      await env.DB.prepare(
-        'INSERT INTO users (id, email, password_hash, subscription_tier) VALUES (?, ?, ?, ?)'
-      )
+      await env.DB.prepare('INSERT INTO users (id, email, password_hash, subscription_tier) VALUES (?, ?, ?, ?)')
         .bind(userId, email.toLowerCase(), passwordHash, 'free')
         .run();
     } catch (insertError) {
@@ -111,9 +107,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     const { email, password } = validationResult.data;
 
     // Find user by email
-    const user = (await env.DB.prepare(
-      'SELECT id, email, password_hash, subscription_tier FROM users WHERE email = ?'
-    )
+    const user = (await env.DB.prepare('SELECT id, email, password_hash, subscription_tier FROM users WHERE email = ?')
       .bind(email.toLowerCase())
       .first()) as {
       id: string;

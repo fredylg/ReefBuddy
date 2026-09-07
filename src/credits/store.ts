@@ -27,14 +27,9 @@ export const CREDIT_PRODUCTS: Record<string, number> = {
 /**
  * Get or create device credits record
  */
-export async function getOrCreateDeviceCredits(
-  env: Env,
-  deviceId: string
-): Promise<DeviceCreditsRecord> {
+export async function getOrCreateDeviceCredits(env: Env, deviceId: string): Promise<DeviceCreditsRecord> {
   try {
-    let record = (await env.DB.prepare(
-      'SELECT * FROM device_credits WHERE device_id = ?'
-    )
+    let record = (await env.DB.prepare('SELECT * FROM device_credits WHERE device_id = ?')
       .bind(deviceId)
       .first()) as DeviceCreditsRecord | null;
 

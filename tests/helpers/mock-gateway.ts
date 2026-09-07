@@ -11,9 +11,9 @@
  *   queueGatewayReply(500, {});                                   // one-off reply for the next AI call
  *   mockOrigin("https://api.devicecheck.apple.com", (req) => ...) // any other origin
  */
-import { afterEach, vi } from "vitest";
+import { afterEach, vi } from 'vitest';
 
-export const GATEWAY_ORIGIN = "https://gateway.ai.cloudflare.com";
+export const GATEWAY_ORIGIN = 'https://gateway.ai.cloudflare.com';
 
 export interface GatewayReply {
   status: number;
@@ -24,14 +24,14 @@ export function successReply(text: string, extra: Record<string, unknown> = {}):
   return {
     status: 200,
     body: {
-      id: "msg_test",
-      type: "message",
-      role: "assistant",
-      model: "claude-haiku-4-5-20251001",
-      stop_reason: "end_turn",
+      id: 'msg_test',
+      type: 'message',
+      role: 'assistant',
+      model: 'claude-haiku-4-5-20251001',
+      stop_reason: 'end_turn',
       stop_sequence: null,
       usage: { input_tokens: 120, output_tokens: 80 },
-      content: [{ type: "text", text }],
+      content: [{ type: 'text', text }],
       ...extra,
     },
   };
@@ -47,9 +47,9 @@ let lastGatewayBody: unknown = null;
 const originHandlers = new Map<string, OriginHandler>();
 
 function jsonResponse(status: number, body: unknown): Response {
-  return new Response(typeof body === "string" ? body : JSON.stringify(body), {
+  return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { 'content-type': 'application/json' },
   });
 }
 
@@ -57,7 +57,7 @@ function ensureInstalled(): void {
   if (installed) return;
   installed = true;
 
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const request = input instanceof Request ? input : new Request(input, init);
     const origin = new URL(request.url).origin;
 
@@ -69,26 +69,26 @@ function ensureInstalled(): void {
         lastGatewayBody = null;
       }
       const next = queue.shift() ?? defaultReply;
-      if (!next) throw new Error("No mocked gateway reply available; queue one with queueGatewayReply()");
+      if (!next) throw new Error('No mocked gateway reply available; queue one with queueGatewayReply()');
       return jsonResponse(next.status, next.body);
     }
 
     const handler = originHandlers.get(origin);
     if (handler) return handler(request);
 
-    throw new Error("Unexpected outbound fetch in test (suite must stay offline): " + request.url);
+    throw new Error('Unexpected outbound fetch in test (suite must stay offline): ' + request.url);
   });
 
   afterEach(() => {
     const pending = queue.length;
     queue.length = 0;
     calls = 0;
-    if (pending > 0) throw new Error(pending + " queued gateway replies were never consumed");
+    if (pending > 0) throw new Error(pending + ' queued gateway replies were never consumed');
   });
 }
 
 /** Install the fetch spy with a default AI Gateway reply (null = every call must be queued). */
-export function installGatewayMock(reply: GatewayReply | null = successReply("Parameters look fine.")): void {
+export function installGatewayMock(reply: GatewayReply | null = successReply('Parameters look fine.')): void {
   defaultReply = reply;
   ensureInstalled();
 }

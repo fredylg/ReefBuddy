@@ -9,9 +9,9 @@
  * - Error handling
  */
 
-import { describe, it, expect } from "vitest";
-import { installGatewayMock } from "./helpers/mock-gateway";
-import { SELF } from "cloudflare:test";
+import { describe, it, expect } from 'vitest';
+import { installGatewayMock } from './helpers/mock-gateway';
+import { SELF } from 'cloudflare:test';
 
 // =============================================================================
 // TEST DATA
@@ -22,7 +22,7 @@ import { SELF } from "cloudflare:test";
  */
 const validAnalysisRequest = {
   // deviceId is added per request (unique) by postAnalyze; storage is shared within this file.
-  tankId: "550e8400-e29b-41d4-a716-446655440000",
+  tankId: '550e8400-e29b-41d4-a716-446655440000',
   parameters: {
     salinity: 1.025,
     temperature: 78,
@@ -41,35 +41,35 @@ const validAnalysisRequest = {
  * Mock AI response for water chemistry analysis
  */
 const mockAIResponse = {
-  id: "msg_mock_001",
-  type: "message",
-  role: "assistant",
+  id: 'msg_mock_001',
+  type: 'message',
+  role: 'assistant',
   content: [
     {
-      type: "text",
+      type: 'text',
       text: JSON.stringify({
-        status: "optimal",
-        summary: "Water parameters are within ideal range for a reef aquarium.",
+        status: 'optimal',
+        summary: 'Water parameters are within ideal range for a reef aquarium.',
         recommendations: [
           {
-            parameter: "alkalinity",
-            status: "optimal",
-            target: "7-11 dKH",
-            action: "No action needed. Current level is ideal.",
+            parameter: 'alkalinity',
+            status: 'optimal',
+            target: '7-11 dKH',
+            action: 'No action needed. Current level is ideal.',
           },
           {
-            parameter: "calcium",
-            status: "optimal",
-            target: "400-450 ppm",
-            action: "No action needed.",
+            parameter: 'calcium',
+            status: 'optimal',
+            target: '400-450 ppm',
+            action: 'No action needed.',
           },
         ],
         dosingInstructions: null,
       }),
     },
   ],
-  model: "claude-haiku-4-5-20251001",
-  stop_reason: "end_turn",
+  model: 'claude-haiku-4-5-20251001',
+  stop_reason: 'end_turn',
   stop_sequence: null,
   usage: {
     input_tokens: 150,
@@ -80,12 +80,6 @@ const mockAIResponse = {
 /**
  * Mock error response from AI Gateway
  */
-
-
-
-
-
-
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -104,11 +98,11 @@ async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
     ...body,
   };
   ipCounter++;
-  return SELF.fetch("http://localhost/analyze", {
-    method: "POST",
+  return SELF.fetch('http://localhost/analyze', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "CF-Connecting-IP": `10.1.${(ipCounter >> 8) & 255}.${ipCounter & 255}`,
+      'Content-Type': 'application/json',
+      'CF-Connecting-IP': `10.1.${(ipCounter >> 8) & 255}.${ipCounter & 255}`,
     },
     body: JSON.stringify(requestBody),
   });
@@ -118,9 +112,9 @@ async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
 // TEST SUITES
 // =============================================================================
 
-describe("AI Gateway Integration", () => {
-  describe("Prompt Construction", () => {
-    it("should include tank volume in the AI prompt", async () => {
+describe('AI Gateway Integration', () => {
+  describe('Prompt Construction', () => {
+    it('should include tank volume in the AI prompt', async () => {
       // When making a request, the prompt should contain tank volume
       // We can verify this by checking the request goes through validation
       const response = await postAnalyze(validAnalysisRequest);
@@ -129,14 +123,14 @@ describe("AI Gateway Integration", () => {
       expect(response.status).not.toBe(400);
     });
 
-    it("should include all water parameters in the AI prompt", async () => {
+    it('should include all water parameters in the AI prompt', async () => {
       const response = await postAnalyze(validAnalysisRequest);
 
       // Should pass validation (not 400)
       expect(response.status).not.toBe(400);
     });
 
-    it("should handle optional parameters in prompt", async () => {
+    it('should handle optional parameters in prompt', async () => {
       const requestWithoutOptional = {
         ...validAnalysisRequest,
         parameters: {
@@ -155,8 +149,8 @@ describe("AI Gateway Integration", () => {
     });
   });
 
-  describe("Gateway Routing", () => {
-    it("should return not_configured when API key is missing", async () => {
+  describe('Gateway Routing', () => {
+    it('should return not_configured when API key is missing', async () => {
       // The test environment doesn't have ANTHROPIC_API_KEY set
       // So we expect a graceful handling of unconfigured AI Gateway
       const response = await postAnalyze(validAnalysisRequest);
@@ -169,13 +163,13 @@ describe("AI Gateway Integration", () => {
           analysis: { status: string };
         };
         // If successful, check if AI returned not_configured
-        if (data.analysis && data.analysis.status === "not_configured") {
-          expect(data.analysis.status).toBe("not_configured");
+        if (data.analysis && data.analysis.status === 'not_configured') {
+          expect(data.analysis.status).toBe('not_configured');
         }
       }
     });
 
-    it("should include proper headers for Anthropic API", async () => {
+    it('should include proper headers for Anthropic API', async () => {
       // This test verifies that when AI Gateway is called,
       // it uses the correct headers. Since we can't intercept fetch in tests,
       // we verify the endpoint doesn't fail due to header issues
@@ -186,8 +180,8 @@ describe("AI Gateway Integration", () => {
     });
   });
 
-  describe("Response Handling", () => {
-    it("should return tankId in successful response", async () => {
+  describe('Response Handling', () => {
+    it('should return tankId in successful response', async () => {
       const response = await postAnalyze(validAnalysisRequest);
 
       if (response.status === 200) {
@@ -196,7 +190,7 @@ describe("AI Gateway Integration", () => {
       }
     });
 
-    it("should return analysis object in response", async () => {
+    it('should return analysis object in response', async () => {
       const response = await postAnalyze(validAnalysisRequest);
 
       if (response.status === 200) {
@@ -205,20 +199,20 @@ describe("AI Gateway Integration", () => {
       }
     });
 
-    it("should return credit fields in successful response", async () => {
+    it('should return credit fields in successful response', async () => {
       const response = await postAnalyze(validAnalysisRequest);
 
       if (response.status === 200) {
         const data = (await response.json()) as { creditsRemaining: number; freeRemaining: number };
         expect(data.creditsRemaining).toBeDefined();
-        expect(typeof data.creditsRemaining).toBe("number");
+        expect(typeof data.creditsRemaining).toBe('number');
         expect(data.freeRemaining).toBeDefined();
       }
     });
   });
 
-  describe("Error Handling", () => {
-    it("should handle JSON parse errors in AI response gracefully", async () => {
+  describe('Error Handling', () => {
+    it('should handle JSON parse errors in AI response gracefully', async () => {
       // When AI returns invalid JSON, the system should handle it
       const response = await postAnalyze(validAnalysisRequest);
 
@@ -230,7 +224,7 @@ describe("AI Gateway Integration", () => {
       expect(data).toBeDefined();
     });
 
-    it("should include error message when AI Gateway fails", async () => {
+    it('should include error message when AI Gateway fails', async () => {
       // Without proper API keys, AI Gateway will fail
       // The system should return a meaningful error message
       const response = await postAnalyze(validAnalysisRequest);
@@ -242,7 +236,7 @@ describe("AI Gateway Integration", () => {
       }
     });
 
-    it("should not expose actual API key values in error responses", async () => {
+    it('should not expose actual API key values in error responses', async () => {
       const response = await postAnalyze(validAnalysisRequest);
 
       const text = await response.text();
@@ -255,13 +249,13 @@ describe("AI Gateway Integration", () => {
     });
   });
 
-  describe("Caching Behavior", () => {
-    it("should return consistent response format for same parameters", async () => {
+  describe('Caching Behavior', () => {
+    it('should return consistent response format for same parameters', async () => {
       // Make two requests with same parameters
       const response1 = await postAnalyze(validAnalysisRequest);
       const response2 = await postAnalyze({
         ...validAnalysisRequest,
-        tankId: "660e8400-e29b-41d4-a716-446655440001", // Different tankId to avoid rate limit
+        tankId: '660e8400-e29b-41d4-a716-446655440001', // Different tankId to avoid rate limit
       });
 
       // Both responses should have same structure
@@ -276,11 +270,11 @@ describe("AI Gateway Integration", () => {
   });
 });
 
-describe("Water Chemistry Analysis", () => {
-  describe("Parameter Analysis Requirements", () => {
-    it("should accept typical SPS coral parameters", async () => {
+describe('Water Chemistry Analysis', () => {
+  describe('Parameter Analysis Requirements', () => {
+    it('should accept typical SPS coral parameters', async () => {
       const spsParams = {
-        tankId: "550e8400-e29b-41d4-a716-446655440002",
+        tankId: '550e8400-e29b-41d4-a716-446655440002',
         parameters: {
           salinity: 1.026,
           temperature: 77,
@@ -298,9 +292,9 @@ describe("Water Chemistry Analysis", () => {
       expect(response.status).not.toBe(400);
     });
 
-    it("should accept typical LPS coral parameters", async () => {
+    it('should accept typical LPS coral parameters', async () => {
       const lpsParams = {
-        tankId: "550e8400-e29b-41d4-a716-446655440003",
+        tankId: '550e8400-e29b-41d4-a716-446655440003',
         parameters: {
           salinity: 1.025,
           temperature: 78,
@@ -318,9 +312,9 @@ describe("Water Chemistry Analysis", () => {
       expect(response.status).not.toBe(400);
     });
 
-    it("should accept fish-only tank parameters", async () => {
+    it('should accept fish-only tank parameters', async () => {
       const fishOnlyParams = {
-        tankId: "550e8400-e29b-41d4-a716-446655440004",
+        tankId: '550e8400-e29b-41d4-a716-446655440004',
         parameters: {
           salinity: 1.023, // Lower end acceptable for fish
           temperature: 76,
@@ -339,10 +333,10 @@ describe("Water Chemistry Analysis", () => {
     });
   });
 
-  describe("Dosing Calculation Context", () => {
-    it("should handle small nano tank volumes", async () => {
+  describe('Dosing Calculation Context', () => {
+    it('should handle small nano tank volumes', async () => {
       const nanoTank = {
-        tankId: "550e8400-e29b-41d4-a716-446655440005",
+        tankId: '550e8400-e29b-41d4-a716-446655440005',
         parameters: {
           salinity: 1.025,
           temperature: 78,
@@ -358,9 +352,9 @@ describe("Water Chemistry Analysis", () => {
       expect(response.status).not.toBe(400);
     });
 
-    it("should handle large tank volumes", async () => {
+    it('should handle large tank volumes', async () => {
       const largeTank = {
-        tankId: "550e8400-e29b-41d4-a716-446655440006",
+        tankId: '550e8400-e29b-41d4-a716-446655440006',
         parameters: {
           salinity: 1.025,
           temperature: 78,

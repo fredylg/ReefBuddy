@@ -58,10 +58,7 @@ export function extractSessionToken(request: Request): string | null {
 /**
  * Session middleware - validates authentication and returns user context
  */
-export async function authenticateRequest(
-  request: Request,
-  env: Env
-): Promise<AuthenticatedContext | Response> {
+export async function authenticateRequest(request: Request, env: Env): Promise<AuthenticatedContext | Response> {
   const token = extractSessionToken(request);
 
   if (!token) {
@@ -84,10 +81,7 @@ export async function authenticateRequest(
  * Try to authenticate request, but return null instead of error if auth fails
  * Used for endpoints that support both authenticated and device-based access
  */
-export async function tryAuthenticateRequest(
-  request: Request,
-  env: Env
-): Promise<AuthenticatedContext | null> {
+export async function tryAuthenticateRequest(request: Request, env: Env): Promise<AuthenticatedContext | null> {
   const token = extractSessionToken(request);
   if (!token) {
     return null;
@@ -109,18 +103,13 @@ export async function tryAuthenticateRequest(
  * Creates a user with email format: device_${deviceId}@reefbuddy.device
  * This allows device-based tank creation without requiring authentication
  */
-export async function getOrCreateDeviceUser(
-  env: Env,
-  deviceId: string
-): Promise<string> {
+export async function getOrCreateDeviceUser(env: Env, deviceId: string): Promise<string> {
   const deviceEmail = `device_${deviceId}@reefbuddy.device`;
 
   // Try to find existing device user
-  const existingUser = (await env.DB.prepare(
-    'SELECT id FROM users WHERE email = ?'
-  )
-    .bind(deviceEmail)
-    .first()) as { id: string } | null;
+  const existingUser = (await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(deviceEmail).first()) as {
+    id: string;
+  } | null;
 
   if (existingUser) {
     return existingUser.id;
@@ -149,7 +138,11 @@ export async function resolveActor(request: Request, env: Env): Promise<Authenti
 
   const deviceId = request.headers.get('X-Device-ID');
   if (!isValidDeviceId(deviceId)) {
-    return errorResponse('Unauthorized', 'Missing authentication token or device ID (send Authorization: Bearer <token> or X-Device-ID)', 401);
+    return errorResponse(
+      'Unauthorized',
+      'Missing authentication token or device ID (send Authorization: Bearer <token> or X-Device-ID)',
+      401
+    );
   }
 
   const deviceUserId = await getOrCreateDeviceUser(env, deviceId);

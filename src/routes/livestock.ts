@@ -67,7 +67,7 @@ export async function verifyLivestockOwnership(
     )
       .bind(normalizedLivestockId)
       .first()) as { id: string; tank_id: string; user_id: string } | null;
-    
+
     if (anyLivestock) {
       return errorResponse('Forbidden', 'You do not have access to this livestock', 403);
     } else {
@@ -111,16 +111,16 @@ export async function handleCreateLivestock(
       );
     }
 
-    const data = validationResult.data;    // Create livestock
+    const data = validationResult.data; // Create livestock
     // Use provided ID if available (for retroactive compatibility), otherwise generate new one
-    const livestockId = (data.id ? data.id.toLowerCase() : generateUUID().toLowerCase()); // Normalize to lowercase for consistency
+    const livestockId = data.id ? data.id.toLowerCase() : generateUUID().toLowerCase(); // Normalize to lowercase for consistency
     const normalizedTankId = tankId.toLowerCase(); // Normalize to match database format
-    
+
     // Check if livestock with this ID already exists
     const existing = (await env.DB.prepare('SELECT id FROM livestock WHERE id = ? AND deleted_at IS NULL')
       .bind(livestockId)
       .first()) as { id: string } | null;
-    
+
     if (existing) {
       // Return existing livestock instead of creating duplicate
       const existingLivestock = (await env.DB.prepare(
@@ -130,7 +130,7 @@ export async function handleCreateLivestock(
       )
         .bind(livestockId, auth.userId)
         .first()) as LivestockRecord | null;
-      
+
       if (existingLivestock) {
         return jsonResponse({
           success: true,
@@ -203,13 +203,11 @@ export async function handleCreateLivestock(
  * Handle listing tank livestock
  * GET /tanks/:tankId/livestock (authenticated)
  */
-export async function handleListLivestock(
-  env: Env,
-  auth: AuthenticatedContext,
-  tankId: string
-): Promise<Response> {
-  try {    // Verify tank ownership
-    const tankResult = await verifyTankOwnership(env, tankId, auth.userId);    if (tankResult instanceof Response) {
+export async function handleListLivestock(env: Env, auth: AuthenticatedContext, tankId: string): Promise<Response> {
+  try {
+    // Verify tank ownership
+    const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
+    if (tankResult instanceof Response) {
       return tankResult;
     }
 
@@ -349,28 +347,27 @@ export async function handleUpdateLivestock(
     const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE id = ?')
       .bind(normalizedLivestockId)
       .first()) as LivestockRecord | null;
-    
-    
+
     if (!updated) {
       return errorResponse('Not found', 'Livestock not found after update', 404);
     }
 
     return jsonResponse({
       success: true,
-        livestock: {
-          id: updated.id,
-          tank_id: updated.tank_id,
-          name: updated.common_name, // Map common_name to name in API response
-          species: updated.species,
-          category: updated.category,
-          quantity: updated.quantity,
-          purchase_date: updated.purchase_date,
-          purchase_price: updated.purchase_price,
-          health_status: updated.health_status,
-          notes: updated.notes,
-          image_url: updated.image_url,
-          added_at: updated.added_at,
-        },
+      livestock: {
+        id: updated.id,
+        tank_id: updated.tank_id,
+        name: updated.common_name, // Map common_name to name in API response
+        species: updated.species,
+        category: updated.category,
+        quantity: updated.quantity,
+        purchase_date: updated.purchase_date,
+        purchase_price: updated.purchase_price,
+        health_status: updated.health_status,
+        notes: updated.notes,
+        image_url: updated.image_url,
+        added_at: updated.added_at,
+      },
     });
   } catch (error) {
     console.error('Update livestock error:', error);
@@ -397,9 +394,7 @@ export async function handleDeleteLivestock(
     // Soft delete the livestock (normalize livestockId for case-insensitive matching)
     const normalizedLivestockId = livestockId.toLowerCase();
     const now = new Date().toISOString();
-    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE id = ?')
-      .bind(now, normalizedLivestockId)
-      .run();
+    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE id = ?').bind(now, normalizedLivestockId).run();
 
     return jsonResponse({
       success: true,
@@ -509,9 +504,7 @@ export async function handleGetLivestockLogs(
 
     // Get all logs for this livestock (normalize livestockId for case-insensitive matching)
     const normalizedLivestockId = livestockId.toLowerCase();
-    const result = await env.DB.prepare(
-      `SELECT * FROM livestock_logs WHERE livestock_id = ? ORDER BY logged_at DESC`
-    )
+    const result = await env.DB.prepare(`SELECT * FROM livestock_logs WHERE livestock_id = ? ORDER BY logged_at DESC`)
       .bind(normalizedLivestockId)
       .all<LivestockLogRecord>();
 

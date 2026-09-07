@@ -17,7 +17,8 @@ export async function handleCreateMeasurement(
   env: Env,
   auth: AuthenticatedContext
 ): Promise<Response> {
-  try {    let body;
+  try {
+    let body;
     try {
       body = await request.json();
     } catch (jsonError) {
@@ -36,15 +37,18 @@ export async function handleCreateMeasurement(
     }
 
     const data = validationResult.data;
-    
+
     // Normalize tank_id to lowercase for case-insensitive lookup (iOS sends uppercase UUIDs)
-    const normalizedTankId = data.tank_id.toLowerCase();    // Verify the tank belongs to the authenticated user (case-insensitive lookup)
+    const normalizedTankId = data.tank_id.toLowerCase(); // Verify the tank belongs to the authenticated user (case-insensitive lookup)
     const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL')
       .bind(normalizedTankId)
-      .first()) as { id: string; user_id: string; name: string } | null;    if (!tank) {      return errorResponse('Not found', 'Tank not found', 404);
+      .first()) as { id: string; user_id: string; name: string } | null;
+    if (!tank) {
+      return errorResponse('Not found', 'Tank not found', 404);
     }
 
-    if (tank.user_id !== auth.userId) {      return errorResponse('Forbidden', 'You do not have access to this tank', 403);
+    if (tank.user_id !== auth.userId) {
+      return errorResponse('Forbidden', 'You do not have access to this tank', 403);
     }
 
     // Create measurement
@@ -135,7 +139,8 @@ export async function handleCreateMeasurement(
       },
       201
     );
-  } catch (error) {    console.error('Create measurement error:', error);
+  } catch (error) {
+    console.error('Create measurement error:', error);
     return internalError('Unhandled error', error);
   }
 }

@@ -4,7 +4,7 @@
  * vitest.config.ts. When a test needs the Worker's narrower `Env` (src/index.ts), cast with
  * `as unknown as Env`.
  */
-import type { D1Migration } from "@cloudflare/vitest-plugin";
+import type { D1Migration } from '@cloudflare/vitest-plugin';
 
 declare global {
   namespace Cloudflare {

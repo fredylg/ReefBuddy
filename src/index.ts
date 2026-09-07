@@ -11,15 +11,44 @@ import 'reflect-metadata';
 import { authenticateRequest, resolveActor } from './auth/session';
 import { handleCreditsPurchase } from './credits/storekit';
 import { AuthenticatedContext, Env, isValidDeviceId } from './env';
-import { ALLOWED_ORIGINS, CORS_HEADERS, SECURITY_HEADERS, checkIPRateLimit, debugLog, errorResponse, internalError, jsonResponse, setDebugLogging } from './http';
+import {
+  ALLOWED_ORIGINS,
+  CORS_HEADERS,
+  SECURITY_HEADERS,
+  checkIPRateLimit,
+  debugLog,
+  errorResponse,
+  internalError,
+  jsonResponse,
+  setDebugLogging,
+} from './http';
 import { handleAnalysis, handleHealth } from './routes/analysis';
 import { handleLogin, handleLogout, handleSignup } from './routes/auth';
 import { handleGetCreditsBalance } from './routes/credits';
 import { handleExportCSV, handleGetAverages, handleGetHistory, handleGetTrends } from './routes/history';
-import { handleCreateLivestock, handleCreateLivestockLog, handleDeleteLivestock, handleGetLivestockLogs, handleListLivestock, handleUpdateLivestock } from './routes/livestock';
-import { handleCreateMaintenanceSchedule, handleDeleteMaintenanceSchedule, handleListMaintenanceSchedules, handleUpdateMaintenanceSchedule } from './routes/maintenance';
+import {
+  handleCreateLivestock,
+  handleCreateLivestockLog,
+  handleDeleteLivestock,
+  handleGetLivestockLogs,
+  handleListLivestock,
+  handleUpdateLivestock,
+} from './routes/livestock';
+import {
+  handleCreateMaintenanceSchedule,
+  handleDeleteMaintenanceSchedule,
+  handleListMaintenanceSchedules,
+  handleUpdateMaintenanceSchedule,
+} from './routes/maintenance';
 import { handleCreateMeasurement } from './routes/measurements';
-import { handleGetNotificationHistory, handleGetNotificationSettings, handleMarkNotificationsRead, handleRegisterPushToken, handleUnregisterPushToken, handleUpdateNotificationSettings } from './routes/notifications';
+import {
+  handleGetNotificationHistory,
+  handleGetNotificationSettings,
+  handleMarkNotificationsRead,
+  handleRegisterPushToken,
+  handleUnregisterPushToken,
+  handleUpdateNotificationSettings,
+} from './routes/notifications';
 import { handleCreateTank, handleDeleteTank, handleGetTank, handleListTanks, handleUpdateTank } from './routes/tanks';
 import { handleCreateWaterChange, handleDeleteWaterChange, handleListWaterChanges } from './routes/water-changes';
 
@@ -70,57 +99,244 @@ const ROUTES: Route[] = [
   { method: 'POST', path: '/auth/logout', auth: 'none', handler: (c) => handleLogout(c.request, c.env) },
 
   // Tanks
-  { method: 'GET', path: '/api/tanks', auth: 'actor', rate: 'device', handler: (c) => handleListTanks(c.env, c.auth, c.deviceId) },
-  { method: 'POST', path: '/api/tanks', auth: 'actor', rate: 'device', handler: (c) => handleCreateTank(c.request, c.env, c.auth, c.deviceId) },
-  { method: 'GET', path: new RegExp(`^/api/tanks/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleGetTank(c.env, c.auth!, c.params[0]) },
-  { method: 'PUT', path: new RegExp(`^/api/tanks/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleUpdateTank(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'DELETE', path: new RegExp(`^/api/tanks/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleDeleteTank(c.env, c.auth!, c.params[0]) },
+  {
+    method: 'GET',
+    path: '/api/tanks',
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleListTanks(c.env, c.auth, c.deviceId),
+  },
+  {
+    method: 'POST',
+    path: '/api/tanks',
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleCreateTank(c.request, c.env, c.auth, c.deviceId),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/api/tanks/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleGetTank(c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'PUT',
+    path: new RegExp(`^/api/tanks/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleUpdateTank(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'DELETE',
+    path: new RegExp(`^/api/tanks/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleDeleteTank(c.env, c.auth!, c.params[0]),
+  },
 
   // Measurements and analysis
-  { method: 'POST', path: '/api/measurements', auth: 'actor', rate: 'device', handler: (c) => handleCreateMeasurement(c.request, c.env, c.auth!) },
+  {
+    method: 'POST',
+    path: '/api/measurements',
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleCreateMeasurement(c.request, c.env, c.auth!),
+  },
   { method: 'POST', path: '/analyze', auth: 'none', handler: (c) => handleAnalysis(c.request, c.env) }, // own 10/min limiter + credits
 
   // Credits
-  { method: 'GET', path: '/credits/balance', auth: 'none', rate: 'device', handler: (c) => handleGetCreditsBalance(c.request, c.env) },
-  { method: 'POST', path: '/credits/purchase', auth: 'none', rate: 'device', handler: (c) => handleCreditsPurchase(c.request, c.env) },
+  {
+    method: 'GET',
+    path: '/credits/balance',
+    auth: 'none',
+    rate: 'device',
+    handler: (c) => handleGetCreditsBalance(c.request, c.env),
+  },
+  {
+    method: 'POST',
+    path: '/credits/purchase',
+    auth: 'none',
+    rate: 'device',
+    handler: (c) => handleCreditsPurchase(c.request, c.env),
+  },
 
   // History (P-03 a: device-facing)
-  { method: 'GET', path: new RegExp(`^/tanks/${ID}/history$`), auth: 'actor', rate: 'device', handler: (c) => handleGetHistory(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'GET', path: new RegExp(`^/tanks/${ID}/trends$`), auth: 'actor', rate: 'device', handler: (c) => handleGetTrends(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'GET', path: new RegExp(`^/tanks/${ID}/averages$`), auth: 'actor', rate: 'device', handler: (c) => handleGetAverages(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'GET', path: new RegExp(`^/tanks/${ID}/export$`), auth: 'actor', rate: 'device', handler: (c) => handleExportCSV(c.request, c.env, c.auth!, c.params[0]) },
+  {
+    method: 'GET',
+    path: new RegExp(`^/tanks/${ID}/history$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleGetHistory(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/tanks/${ID}/trends$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleGetTrends(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/tanks/${ID}/averages$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleGetAverages(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/tanks/${ID}/export$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleExportCSV(c.request, c.env, c.auth!, c.params[0]),
+  },
 
   // Maintenance schedules and water changes
-  { method: 'GET', path: '/maintenance/schedules', auth: 'actor', rate: 'device', handler: (c) => handleListMaintenanceSchedules(c.request, c.env, c.auth!) },
-  { method: 'POST', path: '/maintenance/schedules', auth: 'actor', rate: 'device', handler: (c) => handleCreateMaintenanceSchedule(c.request, c.env, c.auth!) },
-  { method: 'PUT', path: new RegExp(`^/maintenance/schedules/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleUpdateMaintenanceSchedule(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'DELETE', path: new RegExp(`^/maintenance/schedules/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleDeleteMaintenanceSchedule(c.env, c.auth!, c.params[0]) },
-  { method: 'POST', path: new RegExp(`^/api/tanks/${ID}/water-changes$`), auth: 'actor', rate: 'device', handler: (c) => handleCreateWaterChange(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'GET', path: new RegExp(`^/api/tanks/${ID}/water-changes$`), auth: 'actor', rate: 'device', handler: (c) => handleListWaterChanges(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'DELETE', path: new RegExp(`^/api/water-changes/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleDeleteWaterChange(c.env, c.auth!, c.params[0]) },
+  {
+    method: 'GET',
+    path: '/maintenance/schedules',
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleListMaintenanceSchedules(c.request, c.env, c.auth!),
+  },
+  {
+    method: 'POST',
+    path: '/maintenance/schedules',
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleCreateMaintenanceSchedule(c.request, c.env, c.auth!),
+  },
+  {
+    method: 'PUT',
+    path: new RegExp(`^/maintenance/schedules/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleUpdateMaintenanceSchedule(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'DELETE',
+    path: new RegExp(`^/maintenance/schedules/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleDeleteMaintenanceSchedule(c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'POST',
+    path: new RegExp(`^/api/tanks/${ID}/water-changes$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleCreateWaterChange(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/api/tanks/${ID}/water-changes$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleListWaterChanges(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'DELETE',
+    path: new RegExp(`^/api/water-changes/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleDeleteWaterChange(c.env, c.auth!, c.params[0]),
+  },
 
   // Livestock (the /api family is what the app calls)
-  { method: 'POST', path: new RegExp(`^/api/tanks/${ID}/livestock$`), auth: 'actor', rate: 'device', handler: (c) => handleCreateLivestock(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'GET', path: new RegExp(`^/api/tanks/${ID}/livestock$`), auth: 'actor', rate: 'device', handler: (c) => handleListLivestock(c.env, c.auth!, c.params[0]) },
-  { method: 'PUT', path: new RegExp(`^/api/livestock/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleUpdateLivestock(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'DELETE', path: new RegExp(`^/api/livestock/${ID}$`), auth: 'actor', rate: 'device', handler: (c) => handleDeleteLivestock(c.env, c.auth!, c.params[0]) },
-  { method: 'POST', path: new RegExp(`^/api/livestock/${ID}/logs$`), auth: 'actor', rate: 'device', handler: (c) => handleCreateLivestockLog(c.request, c.env, c.auth!, c.params[0]) },
-  { method: 'GET', path: new RegExp(`^/api/livestock/${ID}/logs$`), auth: 'actor', rate: 'device', handler: (c) => handleGetLivestockLogs(c.env, c.auth!, c.params[0]) },
+  {
+    method: 'POST',
+    path: new RegExp(`^/api/tanks/${ID}/livestock$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleCreateLivestock(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/api/tanks/${ID}/livestock$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleListLivestock(c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'PUT',
+    path: new RegExp(`^/api/livestock/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleUpdateLivestock(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'DELETE',
+    path: new RegExp(`^/api/livestock/${ID}$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleDeleteLivestock(c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'POST',
+    path: new RegExp(`^/api/livestock/${ID}/logs$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleCreateLivestockLog(c.request, c.env, c.auth!, c.params[0]),
+  },
+  {
+    method: 'GET',
+    path: new RegExp(`^/api/livestock/${ID}/logs$`),
+    auth: 'actor',
+    rate: 'device',
+    handler: (c) => handleGetLivestockLogs(c.env, c.auth!, c.params[0]),
+  },
 
   // Notifications (session only; push is a separate plan, P-02)
-  { method: 'POST', path: '/notifications/token', auth: 'session', handler: (c) => handleRegisterPushToken(c.request, c.env, c.auth!) },
-  { method: 'DELETE', path: '/notifications/token', auth: 'session', handler: (c) => handleUnregisterPushToken(c.request, c.env, c.auth!) },
-  { method: 'GET', path: '/notifications/settings', auth: 'session', handler: (c) => handleGetNotificationSettings(c.env, c.auth!) },
-  { method: 'PUT', path: '/notifications/settings', auth: 'session', handler: (c) => handleUpdateNotificationSettings(c.request, c.env, c.auth!) },
-  { method: 'GET', path: '/notifications/history', auth: 'session', handler: (c) => handleGetNotificationHistory(c.request, c.env, c.auth!) },
-  { method: 'POST', path: '/notifications/read', auth: 'session', handler: (c) => handleMarkNotificationsRead(c.request, c.env, c.auth!) },
+  {
+    method: 'POST',
+    path: '/notifications/token',
+    auth: 'session',
+    handler: (c) => handleRegisterPushToken(c.request, c.env, c.auth!),
+  },
+  {
+    method: 'DELETE',
+    path: '/notifications/token',
+    auth: 'session',
+    handler: (c) => handleUnregisterPushToken(c.request, c.env, c.auth!),
+  },
+  {
+    method: 'GET',
+    path: '/notifications/settings',
+    auth: 'session',
+    handler: (c) => handleGetNotificationSettings(c.env, c.auth!),
+  },
+  {
+    method: 'PUT',
+    path: '/notifications/settings',
+    auth: 'session',
+    handler: (c) => handleUpdateNotificationSettings(c.request, c.env, c.auth!),
+  },
+  {
+    method: 'GET',
+    path: '/notifications/history',
+    auth: 'session',
+    handler: (c) => handleGetNotificationHistory(c.request, c.env, c.auth!),
+  },
+  {
+    method: 'POST',
+    path: '/notifications/read',
+    auth: 'session',
+    handler: (c) => handleMarkNotificationsRead(c.request, c.env, c.auth!),
+  },
 ];
 
 function handleRoot(): Response {
   const endpoints: Record<string, string> = {};
   for (const r of ROUTES) {
-    const path = typeof r.path === 'string' ? r.path : r.path.source.replace(/^\^|\$$/g, '').replace(/\(\[a-f0-9-\]\+\)/g, ':id').replace(/\\\//g, '/');
-    endpoints[`${r.method} ${path}`] = r.auth === 'session' ? 'session required' : r.auth === 'actor' ? 'session or X-Device-ID' : 'public';
+    const path =
+      typeof r.path === 'string'
+        ? r.path
+        : r.path.source
+            .replace(/^\^|\$$/g, '')
+            .replace(/\(\[a-f0-9-\]\+\)/g, ':id')
+            .replace(/\\\//g, '/');
+    endpoints[`${r.method} ${path}`] =
+      r.auth === 'session' ? 'session required' : r.auth === 'actor' ? 'session or X-Device-ID' : 'public';
   }
   return jsonResponse({
     service: 'ReefBuddy API',
@@ -193,7 +409,11 @@ export default {
         if (!rl.allowed) {
           return finalize(
             jsonResponse(
-              { error: 'Rate limit exceeded', message: 'Too many requests. Please wait before trying again.', resetAt: new Date(rl.resetAt).toISOString() },
+              {
+                error: 'Rate limit exceeded',
+                message: 'Too many requests. Please wait before trying again.',
+                resetAt: new Date(rl.resetAt).toISOString(),
+              },
               429
             )
           );
@@ -212,7 +432,13 @@ export default {
       }
 
       const deviceId = request.headers.get('X-Device-ID');
-      const response = await route.handler({ request, env, params, auth, deviceId: isValidDeviceId(deviceId) ? deviceId : null });
+      const response = await route.handler({
+        request,
+        env,
+        params,
+        auth,
+        deviceId: isValidDeviceId(deviceId) ? deviceId : null,
+      });
       return finalize(response);
     } catch (error) {
       return finalize(internalError(`${method} ${pathname} [${requestId}]`, error));

@@ -64,7 +64,12 @@ export async function deviceCheckRequest(
   const response = await fetch(base + endpoint, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + jwt, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ device_token: deviceToken, timestamp: Date.now(), transaction_id: crypto.randomUUID(), ...extra }),
+    body: JSON.stringify({
+      device_token: deviceToken,
+      timestamp: Date.now(),
+      transaction_id: crypto.randomUUID(),
+      ...extra,
+    }),
   });
   const text = await response.text();
   let json: Record<string, unknown> | null = null;
@@ -77,7 +82,11 @@ export async function deviceCheckRequest(
   return { status: response.status, text, json };
 }
 
-export function deviceCheckFailure(status: number, text: string, json: Record<string, unknown> | null): DeviceCheckResult {
+export function deviceCheckFailure(
+  status: number,
+  text: string,
+  json: Record<string, unknown> | null
+): DeviceCheckResult {
   const reason = (json && typeof json.reason === 'string' ? json.reason : text) || 'DeviceCheck returned ' + status;
   if (status === 400) {
     console.error('DeviceCheck rejected token (400): ' + reason);
@@ -127,7 +136,10 @@ export async function validateDeviceToken(
       return { valid: true, freeTierConsumed: query.json.bit0 === true };
     }
     if (query.status === 200) {
-      const update = await deviceCheckRequest(env, isDevelopment, 'update_two_bits', deviceToken, { bit0: false, bit1: true });
+      const update = await deviceCheckRequest(env, isDevelopment, 'update_two_bits', deviceToken, {
+        bit0: false,
+        bit1: true,
+      });
       if (update.status === 200) {
         debugLog('DeviceCheck: first sight of device, bits initialised');
         return { valid: true, freeTierConsumed: false };
@@ -142,9 +154,16 @@ export async function validateDeviceToken(
 }
 
 /** Record on the physical device that its free analyses are used up (DeviceCheck bit0). Best effort. */
-export async function markDeviceFreeTierConsumed(env: Env, deviceToken: string, isDevelopment: boolean): Promise<boolean> {
+export async function markDeviceFreeTierConsumed(
+  env: Env,
+  deviceToken: string,
+  isDevelopment: boolean
+): Promise<boolean> {
   try {
-    const update = await deviceCheckRequest(env, isDevelopment, 'update_two_bits', deviceToken, { bit0: true, bit1: true });
+    const update = await deviceCheckRequest(env, isDevelopment, 'update_two_bits', deviceToken, {
+      bit0: true,
+      bit1: true,
+    });
     if (update.status !== 200) console.warn('DeviceCheck: could not set free-tier bit (' + update.status + ')');
     return update.status === 200;
   } catch (error) {
@@ -156,7 +175,13 @@ export async function markDeviceFreeTierConsumed(env: Env, deviceToken: string, 
 /** Outcome of an AI Gateway call. Errors never travel on the same channel as model text. */
 export type AIGatewayResult =
   | { ok: true; text: string; stopReason: string | null; usage: { input: number; output: number } | null }
-  | { ok: false; kind: 'not_configured' | 'upstream' | 'bad_shape' | 'network'; status: number; retryable: boolean; message: string };
+  | {
+      ok: false;
+      kind: 'not_configured' | 'upstream' | 'bad_shape' | 'network';
+      status: number;
+      retryable: boolean;
+      message: string;
+    };
 
 /** Default model and output budget; overridable per environment via AI_MODEL / AI_MAX_TOKENS (P3-21). */
 export const DEFAULT_AI_MODEL = 'claude-haiku-4-5';
@@ -198,7 +223,9 @@ export const AnalysisOutputSchema = z.object({
   summary: z.string(),
   recommendations: z.array(z.string()),
   warnings: z.array(z.string()),
-  dosingAdvice: z.array(z.object({ product: z.string(), amount: z.string(), frequency: z.string(), reason: z.string() })),
+  dosingAdvice: z.array(
+    z.object({ product: z.string(), amount: z.string(), frequency: z.string(), reason: z.string() })
+  ),
 });
 export type AnalysisOutput = z.infer<typeof AnalysisOutputSchema>;
 
@@ -215,13 +242,24 @@ export function aiMaxTokens(env: Env): number {
  * Retries live in the gateway (cf-aig-* headers); this function makes one attempt, plus one more
  * when Anthropic answers 429 with a short Retry-After or the network drops (P3-24).
  */
-export async function callAIGateway(env: Env, prompt: string, options: { maxTokens?: number } = {}): Promise<AIGatewayResult> {
+export async function callAIGateway(
+  env: Env,
+  prompt: string,
+  options: { maxTokens?: number } = {}
+): Promise<AIGatewayResult> {
   if (!env.ANTHROPIC_API_KEY || !env.CF_ACCOUNT_ID) {
     console.error('AI Gateway not configured: ANTHROPIC_API_KEY and CF_ACCOUNT_ID are required');
-    return { ok: false, kind: 'not_configured', status: 503, retryable: false, message: 'AI analysis is not configured on this server.' };
+    return {
+      ok: false,
+      kind: 'not_configured',
+      status: 503,
+      retryable: false,
+      message: 'AI analysis is not configured on this server.',
+    };
   }
 
-  const gatewayUrl = 'https://gateway.ai.cloudflare.com/v1/' + env.CF_ACCOUNT_ID + '/' + env.AI_GATEWAY_ID + '/anthropic/v1/messages';
+  const gatewayUrl =
+    'https://gateway.ai.cloudflare.com/v1/' + env.CF_ACCOUNT_ID + '/' + env.AI_GATEWAY_ID + '/anthropic/v1/messages';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-api-key': env.ANTHROPIC_API_KEY,
@@ -240,7 +278,8 @@ export async function callAIGateway(env: Env, prompt: string, options: { maxToke
     output_config: { format: { type: 'json_schema', schema: ANALYSIS_OUTPUT_SCHEMA } },
   });
 
-  const attempt = async (): Promise<Response> => fetch(gatewayUrl, { method: 'POST', headers, body, signal: AbortSignal.timeout(25_000) });
+  const attempt = async (): Promise<Response> =>
+    fetch(gatewayUrl, { method: 'POST', headers, body, signal: AbortSignal.timeout(25_000) });
 
   let response: Response;
   try {
@@ -258,7 +297,13 @@ export async function callAIGateway(env: Env, prompt: string, options: { maxToke
       response = await attempt();
     } catch (error) {
       console.error('AI Gateway fetch error:', error);
-      return { ok: false, kind: 'network', status: 502, retryable: true, message: 'Could not reach the AI service. Please try again.' };
+      return {
+        ok: false,
+        kind: 'network',
+        status: 502,
+        retryable: true,
+        message: 'Could not reach the AI service. Please try again.',
+      };
     }
   }
 
@@ -278,11 +323,20 @@ export async function callAIGateway(env: Env, prompt: string, options: { maxToke
     };
   }
 
-  const data = (await response.json()) as { stop_reason?: string | null; usage?: { input_tokens?: number; output_tokens?: number } };
+  const data = (await response.json()) as {
+    stop_reason?: string | null;
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
   const text = extractAnthropicAssistantText(data);
   if (text == null && data?.stop_reason !== 'refusal') {
     console.error('AI Gateway returned 200 but no assistant text. stop_reason=' + (data?.stop_reason ?? 'n/a'));
-    return { ok: false, kind: 'bad_shape', status: 502, retryable: true, message: 'The AI service returned an unexpected response.' };
+    return {
+      ok: false,
+      kind: 'bad_shape',
+      status: 502,
+      retryable: true,
+      message: 'The AI service returned an unexpected response.',
+    };
   }
   return {
     ok: true,
@@ -307,6 +361,11 @@ export function renderAnalysisText(a: AnalysisOutput): string {
   const lines: string[] = [a.summary.trim()];
   if (a.warnings.length) lines.push('', 'Warnings:', ...a.warnings.map((w) => '- ' + w));
   if (a.recommendations.length) lines.push('', 'Recommendations:', ...a.recommendations.map((r) => '- ' + r));
-  if (a.dosingAdvice.length) lines.push('', 'Dosing:', ...a.dosingAdvice.map((d) => '- ' + d.product + ': ' + d.amount + ', ' + d.frequency + ' (' + d.reason + ')'));
+  if (a.dosingAdvice.length)
+    lines.push(
+      '',
+      'Dosing:',
+      ...a.dosingAdvice.map((d) => '- ' + d.product + ': ' + d.amount + ', ' + d.frequency + ' (' + d.reason + ')')
+    );
   return lines.join('\n');
 }

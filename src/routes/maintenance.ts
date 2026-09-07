@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { AuthenticatedContext, Env } from '../env';
 import { errorResponse, generateUUID, internalError, jsonResponse, readJson } from '../http';
 import { verifyTankOwnership } from './history';
-import { MaintenanceScheduleCreateSchema, MaintenanceScheduleKindEnum, MaintenanceScheduleTypeEnum, MaintenanceScheduleUpdateSchema } from '../schemas';
+import {
+  MaintenanceScheduleCreateSchema,
+  MaintenanceScheduleKindEnum,
+  MaintenanceScheduleTypeEnum,
+  MaintenanceScheduleUpdateSchema,
+} from '../schemas';
 
 // =============================================================================
 // MAINTENANCE SCHEDULES HANDLERS
@@ -91,10 +96,7 @@ export async function handleListMaintenanceSchedules(
     if (tankId) {
       const parsed = z.uuid().safeParse(tankId);
       if (!parsed.success) {
-        return jsonResponse(
-          { error: 'Validation failed', details: z.flattenError(parsed.error) },
-          400
-        );
+        return jsonResponse({ error: 'Validation failed', details: z.flattenError(parsed.error) }, 400);
       }
 
       const tankResult = await verifyTankOwnership(env, tankId, auth.userId);
@@ -142,10 +144,7 @@ export async function handleCreateMaintenanceSchedule(
     const body = parsedBody.body;
     const validationResult = MaintenanceScheduleCreateSchema.safeParse(body);
     if (!validationResult.success) {
-      return jsonResponse(
-        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
-        400
-      );
+      return jsonResponse({ error: 'Validation failed', details: z.flattenError(validationResult.error) }, 400);
     }
 
     const data = validationResult.data;
@@ -214,10 +213,7 @@ export async function handleUpdateMaintenanceSchedule(
     const body = parsedBody.body;
     const validationResult = MaintenanceScheduleUpdateSchema.safeParse(body);
     if (!validationResult.success) {
-      return jsonResponse(
-        { error: 'Validation failed', details: z.flattenError(validationResult.error) },
-        400
-      );
+      return jsonResponse({ error: 'Validation failed', details: z.flattenError(validationResult.error) }, 400);
     }
     const data = validationResult.data;
 
@@ -231,7 +227,10 @@ export async function handleUpdateMaintenanceSchedule(
         return jsonResponse(
           {
             error: 'Validation failed',
-            details: { formErrors: [], fieldErrors: { intervalDays: ['intervalDays is required when scheduleKind=interval_days'] } },
+            details: {
+              formErrors: [],
+              fieldErrors: { intervalDays: ['intervalDays is required when scheduleKind=interval_days'] },
+            },
           },
           400
         );
@@ -307,9 +306,7 @@ export async function handleUpdateMaintenanceSchedule(
 
     values.push(scheduleId.toLowerCase(), auth.userId);
 
-    await env.DB.prepare(
-      `UPDATE maintenance_schedules SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`
-    )
+    await env.DB.prepare(`UPDATE maintenance_schedules SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`)
       .bind(...values)
       .run();
 

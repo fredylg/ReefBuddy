@@ -17,16 +17,18 @@ export async function verifyTankOwnership(
   env: Env,
   tankId: string,
   userId: string
-): Promise<{ id: string; user_id: string; name: string } | Response> {  // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
+): Promise<{ id: string; user_id: string; name: string } | Response> {
+  // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
   const normalizedTankId = tankId.toLowerCase();
-  const tank = (await env.DB.prepare(
-    'SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL'
-  )
+  const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL')
     .bind(normalizedTankId)
-    .first()) as { id: string; user_id: string; name: string } | null;  if (!tank) {    return errorResponse('Not found', 'Tank not found', 404);
+    .first()) as { id: string; user_id: string; name: string } | null;
+  if (!tank) {
+    return errorResponse('Not found', 'Tank not found', 404);
   }
 
-  if (tank.user_id !== userId) {    return errorResponse('Forbidden', 'You do not have access to this tank', 403);
+  if (tank.user_id !== userId) {
+    return errorResponse('Forbidden', 'You do not have access to this tank', 403);
   }
 
   return tank;

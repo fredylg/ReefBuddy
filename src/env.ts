@@ -26,11 +26,10 @@ export function isValidDeviceId(value: string | null | undefined): value is stri
  * generated from wrangler.toml by `npm run types` (rerun after changing wrangler.toml or .dev.vars).
  * Only the fields whose generated type is wrongly required (optional secrets/vars) are re-declared here.
  */
-export interface Env
-  extends Omit<
-    Cloudflare.Env,
-    'ALLOW_SANDBOX_PURCHASES' | 'CF_AI_GATEWAY_TOKEN' | 'APPLE_KEY_ID' | 'APPLE_PRIVATE_KEY' | 'APPLE_TEAM_ID'
-  > {
+export interface Env extends Omit<
+  Cloudflare.Env,
+  'ALLOW_SANDBOX_PURCHASES' | 'CF_AI_GATEWAY_TOKEN' | 'APPLE_KEY_ID' | 'APPLE_PRIVATE_KEY' | 'APPLE_TEAM_ID'
+> {
   /** Set to 'true' to accept Sandbox/Xcode StoreKit transactions in production (TestFlight). Default: Production only. */
   ALLOW_SANDBOX_PURCHASES?: string;
   /** Optional: AI Gateway authentication token */

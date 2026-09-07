@@ -43,11 +43,7 @@ export async function handleListTanks(
       userId = await getOrCreateDeviceUser(env, deviceId);
     } else {
       // Neither auth nor device ID provided
-      return errorResponse(
-        'Unauthorized',
-        'Either authentication token or device ID is required',
-        401
-      );
+      return errorResponse('Unauthorized', 'Either authentication token or device ID is required', 401);
     }
 
     const result = await env.DB.prepare(
@@ -80,17 +76,11 @@ export async function handleListTanks(
  * Handle getting a single tank
  * GET /api/tanks/:id (authenticated)
  */
-export async function handleGetTank(
-  env: Env,
-  auth: AuthenticatedContext,
-  tankId: string
-): Promise<Response> {
+export async function handleGetTank(env: Env, auth: AuthenticatedContext, tankId: string): Promise<Response> {
   try {
     // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
     const normalizedTankId = tankId.toLowerCase();
-    const tank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
-    )
+    const tank = (await env.DB.prepare('SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL')
       .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
 
@@ -155,11 +145,7 @@ export async function handleCreateTank(
       userId = await getOrCreateDeviceUser(env, deviceId);
     } else {
       // Neither auth nor device ID provided
-      return errorResponse(
-        'Unauthorized',
-        'Either authentication token or device ID is required',
-        401
-      );
+      return errorResponse('Unauthorized', 'Either authentication token or device ID is required', 401);
     }
 
     const tankId = generateUUID();
@@ -286,11 +272,7 @@ export async function handleUpdateTank(
  * Handle deleting a tank (soft delete)
  * DELETE /api/tanks/:id (authenticated)
  */
-export async function handleDeleteTank(
-  env: Env,
-  auth: AuthenticatedContext,
-  tankId: string
-): Promise<Response> {
+export async function handleDeleteTank(env: Env, auth: AuthenticatedContext, tankId: string): Promise<Response> {
   try {
     // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
     const normalizedTankId = tankId.toLowerCase();

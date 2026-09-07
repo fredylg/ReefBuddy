@@ -9,9 +9,9 @@
  * - Error handling
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
-import { installGatewayMock, successReply } from "./helpers/mock-gateway";
-import { SELF } from "cloudflare:test";
+import { describe, it, expect, beforeAll } from 'vitest';
+import { installGatewayMock, successReply } from './helpers/mock-gateway';
+import { SELF } from 'cloudflare:test';
 
 // =============================================================================
 // TEST DATA
@@ -38,7 +38,7 @@ const validWaterParameters = {
  */
 const validAnalysisRequest = {
   // deviceId is added per request (unique) by postAnalyze; storage is shared within this file.
-  tankId: "550e8400-e29b-41d4-a716-446655440000", // Valid UUID
+  tankId: '550e8400-e29b-41d4-a716-446655440000', // Valid UUID
   parameters: validWaterParameters,
   tankVolume: 75, // gallons
 };
@@ -51,7 +51,7 @@ const validAnalysisRequest = {
  * Make a POST request to the analyze endpoint
  * Automatically adds deviceId if not provided
  */
-installGatewayMock(successReply("Parameters look fine. No dosing needed."));
+installGatewayMock(successReply('Parameters look fine. No dosing needed.'));
 
 let ipCounter = 0;
 /** Unique client IP per request so the 10/min/IP limiter never trips across this file. */
@@ -65,36 +65,33 @@ async function postAnalyze(body: Record<string, unknown>): Promise<Response> {
   return postAnalyzeWithClientIp(body, randomTestClientIp());
 }
 
-async function postAnalyzeWithClientIp(
-  body: Record<string, unknown>,
-  clientIp: string
-): Promise<Response> {
+async function postAnalyzeWithClientIp(body: Record<string, unknown>, clientIp: string): Promise<Response> {
   const requestBody = {
     deviceId: `TEST-DEVICE-${crypto.randomUUID()}`,
     ...body,
   };
-  return SELF.fetch("http://localhost/analyze", {
-    method: "POST",
+  return SELF.fetch('http://localhost/analyze', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "CF-Connecting-IP": clientIp,
+      'Content-Type': 'application/json',
+      'CF-Connecting-IP': clientIp,
     },
     body: JSON.stringify(requestBody),
   });
 }
 
-function uniqueEmail(prefix = "user"): string {
+function uniqueEmail(prefix = 'user'): string {
   // Avoid collisions across tests since the D1 DB persists in the test runtime.
   return `${prefix}.${crypto.randomUUID()}@example.com`.toLowerCase();
 }
 
 async function signupAndGetToken(): Promise<{ email: string; token: string; userId: string }> {
-  const email = uniqueEmail("maint");
-  const password = "TestPassword123!";
+  const email = uniqueEmail('maint');
+  const password = 'TestPassword123!';
 
-  const res = await SELF.fetch("http://localhost/auth/signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const res = await SELF.fetch('http://localhost/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
 
@@ -111,17 +108,17 @@ async function signupAndGetToken(): Promise<{ email: string; token: string; user
   return { email: data.user.email, token: data.session_token, userId: data.user.id };
 }
 
-async function createTankForUser(token: string, name = "Test Tank"): Promise<string> {
-  const res = await SELF.fetch("http://localhost/api/tanks", {
-    method: "POST",
+async function createTankForUser(token: string, name = 'Test Tank'): Promise<string> {
+  const res = await SELF.fetch('http://localhost/api/tanks', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       name,
       volume_gallons: 10,
-      tank_type: "reef",
+      tank_type: 'reef',
     }),
   });
 
@@ -132,14 +129,11 @@ async function createTankForUser(token: string, name = "Test Tank"): Promise<str
   return data.data.id;
 }
 
-async function postMaintenanceSchedule(
-  token: string | null,
-  body: Record<string, unknown>
-): Promise<Response> {
-  return SELF.fetch("http://localhost/maintenance/schedules", {
-    method: "POST",
+async function postMaintenanceSchedule(token: string | null, body: Record<string, unknown>): Promise<Response> {
+  return SELF.fetch('http://localhost/maintenance/schedules', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
@@ -149,25 +143,21 @@ async function postMaintenanceSchedule(
 async function listMaintenanceSchedules(token: string, tankId?: string): Promise<Response> {
   const url = tankId
     ? `http://localhost/maintenance/schedules?tankId=${encodeURIComponent(tankId)}`
-    : "http://localhost/maintenance/schedules";
+    : 'http://localhost/maintenance/schedules';
 
   return SELF.fetch(url, {
-    method: "GET",
+    method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
 }
 
-async function postWaterChange(
-  token: string | null,
-  tankId: string,
-  body: Record<string, unknown>
-): Promise<Response> {
+async function postWaterChange(token: string | null, tankId: string, body: Record<string, unknown>): Promise<Response> {
   return SELF.fetch(`http://localhost/api/tanks/${tankId}/water-changes`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
@@ -176,14 +166,14 @@ async function postWaterChange(
 
 async function listWaterChanges(token: string, tankId: string): Promise<Response> {
   return SELF.fetch(`http://localhost/api/tanks/${tankId}/water-changes`, {
-    method: "GET",
+    method: 'GET',
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
 async function deleteWaterChange(token: string, waterChangeId: string): Promise<Response> {
   return SELF.fetch(`http://localhost/api/water-changes/${waterChangeId}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
 }
@@ -192,9 +182,9 @@ async function deleteWaterChange(token: string, waterChangeId: string): Promise<
  * Generate a valid UUID
  */
 function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -203,9 +193,9 @@ function generateUUID(): string {
 // TEST SUITES
 // =============================================================================
 
-describe("GET /", () => {
-  it("should return API information", async () => {
-    const response = await SELF.fetch("http://localhost/");
+describe('GET /', () => {
+  it('should return API information', async () => {
+    const response = await SELF.fetch('http://localhost/');
     expect(response.status).toBe(200);
 
     const data = (await response.json()) as {
@@ -213,20 +203,20 @@ describe("GET /", () => {
       version: string;
       endpoints: Record<string, string>;
     };
-    expect(data.service).toBe("ReefBuddy API");
-    expect(data.version).toBe("1.0.6");
+    expect(data.service).toBe('ReefBuddy API');
+    expect(data.version).toBe('1.0.6');
     expect(data.endpoints).toBeDefined();
   });
 
-  it("should return JSON content-type header", async () => {
-    const response = await SELF.fetch("http://localhost/");
-    expect(response.headers.get("Content-Type")).toBe("application/json");
+  it('should return JSON content-type header', async () => {
+    const response = await SELF.fetch('http://localhost/');
+    expect(response.headers.get('Content-Type')).toBe('application/json');
   });
 });
 
-describe("GET /health", () => {
-  it("should return healthy status", async () => {
-    const response = await SELF.fetch("http://localhost/health");
+describe('GET /health', () => {
+  it('should return healthy status', async () => {
+    const response = await SELF.fetch('http://localhost/health');
     expect(response.status).toBe(200);
 
     const data = (await response.json()) as {
@@ -234,15 +224,15 @@ describe("GET /health", () => {
       service: string;
       timestamp: string;
     };
-    expect(data.status).toBe("healthy");
-    expect(data.service).toBe("ReefBuddy API");
+    expect(data.status).toBe('healthy');
+    expect(data.service).toBe('ReefBuddy API');
     expect(data.timestamp).toBeDefined();
   });
 });
 
-describe("POST /analyze - Zod Validation", () => {
-  describe("Valid Parameter Ranges", () => {
-    it("should accept valid measurement data with all required fields", async () => {
+describe('POST /analyze - Zod Validation', () => {
+  describe('Valid Parameter Ranges', () => {
+    it('should accept valid measurement data with all required fields', async () => {
       const response = await postAnalyze(validAnalysisRequest);
       // May return 200 (success) or error if AI Gateway not configured
       expect([200, 500]).toContain(response.status);
@@ -254,7 +244,7 @@ describe("POST /analyze - Zod Validation", () => {
       }
     });
 
-    it("should accept minimum valid parameter values", async () => {
+    it('should accept minimum valid parameter values', async () => {
       const minParams = {
         tankId: generateUUID(),
         parameters: {
@@ -273,7 +263,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).not.toBe(400);
     });
 
-    it("should accept maximum valid parameter values", async () => {
+    it('should accept maximum valid parameter values', async () => {
       const maxParams = {
         tankId: generateUUID(),
         parameters: {
@@ -294,7 +284,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).not.toBe(400);
     });
 
-    it("should accept request with only required parameters (no optional)", async () => {
+    it('should accept request with only required parameters (no optional)', async () => {
       const requiredOnly = {
         tankId: generateUUID(),
         parameters: {
@@ -314,8 +304,8 @@ describe("POST /analyze - Zod Validation", () => {
     });
   });
 
-  describe("Invalid Parameter Ranges", () => {
-    it("should reject request missing tankId", async () => {
+  describe('Invalid Parameter Ranges', () => {
+    it('should reject request missing tankId', async () => {
       const missingTankId = {
         parameters: validWaterParameters,
         tankVolume: 75,
@@ -325,12 +315,12 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
 
       const data = (await response.json()) as { error: string };
-      expect(data.error).toBe("Validation failed");
+      expect(data.error).toBe('Validation failed');
     });
 
-    it("should reject request with invalid tankId format (not UUID)", async () => {
+    it('should reject request with invalid tankId format (not UUID)', async () => {
       const invalidTankId = {
-        tankId: "not-a-valid-uuid",
+        tankId: 'not-a-valid-uuid',
         parameters: validWaterParameters,
         tankVolume: 75,
       };
@@ -339,7 +329,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject request missing parameters object", async () => {
+    it('should reject request missing parameters object', async () => {
       const missingParams = {
         tankId: generateUUID(),
         tankVolume: 75,
@@ -349,7 +339,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject request missing tankVolume", async () => {
+    it('should reject request missing tankVolume', async () => {
       const missingVolume = {
         tankId: generateUUID(),
         parameters: validWaterParameters,
@@ -359,7 +349,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject pH value below minimum (< 7.8)", async () => {
+    it('should reject pH value below minimum (< 7.8)', async () => {
       const lowPh = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -373,7 +363,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(data.details.fieldErrors.parameters).toBeDefined();
     });
 
-    it("should reject pH value above maximum (> 8.6)", async () => {
+    it('should reject pH value above maximum (> 8.6)', async () => {
       const highPh = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -384,7 +374,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject salinity below minimum (< 1.020)", async () => {
+    it('should reject salinity below minimum (< 1.020)', async () => {
       const lowSalinity = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -395,7 +385,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject salinity above maximum (> 1.030)", async () => {
+    it('should reject salinity above maximum (> 1.030)', async () => {
       const highSalinity = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -406,7 +396,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject temperature below minimum (< 72)", async () => {
+    it('should reject temperature below minimum (< 72)', async () => {
       const lowTemp = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -417,7 +407,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject temperature above maximum (> 84)", async () => {
+    it('should reject temperature above maximum (> 84)', async () => {
       const highTemp = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -428,7 +418,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject alkalinity below minimum (< 6)", async () => {
+    it('should reject alkalinity below minimum (< 6)', async () => {
       const lowAlk = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -439,7 +429,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject alkalinity above maximum (> 12)", async () => {
+    it('should reject alkalinity above maximum (> 12)', async () => {
       const highAlk = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -450,7 +440,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject calcium below minimum (< 350)", async () => {
+    it('should reject calcium below minimum (< 350)', async () => {
       const lowCa = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -461,7 +451,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject calcium above maximum (> 500)", async () => {
+    it('should reject calcium above maximum (> 500)', async () => {
       const highCa = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -472,7 +462,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject magnesium below minimum (< 1200)", async () => {
+    it('should reject magnesium below minimum (< 1200)', async () => {
       const lowMg = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -483,7 +473,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject magnesium above maximum (> 1500)", async () => {
+    it('should reject magnesium above maximum (> 1500)', async () => {
       const highMg = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -494,7 +484,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject negative nitrate value", async () => {
+    it('should reject negative nitrate value', async () => {
       const negativeNitrate = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -505,7 +495,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject nitrate above maximum (> 50)", async () => {
+    it('should reject nitrate above maximum (> 50)', async () => {
       const highNitrate = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -516,7 +506,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject negative phosphate value", async () => {
+    it('should reject negative phosphate value', async () => {
       const negativePhosphate = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -527,7 +517,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject phosphate above maximum (> 0.5)", async () => {
+    it('should reject phosphate above maximum (> 0.5)', async () => {
       const highPhosphate = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -538,7 +528,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject negative ammonia value", async () => {
+    it('should reject negative ammonia value', async () => {
       const negativeAmmonia = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -549,7 +539,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject ammonia above maximum (> 1)", async () => {
+    it('should reject ammonia above maximum (> 1)', async () => {
       const highAmmonia = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -560,7 +550,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject non-positive tank volume", async () => {
+    it('should reject non-positive tank volume', async () => {
       const zeroVolume = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -571,7 +561,7 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject negative tank volume", async () => {
+    it('should reject negative tank volume', async () => {
       const negativeVolume = {
         ...validAnalysisRequest,
         tankId: generateUUID(),
@@ -582,12 +572,12 @@ describe("POST /analyze - Zod Validation", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should reject non-numeric parameter values", async () => {
+    it('should reject non-numeric parameter values', async () => {
       const stringParams = {
         tankId: generateUUID(),
         parameters: {
           ...validWaterParameters,
-          ph: "eight point two",
+          ph: 'eight point two',
         },
         tankVolume: 75,
       };
@@ -598,21 +588,21 @@ describe("POST /analyze - Zod Validation", () => {
   });
 });
 
-describe("POST /analyze - HTTP Response Format", () => {
-  it("should return JSON content-type header", async () => {
+describe('POST /analyze - HTTP Response Format', () => {
+  it('should return JSON content-type header', async () => {
     const response = await postAnalyze(validAnalysisRequest);
-    expect(response.headers.get("Content-Type")).toBe("application/json");
+    expect(response.headers.get('Content-Type')).toBe('application/json');
   });
 
-  it("should return 400 Bad Request for validation errors", async () => {
-    const invalidRequest = { tankId: "invalid" };
+  it('should return 400 Bad Request for validation errors', async () => {
+    const invalidRequest = { tankId: 'invalid' };
     const response = await postAnalyze(invalidRequest);
     expect(response.status).toBe(400);
   });
 
-  it("should include detailed error messages for validation failures", async () => {
+  it('should include detailed error messages for validation failures', async () => {
     const invalidRequest = {
-      tankId: "not-uuid",
+      tankId: 'not-uuid',
       parameters: { ph: 14.5 }, // Missing required fields, invalid pH
       tankVolume: -1,
     };
@@ -624,62 +614,62 @@ describe("POST /analyze - HTTP Response Format", () => {
       error: string;
       details: { fieldErrors: Record<string, string[]>; formErrors: string[] };
     };
-    expect(data.error).toBe("Validation failed");
+    expect(data.error).toBe('Validation failed');
     expect(data.details).toBeDefined();
   });
 
-  it("sends no CORS origin header to the native app (no Origin header) but does send a request id", async () => {
+  it('sends no CORS origin header to the native app (no Origin header) but does send a request id', async () => {
     const response = await postAnalyze(validAnalysisRequest);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
-    expect(response.headers.get("X-Request-Id")).toBeTruthy();
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    expect(response.headers.get('X-Request-Id')).toBeTruthy();
   });
 });
 
-describe("OPTIONS /analyze - CORS Preflight", () => {
-  it("should return 204 No Content for OPTIONS request", async () => {
-    const response = await SELF.fetch("http://localhost/analyze", {
-      method: "OPTIONS",
+describe('OPTIONS /analyze - CORS Preflight', () => {
+  it('should return 204 No Content for OPTIONS request', async () => {
+    const response = await SELF.fetch('http://localhost/analyze', {
+      method: 'OPTIONS',
     });
     expect(response.status).toBe(204);
   });
 
-  it("echoes an allow-listed Origin and varies on it", async () => {
-    const response = await SELF.fetch("http://localhost/analyze", {
-      method: "OPTIONS",
-      headers: { Origin: "http://localhost:3000" },
+  it('echoes an allow-listed Origin and varies on it', async () => {
+    const response = await SELF.fetch('http://localhost/analyze', {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://localhost:3000' },
     });
 
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3000");
-    expect(response.headers.get("Vary")).toContain("Origin");
-    expect(response.headers.get("Access-Control-Allow-Methods")).toContain("POST");
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:3000');
+    expect(response.headers.get('Vary')).toContain('Origin');
+    expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST');
   });
 
-  it("sends no Access-Control-Allow-Origin for unknown origins or when Origin is absent", async () => {
-    const unknown = await SELF.fetch("http://localhost/health", { headers: { Origin: "https://evil.example" } });
-    expect(unknown.headers.get("Access-Control-Allow-Origin")).toBeNull();
-    const native = await SELF.fetch("http://localhost/health");
-    expect(native.headers.get("Access-Control-Allow-Origin")).toBeNull();
-    expect(native.headers.get("X-Request-Id")).toBeTruthy();
+  it('sends no Access-Control-Allow-Origin for unknown origins or when Origin is absent', async () => {
+    const unknown = await SELF.fetch('http://localhost/health', { headers: { Origin: 'https://evil.example' } });
+    expect(unknown.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    const native = await SELF.fetch('http://localhost/health');
+    expect(native.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    expect(native.headers.get('X-Request-Id')).toBeTruthy();
   });
 });
 
-describe("Rate Limiting (IP-based)", () => {
+describe('Rate Limiting (IP-based)', () => {
   // /analyze applies checkIPRateLimit first (default 10 req / minute per CF-Connecting-IP).
   // Use a dedicated client IP so parallel tests do not share the same bucket.
 
-  it("should return 429 when IP rate limit is exceeded", async () => {
-    const clientIp = "203.0.113.5"; // dedicated bucket for this test
+  it('should return 429 when IP rate limit is exceeded', async () => {
+    const clientIp = '203.0.113.5'; // dedicated bucket for this test
     const base = { ...validAnalysisRequest, tankId: generateUUID() };
 
     // IP limit runs before JSON parse; invalid JSON still consumes a slot (fast, no AI).
     for (let i = 0; i < 10; i++) {
-      const res = await SELF.fetch("http://localhost/analyze", {
-        method: "POST",
+      const res = await SELF.fetch('http://localhost/analyze', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "CF-Connecting-IP": clientIp,
+          'Content-Type': 'application/json',
+          'CF-Connecting-IP': clientIp,
         },
-        body: "{ invalid json }",
+        body: '{ invalid json }',
       });
       expect(res.status).toBe(400);
     }
@@ -694,12 +684,11 @@ describe("Rate Limiting (IP-based)", () => {
     );
     expect(blocked.status).toBe(429);
     const data = (await blocked.json()) as { error: string; message: string };
-    expect(data.error).toBe("Rate limit exceeded");
+    expect(data.error).toBe('Rate limit exceeded');
   });
 
-  it("should use separate buckets for different client IPs", async () => {
-
-    const ipB = "203.0.113.7";
+  it('should use separate buckets for different client IPs', async () => {
+    const ipB = '203.0.113.7';
 
     const r = await postAnalyzeWithClientIp(
       {
@@ -714,88 +703,82 @@ describe("Rate Limiting (IP-based)", () => {
   });
 });
 
-describe("Error Handling", () => {
-  it("should return 404 for unknown routes", async () => {
-    const response = await SELF.fetch("http://localhost/unknown-endpoint");
+describe('Error Handling', () => {
+  it('should return 404 for unknown routes', async () => {
+    const response = await SELF.fetch('http://localhost/unknown-endpoint');
     expect(response.status).toBe(404);
 
     const data = (await response.json()) as { error: string };
-    expect(data.error).toBe("Not found");
+    expect(data.error).toBe('Not found');
   });
 
-  it("should return 404 for wrong HTTP method on known route", async () => {
-    const response = await SELF.fetch("http://localhost/analyze", {
-      method: "GET",
+  it('should return 404 for wrong HTTP method on known route', async () => {
+    const response = await SELF.fetch('http://localhost/analyze', {
+      method: 'GET',
     });
     expect(response.status).toBe(404);
   });
 
-  it("should handle malformed JSON gracefully", async () => {
-    const response = await SELF.fetch("http://localhost/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{ invalid json }",
+  it('should handle malformed JSON gracefully', async () => {
+    const response = await SELF.fetch('http://localhost/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{ invalid json }',
     });
 
     expect(response.status).toBe(400);
 
     const data = (await response.json()) as { error: string };
-    expect(data.error).toBe("Invalid JSON");
+    expect(data.error).toBe('Invalid JSON');
   });
 
-  it("should handle empty request body", async () => {
-    const response = await SELF.fetch("http://localhost/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "",
+  it('should handle empty request body', async () => {
+    const response = await SELF.fetch('http://localhost/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '',
     });
 
     expect(response.status).toBe(400);
   });
 });
 
-describe("Maintenance Schedules - Auth Required", () => {
-  it("GET /maintenance/schedules should require Authorization header", async () => {
-    const response = await SELF.fetch("http://localhost/maintenance/schedules", {
-      method: "GET",
+describe('Maintenance Schedules - Auth Required', () => {
+  it('GET /maintenance/schedules should require Authorization header', async () => {
+    const response = await SELF.fetch('http://localhost/maintenance/schedules', {
+      method: 'GET',
     });
     expect(response.status).toBe(401);
   });
 
-  it("POST /maintenance/schedules should require Authorization header", async () => {
-    const response = await SELF.fetch("http://localhost/maintenance/schedules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+  it('POST /maintenance/schedules should require Authorization header', async () => {
+    const response = await SELF.fetch('http://localhost/maintenance/schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
     expect(response.status).toBe(401);
   });
 
-  it("PUT /maintenance/schedules/:id should require Authorization header", async () => {
-    const response = await SELF.fetch(
-      "http://localhost/maintenance/schedules/550e8400-e29b-41d4-a716-446655440000",
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      }
-    );
+  it('PUT /maintenance/schedules/:id should require Authorization header', async () => {
+    const response = await SELF.fetch('http://localhost/maintenance/schedules/550e8400-e29b-41d4-a716-446655440000', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
     expect(response.status).toBe(401);
   });
 
-  it("DELETE /maintenance/schedules/:id should require Authorization header", async () => {
-    const response = await SELF.fetch(
-      "http://localhost/maintenance/schedules/550e8400-e29b-41d4-a716-446655440000",
-      {
-        method: "DELETE",
-      }
-    );
+  it('DELETE /maintenance/schedules/:id should require Authorization header', async () => {
+    const response = await SELF.fetch('http://localhost/maintenance/schedules/550e8400-e29b-41d4-a716-446655440000', {
+      method: 'DELETE',
+    });
     expect(response.status).toBe(401);
   });
 });
 
-describe("Input Sanitization", () => {
-  it("should handle extremely large tank volume", async () => {
+describe('Input Sanitization', () => {
+  it('should handle extremely large tank volume', async () => {
     const largeVolume = {
       ...validAnalysisRequest,
       tankId: generateUUID(),
@@ -807,7 +790,7 @@ describe("Input Sanitization", () => {
     expect([200, 400, 500]).toContain(response.status);
   });
 
-  it("should handle floating point precision for parameters", async () => {
+  it('should handle floating point precision for parameters', async () => {
     const preciseParams = {
       tankId: generateUUID(),
       parameters: {
@@ -826,17 +809,17 @@ describe("Input Sanitization", () => {
   });
 });
 
-describe("/maintenance/schedules", () => {
+describe('/maintenance/schedules', () => {
   let authAndDbReady = false;
 
   beforeAll(async () => {
     // These endpoints depend on D1 migrations and KV bindings.
     // If the test runtime doesn't have the required tables/bindings, skip the auth/tank-dependent tests.
     try {
-      const res = await SELF.fetch("http://localhost/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: uniqueEmail("preflight"), password: "TestPassword123!" }),
+      const res = await SELF.fetch('http://localhost/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: uniqueEmail('preflight'), password: 'TestPassword123!' }),
       });
       authAndDbReady = res.status === 201;
     } catch {
@@ -844,122 +827,122 @@ describe("/maintenance/schedules", () => {
     }
   });
 
-  describe("Auth required", () => {
-    it("rejects unauthenticated create", async () => {
+  describe('Auth required', () => {
+    it('rejects unauthenticated create', async () => {
       const res = await postMaintenanceSchedule(null, {
         tankId: generateUUID(),
-        type: "testing",
+        type: 'testing',
         enabled: true,
-        scheduleKind: "weekly",
+        scheduleKind: 'weekly',
         weekdays: [1],
-        timeLocal: "19:30",
-        timezone: "UTC",
-        notes: "{}",
+        timeLocal: '19:30',
+        timezone: 'UTC',
+        notes: '{}',
       });
 
       expect(res.status).toBe(401);
       const data = (await res.json()) as { error: string; message: string };
-      expect(data.error).toBe("Unauthorized");
+      expect(data.error).toBe('Unauthorized');
     });
 
-    it("rejects unauthenticated list", async () => {
-      const res = await SELF.fetch("http://localhost/maintenance/schedules", { method: "GET" });
+    it('rejects unauthenticated list', async () => {
+      const res = await SELF.fetch('http://localhost/maintenance/schedules', { method: 'GET' });
       expect(res.status).toBe(401);
     });
   });
 
-  describe("Create schedule validation", () => {
-    it.runIf(authAndDbReady)("weekly requires weekdays", async () => {
+  describe('Create schedule validation', () => {
+    it.runIf(authAndDbReady)('weekly requires weekdays', async () => {
       const { token } = await signupAndGetToken();
-      const tankId = await createTankForUser(token, "Weekly Tank");
+      const tankId = await createTankForUser(token, 'Weekly Tank');
 
       const res = await postMaintenanceSchedule(token, {
         tankId,
-        type: "testing",
+        type: 'testing',
         enabled: true,
-        scheduleKind: "weekly",
+        scheduleKind: 'weekly',
         // weekdays missing
-        timeLocal: "19:30",
-        timezone: "UTC",
+        timeLocal: '19:30',
+        timezone: 'UTC',
       });
 
       expect(res.status).toBe(400);
       const data = (await res.json()) as { error: string };
-      expect(data.error).toBe("Validation failed");
+      expect(data.error).toBe('Validation failed');
     });
 
-    it.runIf(authAndDbReady)("interval_days requires intervalDays", async () => {
+    it.runIf(authAndDbReady)('interval_days requires intervalDays', async () => {
       const { token } = await signupAndGetToken();
-      const tankId = await createTankForUser(token, "Interval Tank");
+      const tankId = await createTankForUser(token, 'Interval Tank');
 
       const res = await postMaintenanceSchedule(token, {
         tankId,
-        type: "water_change",
+        type: 'water_change',
         enabled: true,
-        scheduleKind: "interval_days",
+        scheduleKind: 'interval_days',
         // intervalDays missing
-        timeLocal: "07:15",
-        timezone: "UTC",
+        timeLocal: '07:15',
+        timezone: 'UTC',
       });
 
       expect(res.status).toBe(400);
       const data = (await res.json()) as { error: string };
-      expect(data.error).toBe("Validation failed");
+      expect(data.error).toBe('Validation failed');
     });
 
-    it.runIf(authAndDbReady)("rejects invalid timeLocal format", async () => {
+    it.runIf(authAndDbReady)('rejects invalid timeLocal format', async () => {
       const { token } = await signupAndGetToken();
-      const tankId = await createTankForUser(token, "Bad Time Tank");
+      const tankId = await createTankForUser(token, 'Bad Time Tank');
 
       const res = await postMaintenanceSchedule(token, {
         tankId,
-        type: "filter",
+        type: 'filter',
         enabled: true,
-        scheduleKind: "weekly",
+        scheduleKind: 'weekly',
         weekdays: [2],
-        timeLocal: "7:30", // must be HH:MM
-        timezone: "UTC",
+        timeLocal: '7:30', // must be HH:MM
+        timezone: 'UTC',
       });
 
       expect(res.status).toBe(400);
       const data = (await res.json()) as { error: string };
-      expect(data.error).toBe("Validation failed");
+      expect(data.error).toBe('Validation failed');
     });
 
-    it.runIf(authAndDbReady)("rejects weekdays out of bounds (must be 1..7)", async () => {
+    it.runIf(authAndDbReady)('rejects weekdays out of bounds (must be 1..7)', async () => {
       const { token } = await signupAndGetToken();
-      const tankId = await createTankForUser(token, "Bad Weekdays Tank");
+      const tankId = await createTankForUser(token, 'Bad Weekdays Tank');
 
       const res = await postMaintenanceSchedule(token, {
         tankId,
-        type: "testing",
+        type: 'testing',
         enabled: true,
-        scheduleKind: "weekly",
+        scheduleKind: 'weekly',
         weekdays: [0, 8],
-        timeLocal: "19:30",
-        timezone: "UTC",
+        timeLocal: '19:30',
+        timezone: 'UTC',
       });
 
       expect(res.status).toBe(400);
       const data = (await res.json()) as { error: string };
-      expect(data.error).toBe("Validation failed");
+      expect(data.error).toBe('Validation failed');
     });
   });
 
-  describe("Tank ownership enforcement", () => {
+  describe('Tank ownership enforcement', () => {
     it.runIf(authAndDbReady)("rejects creating a schedule for another user's tank", async () => {
       const userA = await signupAndGetToken();
-      const tankA = await createTankForUser(userA.token, "UserA Tank");
+      const tankA = await createTankForUser(userA.token, 'UserA Tank');
       const userB = await signupAndGetToken();
 
       const res = await postMaintenanceSchedule(userB.token, {
         tankId: tankA,
-        type: "testing",
+        type: 'testing',
         enabled: true,
-        scheduleKind: "weekly",
+        scheduleKind: 'weekly',
         weekdays: [1],
-        timeLocal: "19:30",
-        timezone: "UTC",
+        timeLocal: '19:30',
+        timezone: 'UTC',
       });
 
       // Implementation may choose 403 or 404; both are acceptable as long as it does not allow access.
@@ -967,31 +950,31 @@ describe("/maintenance/schedules", () => {
     });
   });
 
-  describe("GET list filtering", () => {
-    it.runIf(authAndDbReady)("filters schedules by tankId", async () => {
+  describe('GET list filtering', () => {
+    it.runIf(authAndDbReady)('filters schedules by tankId', async () => {
       const { token } = await signupAndGetToken();
-      const tank1 = await createTankForUser(token, "Tank 1");
-      const tank2 = await createTankForUser(token, "Tank 2");
+      const tank1 = await createTankForUser(token, 'Tank 1');
+      const tank2 = await createTankForUser(token, 'Tank 2');
 
       const create1 = await postMaintenanceSchedule(token, {
         tankId: tank1,
-        type: "testing",
+        type: 'testing',
         enabled: true,
-        scheduleKind: "weekly",
+        scheduleKind: 'weekly',
         weekdays: [1],
-        timeLocal: "19:30",
-        timezone: "UTC",
+        timeLocal: '19:30',
+        timezone: 'UTC',
       });
       expect([201, 200]).toContain(create1.status);
 
       const create2 = await postMaintenanceSchedule(token, {
         tankId: tank2,
-        type: "filter",
+        type: 'filter',
         enabled: true,
-        scheduleKind: "interval_days",
+        scheduleKind: 'interval_days',
         intervalDays: 7,
-        timeLocal: "08:00",
-        timezone: "UTC",
+        timeLocal: '08:00',
+        timezone: 'UTC',
       });
       expect([201, 200]).toContain(create2.status);
 
@@ -1006,9 +989,7 @@ describe("/maintenance/schedules", () => {
       expect(listTank1Json.success).toBe(true);
 
       const allArr =
-        (listAllJson.data as unknown[]) ??
-        (listAllJson.schedules as unknown[]) ??
-        (listAllJson.items as unknown[]);
+        (listAllJson.data as unknown[]) ?? (listAllJson.schedules as unknown[]) ?? (listAllJson.items as unknown[]);
       const tank1Arr =
         (listTank1Json.data as unknown[]) ??
         (listTank1Json.schedules as unknown[]) ??
@@ -1018,9 +999,7 @@ describe("/maintenance/schedules", () => {
       expect(Array.isArray(tank1Arr)).toBe(true);
 
       // Tank-specific list should not contain schedules from other tanks.
-      const tank1Ids = new Set(
-        (tank1Arr as Array<Record<string, unknown>>).map((s) => String(s.tankId ?? s.tank_id))
-      );
+      const tank1Ids = new Set((tank1Arr as Array<Record<string, unknown>>).map((s) => String(s.tankId ?? s.tank_id)));
       expect(tank1Ids.size).toBeGreaterThan(0);
       expect(tank1Ids.has(tank1)).toBe(true);
       expect(tank1Ids.has(tank2)).toBe(false);
@@ -1028,23 +1007,23 @@ describe("/maintenance/schedules", () => {
   });
 });
 
-describe("/api/tanks/:tankId/water-changes", () => {
-  it("requires auth to create a water change", async () => {
+describe('/api/tanks/:tankId/water-changes', () => {
+  it('requires auth to create a water change', async () => {
     const res = await postWaterChange(null, generateUUID(), {
       percentReplaced: 10,
     });
     expect(res.status).toBe(401);
   });
 
-  it("creates and lists water changes for a tank", async () => {
+  it('creates and lists water changes for a tank', async () => {
     const { token } = await signupAndGetToken();
-    const tankId = await createTankForUser(token, "Water Change Tank");
+    const tankId = await createTankForUser(token, 'Water Change Tank');
 
     const create = await postWaterChange(token, tankId, {
-      performedAt: new Date("2026-05-01T10:00:00.000Z").toISOString(),
+      performedAt: new Date('2026-05-01T10:00:00.000Z').toISOString(),
       percentReplaced: 12.5,
       gallonsReplaced: 5,
-      notes: "Weekly change",
+      notes: 'Weekly change',
     });
 
     expect(create.status).toBe(201);
@@ -1057,7 +1036,7 @@ describe("/api/tanks/:tankId/water-changes", () => {
     expect(created.data.tankId).toBe(tankId);
     expect(created.data.percentReplaced).toBe(12.5);
     expect(created.data.gallonsReplaced).toBe(5);
-    expect(created.data.notes).toBe("Weekly change");
+    expect(created.data.notes).toBe('Weekly change');
 
     const list = await listWaterChanges(token, tankId);
     expect(list.status).toBe(200);
@@ -1066,11 +1045,11 @@ describe("/api/tanks/:tankId/water-changes", () => {
     expect(listed.data.some((wc) => wc.id === created.data.id)).toBe(true);
   });
 
-  it("validates replaced amount", async () => {
+  it('validates replaced amount', async () => {
     const { token } = await signupAndGetToken();
-    const tankId = await createTankForUser(token, "Water Change Validation Tank");
+    const tankId = await createTankForUser(token, 'Water Change Validation Tank');
 
-    const missingAmount = await postWaterChange(token, tankId, { notes: "No amount" });
+    const missingAmount = await postWaterChange(token, tankId, { notes: 'No amount' });
     expect(missingAmount.status).toBe(400);
 
     const badPercent = await postWaterChange(token, tankId, { percentReplaced: 101 });
@@ -1079,16 +1058,16 @@ describe("/api/tanks/:tankId/water-changes", () => {
 
   it("rejects water changes for another user's tank", async () => {
     const userA = await signupAndGetToken();
-    const tankA = await createTankForUser(userA.token, "Owner Tank");
+    const tankA = await createTankForUser(userA.token, 'Owner Tank');
     const userB = await signupAndGetToken();
 
     const res = await postWaterChange(userB.token, tankA, { percentReplaced: 10 });
     expect([403, 404]).toContain(res.status);
   });
 
-  it("soft deletes water changes", async () => {
+  it('soft deletes water changes', async () => {
     const { token } = await signupAndGetToken();
-    const tankId = await createTankForUser(token, "Delete Water Change Tank");
+    const tankId = await createTankForUser(token, 'Delete Water Change Tank');
 
     const create = await postWaterChange(token, tankId, { gallonsReplaced: 7 });
     expect(create.status).toBe(201);

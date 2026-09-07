@@ -16,7 +16,10 @@ export const LowercaseUuid = z.uuid().transform((v) => v.toLowerCase());
 export const WaterParametersSchema = z
   .object({
     salinity: z.number().nullish().describe('Salinity value (SG or PPT per salinity_unit)'),
-    salinity_unit: z.enum(['SG', 'PPT']).nullish().describe('Salinity unit: SG (specific gravity) or PPT (parts per thousand)'),
+    salinity_unit: z
+      .enum(['SG', 'PPT'])
+      .nullish()
+      .describe('Salinity unit: SG (specific gravity) or PPT (parts per thousand)'),
     temperature: z.number().nullish().describe('Temperature in Fahrenheit'),
     ph: z.number().nullish().describe('pH level'),
     alkalinity: z.number().nullish().describe('Alkalinity in dKH'),
@@ -39,8 +42,7 @@ export const WaterParametersSchema = z
     { message: 'Salinity out of range: SG must be between 1.000 and 1.040, PPT between 0 and 50', path: ['salinity'] }
   )
   .superRefine((data, ctx) => {
-    const add = (path: (string | number)[], message: string) =>
-      ctx.addIssue({ code: 'custom', message, path });
+    const add = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', message, path });
 
     // Plausibility bounds (test-kit ranges), not ideal-reef ranges: a crashing tank must still be analysable (B-26).
     const bounds: Array<[keyof typeof data, number, number, string]> = [
@@ -135,10 +137,13 @@ export const MaintenanceScheduleKindEnum = z.enum(['interval_days', 'weekly']);
 export const TimeLocalSchema = z
   .string()
   .regex(/^\d{2}:\d{2}$/, { message: 'timeLocal must be in HH:MM format' })
-  .refine((v) => {
-    const [hh, mm] = v.split(':').map((n) => Number(n));
-    return Number.isInteger(hh) && Number.isInteger(mm) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
-  }, { message: 'timeLocal must be a valid time' });
+  .refine(
+    (v) => {
+      const [hh, mm] = v.split(':').map((n) => Number(n));
+      return Number.isInteger(hh) && Number.isInteger(mm) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+    },
+    { message: 'timeLocal must be a valid time' }
+  );
 
 export const MaintenanceScheduleCreateSchema = z
   .object({
@@ -264,7 +269,10 @@ export const WaterChangeListQuerySchema = z.object({
 export const CreditPurchaseJWSSchema = z.object({
   deviceId: z.string().regex(DEVICE_ID_PATTERN, 'Invalid device identifier').describe('iOS device identifier'),
   jwsRepresentation: z.string().min(1).describe('JWS-signed transaction from StoreKit 2'),
-  transactionId: z.string().optional().describe('Client-reported transaction ID (informational; the signed payload is authoritative)'),
+  transactionId: z
+    .string()
+    .optional()
+    .describe('Client-reported transaction ID (informational; the signed payload is authoritative)'),
   originalTransactionId: z.string().optional().describe('Client-reported original transaction ID (informational)'),
   productId: z.string().min(1).describe('Product ID purchased'),
 });
@@ -312,7 +320,16 @@ export const LivestockCategoryEnum = z.enum(['SPS', 'LPS', 'Soft', 'Fish', 'Inve
 /**
  * Valid health status values
  */
-export const HealthStatusEnum = z.enum(['thriving', 'healthy', 'stressed', 'declining', 'critical', 'sick', 'deceased', 'quarantine']);
+export const HealthStatusEnum = z.enum([
+  'thriving',
+  'healthy',
+  'stressed',
+  'declining',
+  'critical',
+  'sick',
+  'deceased',
+  'quarantine',
+]);
 
 /**
  * Valid log types for livestock health tracking
@@ -332,7 +349,9 @@ export const LivestockCreateSchema = z.object({
   healthStatus: HealthStatusEnum.optional().default('healthy').describe('Current health status'),
   notes: z.string().max(2000).optional().describe('Additional notes or observations'),
   imageUrl: z.url().max(2048).optional().describe('URL to livestock image'),
-  id: LowercaseUuid.optional().describe('Optional livestock ID (for retroactive compatibility with local-only livestock)'),
+  id: LowercaseUuid.optional().describe(
+    'Optional livestock ID (for retroactive compatibility with local-only livestock)'
+  ),
 });
 
 /**

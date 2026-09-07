@@ -5,11 +5,11 @@ import { Env } from './env';
 // =============================================================================
 
 export const ALLOWED_ORIGINS = [
-  'capacitor://localhost',           // iOS app
-  'ionic://localhost',               // iOS app alternative
-  'http://localhost:8100',           // Local development
-  'http://localhost:3000',           // Web development
-  'http://localhost:8787',           // Wrangler dev
+  'capacitor://localhost', // iOS app
+  'ionic://localhost', // iOS app alternative
+  'http://localhost:8100', // Local development
+  'http://localhost:3000', // Web development
+  'http://localhost:8787', // Wrangler dev
 ];
 
 // CORS and security headers for all responses
@@ -82,11 +82,16 @@ export function errorResponse(error: string, message: string, status: number): R
  * Parse a JSON request body. Malformed JSON is a client error (400), never a 500.
  * Usage: const parsed = await readJson(request); if (!parsed.ok) return parsed.response;
  */
-export async function readJson(request: Request): Promise<{ ok: true; body: unknown } | { ok: false; response: Response }> {
+export async function readJson(
+  request: Request
+): Promise<{ ok: true; body: unknown } | { ok: false; response: Response }> {
   try {
     return { ok: true, body: await request.json() };
   } catch {
-    return { ok: false, response: jsonResponse({ error: 'Invalid JSON', message: 'Request body is not valid JSON' }, 400) };
+    return {
+      ok: false,
+      response: jsonResponse({ error: 'Invalid JSON', message: 'Request body is not valid JSON' }, 400),
+    };
   }
 }
 
@@ -140,7 +145,7 @@ export async function checkIPRateLimit(
   const now = Date.now();
 
   try {
-    const data = await env.REEF_KV.get(key, 'json') as { count: number; windowStart: number } | null;
+    const data = (await env.REEF_KV.get(key, 'json')) as { count: number; windowStart: number } | null;
 
     if (!data || now - data.windowStart > windowMs) {
       // New window - reset counter
@@ -158,11 +163,9 @@ export async function checkIPRateLimit(
     }
 
     // Increment counter
-    await env.REEF_KV.put(
-      key,
-      JSON.stringify({ count: data.count + 1, windowStart: data.windowStart }),
-      { expirationTtl: Math.ceil(windowMs / 1000) * 2 }
-    );
+    await env.REEF_KV.put(key, JSON.stringify({ count: data.count + 1, windowStart: data.windowStart }), {
+      expirationTtl: Math.ceil(windowMs / 1000) * 2,
+    });
 
     return { allowed: true, remaining: maxRequests - data.count - 1, resetAt: data.windowStart + windowMs };
   } catch (error) {

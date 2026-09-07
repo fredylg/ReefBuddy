@@ -124,12 +124,7 @@ function measurementToCSVRow(measurement: Measurement): string {
  * @param recordCount - Number of records exported
  * @returns Array of metadata lines
  */
-function generateMetadataRows(
-  tank: TankInfo,
-  startDate: string,
-  endDate: string,
-  recordCount: number
-): string[] {
+function generateMetadataRows(tank: TankInfo, startDate: string, endDate: string, recordCount: number): string[] {
   const exportedAt = new Date().toISOString();
 
   return [
@@ -196,4 +191,3 @@ export async function exportMeasurementsToCSV(
 
   return lines.join('\n');
 }
-
