@@ -1,12 +1,21 @@
 # ReefBuddy - Cloudflare Workers Configuration
 # Backend for saltwater aquarium water chemistry analysis
+#
+# LAYOUT (P1-11): the top level IS production. `wrangler deploy` deploys production.
+# Local development uses the `dev` environment: `wrangler dev --env dev` (npm run dev).
+# There is deliberately no remote deploy of the dev environment: it shares the production
+# D1/KV bindings below (local dev uses Miniflare storage, so nothing touches production data).
+# If a remote dev Worker is ever wanted, give it its own D1 and KV first.
 
 name = "reefbuddy"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-01-01"   # bumped to a current date in P2-07
 
-# ES Modules format (required for modern Workers)
-# Reference: https://developers.cloudflare.com/workers/
+# Keep the *.workers.dev host until iOS 1.0.7 (custom domain) has shipped, then set false (C-03).
+workers_dev = true
+routes = [
+  { pattern = "api.reefbuddy.aethers.com.au", custom_domain = true }
+]
 
 # D1 Database Binding
 # Create with: npx wrangler d1 create reef-db
@@ -15,97 +24,64 @@ binding = "DB"
 database_name = "reef-db"
 database_id = "5171dac0-7584-49a2-956b-971f2516e0cd"
 
-# KV Namespace Binding (for session tracking)
-# Create with: npx wrangler kv:namespace create REEF_KV
+# KV Namespace Binding (sessions, rate limiting)
+# Create with: npx wrangler kv namespace create REEF_KV
 [[kv_namespaces]]
 binding = "REEF_KV"
 id = "b971329ac04e4171a65cfb907da0b08f"
 
-# Environment Variables
-# Default vars (used for local development with `npx wrangler dev`)
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
+# Set to "true" only if TestFlight testers must be able to buy credits (Sandbox transactions).
+ALLOW_SANDBOX_PURCHASES = "false"
 
-# AI Gateway Configuration
-# Route all LLM calls through Cloudflare AI Gateway for caching
+# AI Gateway (all LLM calls go through it). Flattened to AI_GATEWAY_ID in P3-25.
 [vars.AI_GATEWAY]
 gateway_id = "reefbuddy-ai-gateway"
-# Create gateway in Cloudflare Dashboard: https://dash.cloudflare.com/?to=/:account/ai/ai-gateway
 
-# =============================================================================
-# OBSERVABILITY CONFIGURATION
-# Enable logging for debugging and monitoring
-# Access logs at: https://dash.cloudflare.com/workers-and-pages/monitoring/logs
-# =============================================================================
-
+# Observability: Workers Logs at 100% sampling. Applies to every environment.
 [observability.logs]
 enabled = true
 invocation_logs = true
 
 # =============================================================================
-# SECRETS REFERENCE
-# Set via wrangler secret put (these are NOT stored in this file):
-#
-# REQUIRED:
-# - ANTHROPIC_API_KEY: API key for Claude AI Gateway
-#
-# OPTIONAL (AI Gateway Authentication):
-# - CF_AI_GATEWAY_TOKEN: Authentication token for Cloudflare AI Gateway
-#   Set this if you have enabled "Authenticated Gateway" in AI Gateway settings
-#   Command: wrangler secret put CF_AI_GATEWAY_TOKEN
-#
-# OPTIONAL (Apple DeviceCheck - for device attestation):
-# - APPLE_KEY_ID: Key ID from Apple Developer Console (DeviceCheck key)
-# - APPLE_PRIVATE_KEY: Private key in PKCS8 PEM format (DeviceCheck key)
-# - APPLE_TEAM_ID: Apple Developer Team ID
-#
-# To enable DeviceCheck:
-# 1. Create a DeviceCheck key in Apple Developer Console
-# 2. Download the private key (.p8 file)
-# 3. Convert to PKCS8 PEM format if needed
-# 4. Set all three APPLE_* secrets
-#
-# Example commands:
-#   wrangler secret put ANTHROPIC_API_KEY
-#   wrangler secret put CF_AI_GATEWAY_TOKEN  # Optional: for AI Gateway authentication
-#   wrangler secret put APPLE_KEY_ID
-#   wrangler secret put APPLE_PRIVATE_KEY
-#   wrangler secret put APPLE_TEAM_ID
-#
-# Note: DeviceCheck is optional. If not configured, device verification
-# will be skipped for backward compatibility.
+# SECRETS (set with `wrangler secret put <NAME>`; never stored in this file)
+#   ANTHROPIC_API_KEY      required  - Anthropic key used through AI Gateway
+#   CF_AI_GATEWAY_TOKEN    required  - AI Gateway is in Authenticated mode
+#   APPLE_KEY_ID           required  - DeviceCheck key id (10 chars)
+#   APPLE_PRIVATE_KEY      required  - DeviceCheck key, PKCS8 PEM
+#   APPLE_TEAM_ID          required  - Apple Developer team id
+# Local development reads the same names from .dev.vars (git-ignored).
 # =============================================================================
 
-# Production environment (deploy with: npx wrangler deploy --env production)
-[env.production]
-name = "reefbuddy"
+# -----------------------------------------------------------------------------
+# Local development environment: `wrangler dev --env dev`
+# Distinct name so a mistaken `wrangler deploy --env dev` can never overwrite production.
+# -----------------------------------------------------------------------------
+[env.dev]
+name = "reefbuddy-dev"
 workers_dev = true
-routes = [
-  { pattern = "api.reefbuddy.aethers.com.au", custom_domain = true }
-]
 
-# D1 Database Binding (same as top-level)
-[[env.production.d1_databases]]
+[[env.dev.d1_databases]]
 binding = "DB"
 database_name = "reef-db"
 database_id = "5171dac0-7584-49a2-956b-971f2516e0cd"
 
-# KV Namespace Binding (same as top-level)
-[[env.production.kv_namespaces]]
+[[env.dev.kv_namespaces]]
 binding = "REEF_KV"
 id = "b971329ac04e4171a65cfb907da0b08f"
 
-[env.production.vars]
-ENVIRONMENT = "production"
+[env.dev.vars]
+ENVIRONMENT = "development"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
+ALLOW_SANDBOX_PURCHASES = "true"
 
-[env.production.vars.AI_GATEWAY]
+[env.dev.vars.AI_GATEWAY]
 gateway_id = "reefbuddy-ai-gateway"
 
-# Development settings
 [dev]
 port = 8787
 local_protocol = "http"

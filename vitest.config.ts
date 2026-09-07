@@ -14,7 +14,7 @@ export default defineWorkersConfig(async () => {
       setupFiles: ["tests/apply-d1-migrations.ts"],
       poolOptions: {
         workers: {
-          wrangler: { configPath: "./wrangler.toml" },
+          wrangler: { configPath: "./wrangler.toml", environment: "dev" },
           miniflare: {
             d1Databases: {
               DB: "test-db",

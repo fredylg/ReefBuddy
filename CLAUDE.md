@@ -16,8 +16,8 @@ ReefBuddy is a New Brutalist iOS app for saltwater aquarium hobbyists. It provid
 ### Commands
 ```bash
 # Backend
-npx wrangler dev                              # Local development
-npx wrangler deploy                           # Deploy to production
+npm run dev                                   # Local development (wrangler dev --env dev)
+npm run deploy                                # Deploy to production (top-level env IS production)
 npx wrangler d1 migrations apply reef-db      # Apply migrations
 
 # Testing

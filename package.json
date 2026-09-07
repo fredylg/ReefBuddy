@@ -5,11 +5,12 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --env dev",
     "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "wrangler d1 migrations apply reef-db --local",
+    "db:migrate": "wrangler d1 migrations apply reef-db --local --env dev",
     "db:migrate:remote": "wrangler d1 migrations apply reef-db --remote"
   },
   "keywords": [
