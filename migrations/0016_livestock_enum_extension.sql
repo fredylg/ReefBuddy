@@ -4,6 +4,14 @@
 --
 -- New categories:      Anemone, Other
 -- New health statuses: thriving, stressed, declining, critical
+--
+-- livestock_logs.livestock_id references livestock(id) and D1 enforces foreign keys. Dropping
+-- the parent while child rows exist fails even with deferred checks (SQLite counts the dropped
+-- parents as violations), so the child rows are parked in a scratch table and restored after
+-- the rebuild. The whole file runs in one D1 transaction.
+
+CREATE TABLE livestock_logs_backup AS SELECT * FROM livestock_logs;
+DELETE FROM livestock_logs;
 
 CREATE TABLE IF NOT EXISTS livestock_new (
     id TEXT PRIMARY KEY,
@@ -37,3 +45,6 @@ ALTER TABLE livestock_new RENAME TO livestock;
 CREATE INDEX IF NOT EXISTS idx_livestock_tank ON livestock(tank_id);
 CREATE INDEX IF NOT EXISTS idx_livestock_active ON livestock(tank_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_livestock_health ON livestock(tank_id, health_status) WHERE deleted_at IS NULL;
+
+INSERT INTO livestock_logs SELECT * FROM livestock_logs_backup;
+DROP TABLE livestock_logs_backup;
