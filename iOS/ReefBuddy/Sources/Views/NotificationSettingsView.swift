@@ -295,10 +295,8 @@ struct NotificationSettingsView: View {
     // MARK: - Helper Functions
 
     private func checkNotificationPermissions() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                permissionStatus = settings.authorizationStatus
-            }
+        Task { @MainActor in
+            permissionStatus = await MaintenanceNotificationService.shared.getAuthorizationStatus()
         }
     }
 
@@ -314,11 +312,12 @@ struct NotificationSettingsView: View {
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         )
 
-        UNUserNotificationCenter.current().add(request) { error in
-            if error == nil {
-                DispatchQueue.main.async {
-                    showingTestAlert = true
-                }
+        Task { @MainActor in
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+                showingTestAlert = true
+            } catch {
+                appLog.error("Test notification failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

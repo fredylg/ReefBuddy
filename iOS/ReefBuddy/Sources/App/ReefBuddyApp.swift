@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
-import UserNotifications
+// UN* delegate parameters are not marked Sendable in the SDK; the async delegate methods on the
+// @MainActor AppDelegate hop to the main actor regardless of the calling queue.
+@preconcurrency import UserNotifications
 import os
 
 let appLog = Logger(subsystem: "au.com.aethers.reefbuddy", category: "App")
@@ -61,8 +63,10 @@ struct ReefBuddyApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    private var maintenanceTapHandler: (([AnyHashable: Any]) -> Void)?
-    private var pendingMaintenanceTap: [AnyHashable: Any]?
+    /// Notification payloads are string-only (see `MaintenanceNotificationService.notificationContent`), so the
+    /// tap is reduced to `[String: String]` in the nonisolated delegate callback and handed to the main actor.
+    private var maintenanceTapHandler: (([String: String]) -> Void)?
+    private var pendingMaintenanceTap: [String: String]?
 
     /// The delegate must be in place before launch finishes, or a tap that cold-starts the app is lost.
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
@@ -71,7 +75,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     /// Register the handler; any tap that arrived before a view existed is delivered immediately.
-    func attachMaintenanceTapHandler(_ handler: @escaping ([AnyHashable: Any]) -> Void) {
+    func attachMaintenanceTapHandler(_ handler: @escaping ([String: String]) -> Void) {
         maintenanceTapHandler = handler
         if let pending = pendingMaintenanceTap {
             pendingMaintenanceTap = nil
@@ -79,22 +83,31 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .sound]
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        let userInfo = response.notification.request.content.userInfo
+        var payload: [String: String] = [:]
+        for (key, value) in response.notification.request.content.userInfo {
+            if let key = key as? String, let value = value as? String {
+                payload[key] = value
+            }
+        }
+        await deliverMaintenanceTap(payload)
+    }
+
+    private func deliverMaintenanceTap(_ payload: [String: String]) {
         if let handler = maintenanceTapHandler {
-            handler(userInfo)
+            handler(payload)
         } else {
-            pendingMaintenanceTap = userInfo
+            pendingMaintenanceTap = payload
         }
     }
 }
@@ -187,15 +200,15 @@ final class AppState: ObservableObject {
         #endif
     }
 
-    func handleMaintenanceNotification(userInfo: [AnyHashable: Any]) {
+    func handleMaintenanceNotification(userInfo: [String: String]) {
         debugLog("🔔 [AppState] handleMaintenanceNotification userInfo: \(userInfo)")
-        guard let kind = userInfo["kind"] as? String, kind == "maintenance" else {
+        guard userInfo["kind"] == "maintenance" else {
             debugLog("🔔 [AppState] ignored — kind=\(userInfo["kind"] ?? "nil")")
             return
         }
-        guard let scheduleIdStr = userInfo["scheduleId"] as? String,
-              let tankIdStr = userInfo["tankId"] as? String,
-              let typeStr = userInfo["type"] as? String,
+        guard let scheduleIdStr = userInfo["scheduleId"],
+              let tankIdStr = userInfo["tankId"],
+              let typeStr = userInfo["type"],
               let scheduleId = UUID(uuidString: scheduleIdStr),
               let tankId = UUID(uuidString: tankIdStr),
               let type = MaintenanceSchedule.ScheduleType(rawValue: typeStr)

@@ -6,12 +6,14 @@ import Foundation
 /// and older rows may carry plain ISO without fractions. Foundation's `.iso8601` strategy only accepts
 /// the last of these, which is why every server response used to fail to decode (I-01).
 enum APIDates {
-    static let isoFractional: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is thread-safe (like DateFormatter) but the SDK does not mark it Sendable,
+    // and the instances are never mutated after creation.
+    nonisolated(unsafe) static let isoFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
-    static let iso: ISO8601DateFormatter = {
+    nonisolated(unsafe) static let iso: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f

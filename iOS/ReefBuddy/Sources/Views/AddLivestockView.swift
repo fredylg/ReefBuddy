@@ -124,47 +124,27 @@ struct AddLivestockView: View {
                 .fontWeight(.bold)
                 .foregroundColor(BrutalistTheme.Colors.text)
 
-            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                if let photoData = photoData,
-                   let uiImage = UIImage(data: photoData) {
-                    ZStack(alignment: .topTrailing) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(height: 200)
-                            .clipped()
-                            .brutalistBorder()
+            // The PhotosPicker label closure is nonisolated in the SDK, so it only receives a plain value
+            // and the main-actor work (styling, state mutation) lives in the label view and the overlay.
+            let currentImage = photoData.flatMap(UIImage.init(data:))
+            ZStack(alignment: .topTrailing) {
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    PhotoPickerLabel(image: currentImage)
+                }
 
-                        // Remove photo button
-                        Button(action: {
-                            self.photoData = nil
-                            self.selectedPhoto = nil
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(BrutalistTheme.Colors.warning)
-                                .background(Circle().fill(BrutalistTheme.Colors.background))
-                        }
-                        .buttonStyle(.plain)
-                        .padding(BrutalistTheme.Spacing.sm)
+                if currentImage != nil {
+                    // Remove photo button
+                    Button(action: {
+                        photoData = nil
+                        selectedPhoto = nil
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(BrutalistTheme.Colors.warning)
+                            .background(Circle().fill(BrutalistTheme.Colors.background))
                     }
-                } else {
-                    HStack {
-                        Spacer()
-                        VStack(spacing: BrutalistTheme.Spacing.sm) {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 36, weight: .bold))
-                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
-
-                            Text("TAP TO ADD PHOTO")
-                                .font(BrutalistTheme.Typography.caption)
-                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
-                        }
-                        Spacer()
-                    }
-                    .frame(height: 140)
-                    .background(BrutalistTheme.Colors.text.opacity(0.05))
-                    .brutalistBorder(width: BrutalistTheme.Borders.standard, color: BrutalistTheme.Colors.text.opacity(0.3))
+                    .buttonStyle(.plain)
+                    .padding(BrutalistTheme.Spacing.sm)
                 }
             }
             .onChange(of: selectedPhoto) { _, newValue in
@@ -330,4 +310,39 @@ struct AddLivestockView: View {
     let view = AddLivestockView(tank: Tank.sample)
     return view
         .environmentObject(AppState())
+}
+
+// MARK: - Photo Picker Label
+
+/// Label content for the livestock photo picker: the chosen image, or the "tap to add" placeholder.
+private struct PhotoPickerLabel: View {
+    let image: UIImage?
+
+    var body: some View {
+        if let image {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(height: 200)
+                .clipped()
+                .brutalistBorder()
+        } else {
+            HStack {
+                Spacer()
+                VStack(spacing: BrutalistTheme.Spacing.sm) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+
+                    Text("TAP TO ADD PHOTO")
+                        .font(BrutalistTheme.Typography.caption)
+                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                }
+                Spacer()
+            }
+            .frame(height: 140)
+            .background(BrutalistTheme.Colors.text.opacity(0.05))
+            .brutalistBorder(width: BrutalistTheme.Borders.standard, color: BrutalistTheme.Colors.text.opacity(0.3))
+        }
+    }
 }

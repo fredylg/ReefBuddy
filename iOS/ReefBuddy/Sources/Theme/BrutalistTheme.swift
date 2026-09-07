@@ -233,7 +233,7 @@ extension View {
     .background(BrutalistTheme.Colors.background)
 }
 
-@ViewBuilder
+@MainActor @ViewBuilder
 private func colorSwatch(_ name: String, color: Color) -> some View {
     VStack {
         Rectangle()

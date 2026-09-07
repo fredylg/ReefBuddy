@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 /// Secure storage using iOS Keychain
-final class KeychainManager {
+final class KeychainManager: Sendable {
     static let shared = KeychainManager()
 
     private let service = "au.com.aethers.reefbuddy"

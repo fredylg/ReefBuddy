@@ -6,12 +6,12 @@ private let log = Logger(subsystem: "au.com.aethers.reefbuddy", category: "Notif
 
 // MARK: - Maintenance Notification Scheduling
 
-final class MaintenanceNotificationService {
+final class MaintenanceNotificationService: Sendable {
     static let shared = MaintenanceNotificationService()
 
     private init() {}
 
-    private let center = UNUserNotificationCenter.current()
+    private var center: UNUserNotificationCenter { UNUserNotificationCenter.current() }
 
     // MARK: - Public API (requested surface)
 
