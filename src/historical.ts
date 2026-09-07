@@ -78,6 +78,7 @@ export interface AggregateData {
   avg_salinity: number | null;
   avg_temperature: number | null;
   avg_ammonia: number | null;
+  avg_nitrite: number | null;
 }
 
 /**
@@ -320,7 +321,8 @@ export async function getDailyAverages(
       avg_phosphate,
       avg_salinity,
       avg_temperature,
-      avg_ammonia
+      avg_ammonia,
+      avg_nitrite
     FROM v_daily_averages
     WHERE tank_id = ?
       AND measurement_date >= ?
@@ -363,7 +365,8 @@ export async function getWeeklyAverages(
       avg_phosphate,
       avg_salinity,
       avg_temperature,
-      avg_ammonia
+      avg_ammonia,
+      avg_nitrite
     FROM v_weekly_averages
     WHERE tank_id = ?
       AND week_start >= ?
