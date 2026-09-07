@@ -140,6 +140,9 @@ const BCRYPT_SALT_ROUNDS = 10;
  * All values are in standard aquarium measurement units.
  * When a parameter is present, ranges match typical reef test kit / API expectations.
  */
+/** UUIDs arrive in any case (iOS sends uppercase); the database stores lowercase, so normalise at the boundary (P3-29). */
+const LowercaseUuid = z.uuid().transform((v) => v.toLowerCase());
+
 const WaterParametersSchema = z
   .object({
     salinity: z.number().nullish().describe('Salinity value (SG or PPT per salinity_unit)'),
@@ -210,7 +213,7 @@ const LoginRequestSchema = z.object({
  */
 const CreateMeasurementSchema = z
   .object({
-    tank_id: z.uuid(),
+    tank_id: LowercaseUuid,
     ph: z.coerce.number().optional(),
     alkalinity: z.coerce.number().optional(),
     calcium: z.coerce.number().optional(),
@@ -269,7 +272,7 @@ const TimeLocalSchema = z
 
 const MaintenanceScheduleCreateSchema = z
   .object({
-    tankId: z.uuid(),
+    tankId: LowercaseUuid,
     type: MaintenanceScheduleTypeEnum,
     enabled: z.boolean().optional().default(true),
     scheduleKind: MaintenanceScheduleKindEnum,
@@ -317,7 +320,7 @@ const MaintenanceScheduleCreateSchema = z
 
 const MaintenanceScheduleUpdateSchema = z
   .object({
-    tankId: z.uuid().optional(),
+    tankId: LowercaseUuid.optional(),
     type: MaintenanceScheduleTypeEnum.optional(),
     enabled: z.boolean().optional(),
     scheduleKind: MaintenanceScheduleKindEnum.optional(),
@@ -369,7 +372,7 @@ const WaterChangeCreateSchema = z
     percentReplaced: z.coerce.number().positive().max(100).optional(),
     gallonsReplaced: z.coerce.number().positive().optional(),
     notes: z.string().max(10000).optional(),
-    sourceScheduleId: z.uuid().optional(),
+    sourceScheduleId: LowercaseUuid.optional(),
   })
   .superRefine((data, ctx) => {
     if (data.percentReplaced == null && data.gallonsReplaced == null) {
@@ -459,7 +462,7 @@ const LivestockCreateSchema = z.object({
   healthStatus: HealthStatusEnum.optional().default('healthy').describe('Current health status'),
   notes: z.string().max(2000).optional().describe('Additional notes or observations'),
   imageUrl: z.url().max(2048).optional().describe('URL to livestock image'),
-  id: z.uuid().optional().describe('Optional livestock ID (for retroactive compatibility with local-only livestock)'),
+  id: LowercaseUuid.optional().describe('Optional livestock ID (for retroactive compatibility with local-only livestock)'),
 });
 
 /**
@@ -1657,7 +1660,7 @@ async function handleGetTank(
     // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
     const normalizedTankId = tankId.toLowerCase();
     const tank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
     )
       .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
@@ -1776,7 +1779,7 @@ async function handleUpdateTank(
     const normalizedTankId = tankId.toLowerCase();
     // Verify tank exists and belongs to user
     const existingTank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
     )
       .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
@@ -1823,12 +1826,12 @@ async function handleUpdateTank(
 
     values.push(normalizedTankId);
 
-    await env.DB.prepare(`UPDATE tanks SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
+    await env.DB.prepare(`UPDATE tanks SET ${updates.join(', ')} WHERE id = ?`)
       .bind(...values)
       .run();
 
     // Fetch updated record
-    const updated = (await env.DB.prepare('SELECT * FROM tanks WHERE LOWER(id) = ?')
+    const updated = (await env.DB.prepare('SELECT * FROM tanks WHERE id = ?')
       .bind(normalizedTankId)
       .first()) as TankRecord;
 
@@ -1864,7 +1867,7 @@ async function handleDeleteTank(
     const normalizedTankId = tankId.toLowerCase();
     // Verify tank exists and belongs to user
     const existingTank = (await env.DB.prepare(
-      'SELECT * FROM tanks WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM tanks WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
     )
       .bind(normalizedTankId, auth.userId)
       .first()) as TankRecord | null;
@@ -1875,7 +1878,7 @@ async function handleDeleteTank(
 
     // Soft delete the tank
     const now = new Date().toISOString();
-    await env.DB.prepare('UPDATE tanks SET deleted_at = ? WHERE LOWER(id) = ?').bind(now, normalizedTankId).run();
+    await env.DB.prepare('UPDATE tanks SET deleted_at = ? WHERE id = ?').bind(now, normalizedTankId).run();
 
     return jsonResponse({
       success: true,
@@ -1952,7 +1955,7 @@ async function getMaintenanceScheduleForUser(
 ): Promise<MaintenanceScheduleRecord | null> {
   const normalizedId = scheduleId.toLowerCase();
   const row = (await env.DB.prepare(
-    'SELECT * FROM maintenance_schedules WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+    'SELECT * FROM maintenance_schedules WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
   )
     .bind(normalizedId, userId)
     .first()) as MaintenanceScheduleRecord | null;
@@ -2191,7 +2194,7 @@ async function handleUpdateMaintenanceSchedule(
     values.push(scheduleId.toLowerCase(), auth.userId);
 
     await env.DB.prepare(
-      `UPDATE maintenance_schedules SET ${updates.join(', ')} WHERE LOWER(id) = ? AND user_id = ?`
+      `UPDATE maintenance_schedules SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`
     )
       .bind(...values)
       .run();
@@ -2225,7 +2228,7 @@ async function handleDeleteMaintenanceSchedule(
     // Soft delete: water_changes.source_schedule_id references this row (FK), and the app syncs isDeleted.
     const now = new Date().toISOString();
     await env.DB.prepare(
-      'UPDATE maintenance_schedules SET deleted_at = ?, updated_at = ? WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+      'UPDATE maintenance_schedules SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
     )
       .bind(now, now, scheduleId.toLowerCase(), auth.userId)
       .run();
@@ -2410,7 +2413,7 @@ async function handleDeleteWaterChange(
 ): Promise<Response> {
   try {
     const existing = (await env.DB.prepare(
-      'SELECT * FROM water_changes WHERE LOWER(id) = ? AND user_id = ? AND deleted_at IS NULL'
+      'SELECT * FROM water_changes WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
     )
       .bind(waterChangeId.toLowerCase(), auth.userId)
       .first()) as WaterChangeRecord | null;
@@ -2421,7 +2424,7 @@ async function handleDeleteWaterChange(
 
     const now = new Date().toISOString();
     await env.DB.prepare(
-      'UPDATE water_changes SET deleted_at = ?, updated_at = ? WHERE LOWER(id) = ? AND user_id = ?'
+      'UPDATE water_changes SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ?'
     )
       .bind(now, now, waterChangeId.toLowerCase(), auth.userId)
       .run();
@@ -2468,7 +2471,7 @@ async function handleCreateMeasurement(
     
     // Normalize tank_id to lowercase for case-insensitive lookup (iOS sends uppercase UUIDs)
     const normalizedTankId = data.tank_id.toLowerCase();    // Verify the tank belongs to the authenticated user (case-insensitive lookup)
-    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE LOWER(id) = ? AND deleted_at IS NULL')
+    const tank = (await env.DB.prepare('SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL')
       .bind(normalizedTankId)
       .first()) as { id: string; user_id: string; name: string } | null;    if (!tank) {      return errorResponse('Not found', 'Tank not found', 404);
     }
@@ -2584,7 +2587,7 @@ const AnalysisRequestWithDeviceSchema = z.object({
     .nullish()
     .transform((v) => v ?? false)
     .describe('Use DeviceCheck sandbox environment'),
-  tankId: z.uuid(),
+  tankId: LowercaseUuid,
   parameters: WaterParametersSchema,
   tankVolume: z.coerce.number().positive().describe('Tank volume in gallons'),
   temperatureUnit: z
@@ -3432,7 +3435,7 @@ async function verifyTankOwnership(
 ): Promise<{ id: string; user_id: string; name: string } | Response> {  // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
   const normalizedTankId = tankId.toLowerCase();
   const tank = (await env.DB.prepare(
-    'SELECT id, user_id, name FROM tanks WHERE LOWER(id) = ? AND deleted_at IS NULL'
+    'SELECT id, user_id, name FROM tanks WHERE id = ? AND deleted_at IS NULL'
   )
     .bind(normalizedTankId)
     .first()) as { id: string; user_id: string; name: string } | null;  if (!tank) {    return errorResponse('Not found', 'Tank not found', 404);
@@ -3972,7 +3975,7 @@ async function handleMarkNotificationsRead(
     const body = parsedBody.body;
 
     const markReadSchema = z.object({
-      notificationIds: z.array(z.uuid()).optional(),
+      notificationIds: z.array(LowercaseUuid).optional(),
     });
 
     const validationResult = markReadSchema.safeParse(body);
@@ -4051,8 +4054,8 @@ async function verifyLivestockOwnership(
   const normalizedLivestockId = livestockId.toLowerCase();
   const livestock = (await env.DB.prepare(
     `SELECT l.* FROM livestock l
-     JOIN tanks t ON LOWER(l.tank_id) = LOWER(t.id)
-     WHERE LOWER(l.id) = ? AND t.user_id = ? AND l.deleted_at IS NULL AND t.deleted_at IS NULL`
+     JOIN tanks t ON l.tank_id = t.id
+     WHERE l.id = ? AND t.user_id = ? AND l.deleted_at IS NULL AND t.deleted_at IS NULL`
   )
     .bind(normalizedLivestockId, userId)
     .first()) as LivestockRecord | null;
@@ -4061,8 +4064,8 @@ async function verifyLivestockOwnership(
     // Check if livestock exists at all (without user check) to provide better error message
     const anyLivestock = (await env.DB.prepare(
       `SELECT l.id, l.tank_id, t.user_id FROM livestock l
-       JOIN tanks t ON LOWER(l.tank_id) = LOWER(t.id)
-       WHERE LOWER(l.id) = ? AND l.deleted_at IS NULL`
+       JOIN tanks t ON l.tank_id = t.id
+       WHERE l.id = ? AND l.deleted_at IS NULL`
     )
       .bind(normalizedLivestockId)
       .first()) as { id: string; tank_id: string; user_id: string } | null;
@@ -4116,7 +4119,7 @@ async function handleCreateLivestock(
     const normalizedTankId = tankId.toLowerCase(); // Normalize to match database format
     
     // Check if livestock with this ID already exists
-    const existing = (await env.DB.prepare('SELECT id FROM livestock WHERE LOWER(id) = ? AND deleted_at IS NULL')
+    const existing = (await env.DB.prepare('SELECT id FROM livestock WHERE id = ? AND deleted_at IS NULL')
       .bind(livestockId)
       .first()) as { id: string } | null;
     
@@ -4124,8 +4127,8 @@ async function handleCreateLivestock(
       // Return existing livestock instead of creating duplicate
       const existingLivestock = (await env.DB.prepare(
         `SELECT l.* FROM livestock l
-         JOIN tanks t ON LOWER(l.tank_id) = LOWER(t.id)
-         WHERE LOWER(l.id) = ? AND t.user_id = ? AND l.deleted_at IS NULL`
+         JOIN tanks t ON l.tank_id = t.id
+         WHERE l.id = ? AND t.user_id = ? AND l.deleted_at IS NULL`
       )
         .bind(livestockId, auth.userId)
         .first()) as LivestockRecord | null;
@@ -4216,7 +4219,7 @@ async function handleListLivestock(
     // Normalize tankId to lowercase for case-insensitive matching (iOS sends uppercase UUIDs)
     const normalizedTankId = tankId.toLowerCase();
     const result = await env.DB.prepare(
-      `SELECT * FROM livestock WHERE LOWER(tank_id) = ? AND deleted_at IS NULL ORDER BY added_at DESC`
+      `SELECT * FROM livestock WHERE tank_id = ? AND deleted_at IS NULL ORDER BY added_at DESC`
     )
       .bind(normalizedTankId)
       .all<LivestockRecord>();
@@ -4340,12 +4343,12 @@ async function handleUpdateLivestock(
     const normalizedLivestockId = livestockId.toLowerCase();
     values.push(normalizedLivestockId);
 
-    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE LOWER(id) = ?`)
+    await env.DB.prepare(`UPDATE livestock SET ${updates.join(', ')} WHERE id = ?`)
       .bind(...values)
       .run();
 
     // Fetch updated record
-    const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE LOWER(id) = ?')
+    const updated = (await env.DB.prepare('SELECT * FROM livestock WHERE id = ?')
       .bind(normalizedLivestockId)
       .first()) as LivestockRecord | null;
     
@@ -4396,7 +4399,7 @@ async function handleDeleteLivestock(
     // Soft delete the livestock (normalize livestockId for case-insensitive matching)
     const normalizedLivestockId = livestockId.toLowerCase();
     const now = new Date().toISOString();
-    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE LOWER(id) = ?')
+    await env.DB.prepare('UPDATE livestock SET deleted_at = ? WHERE id = ?')
       .bind(now, normalizedLivestockId)
       .run();
 
@@ -4465,7 +4468,7 @@ async function handleCreateLivestockLog(
 
     // If log type is 'death', update livestock health_status to 'deceased'
     if (data.logType === 'death') {
-      await env.DB.prepare('UPDATE livestock SET health_status = ? WHERE LOWER(id) = ?')
+      await env.DB.prepare('UPDATE livestock SET health_status = ? WHERE id = ?')
         .bind('deceased', normalizedLivestockId)
         .run();
     }
@@ -4509,7 +4512,7 @@ async function handleGetLivestockLogs(
     // Get all logs for this livestock (normalize livestockId for case-insensitive matching)
     const normalizedLivestockId = livestockId.toLowerCase();
     const result = await env.DB.prepare(
-      `SELECT * FROM livestock_logs WHERE LOWER(livestock_id) = ? ORDER BY logged_at DESC`
+      `SELECT * FROM livestock_logs WHERE livestock_id = ? ORDER BY logged_at DESC`
     )
       .bind(normalizedLivestockId)
       .all<LivestockLogRecord>();

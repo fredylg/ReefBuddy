@@ -64,6 +64,12 @@ describe("tanks (uppercase UUID paths)", () => {
 });
 
 describe("measurements and history", () => {
+  it("POST /api/measurements accepts an UPPERCASE tank_id in the body and stores it lowercase", async () => {
+    const res = await call("POST", "/api/measurements", { tank_id: tankId, ph: 8.0 });
+    expect([200, 201]).toContain(res.status);
+    const data = await json<{ data: { tank_id: string } }>(res);
+    expect(data.data.tank_id).toBe(tankId.toLowerCase());
+  });
   it("POST /api/measurements stores nitrite and PPT salinity", async () => {
     const res = await call("POST", "/api/measurements", { tank_id: tankId.toLowerCase(), ph: 8.1, nitrite: 0.1, salinity: 35, salinity_unit: "PPT", notes: "after water change" });
     expect([200, 201]).toContain(res.status);
