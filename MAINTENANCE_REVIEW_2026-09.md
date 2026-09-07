@@ -53,17 +53,17 @@ The two headline findings:
 | zod                             | 4.3.5      | 4.5.4                 | minor    | Safe. But `src/index.ts` uses 61 deprecated v3-compat calls (`z.string().uuid()`, `.flatten()`, `ZodIssueCode`) slated for removal. See B-22. |
 
 
-**D-01 · Upgrade the Workers toolchain: wrangler 4.129, vitest 4.1.x, vitest-pool-workers 0.22, run the suite.** Clears all 13 audit findings. Recommended: YES → Decision: [x] YES  [ ] NO
+**D-01 · Upgrade the Workers toolchain: wrangler 4.129, vitest 4.1.x, vitest-pool-workers 0.22, run the suite.** Clears all 13 audit findings. Recommended: YES → Decision: [x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**D-02 · Runtime deps: jose 6, bcryptjs 3, zod 4.5.** Low risk given the tiny API surface used. Recommended: YES → Decision: [ x] YES  [ ] NO
+**D-02 · Runtime deps: jose 6, bcryptjs 3, zod 4.5.** Low risk given the tiny API surface used. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**D-03 · TypeScript 5.9.3 → 6.0.3 (not 7).** Recommended: YES → Decision: [ x] YES  [ ] NO
+**D-03 · TypeScript 5.9.3 → 6.0.3 (not 7).** Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**D-04 · Replace** `@cloudflare/workers-types` **with** `wrangler types` **generated bindings.** Also fixes the 34 `ProvidedEnv` errors in tests because the generated `Env` becomes the source of truth. Recommended: YES → Decision: [ x] YES  [ ] NO
+**D-04 · Replace** `@cloudflare/workers-types` **with** `wrangler types` **generated bindings.** Also fixes the 34 `ProvidedEnv` errors in tests because the generated `Env` becomes the source of truth. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**D-05 · Fix the remaining 12** `tsc` **errors in** `src/index.ts` (unknown `body` at 4598/4983, unsafe `Record<string,unknown>[]` casts at 4 sites). Recommended: YES → Decision: [ x] YES  [ ] NO
+**D-05 · Fix the remaining 12** `tsc` **errors in** `src/index.ts` (unknown `body` at 4598/4983, unsafe `Record<string,unknown>[]` casts at 4 sites). Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**D-06 · Add a** `typecheck` **npm script and run** `tsc --noEmit` **before** `deploy`**.** Recommended: YES → Decision: [ x] YES  [ ] NO
+**D-06 · Add a** `typecheck` **npm script and run** `tsc --noEmit` **before** `deploy`**.** Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
 ---
 
@@ -119,7 +119,7 @@ The two headline findings:
 
 **B-21 · Medium ·** `addDeviceCredits` **is not atomic; duplicate purchases can double-grant.** `:1221-1273`. Fix: INSERT `purchase_history` (UNIQUE) first, then UPDATE, in `DB.batch()`; map UNIQUE violation to 409. Recommended: YES → Decision: [x ] YES  [ ] NO
 
-**B-22 · Medium · Migrate 61 deprecated zod v3-compat calls.** `z.string().uuid()/.email()/.datetime()/.url()`, `.flatten()`, `.format()`, `ZodIssueCode.custom` → `z.uuid()`, `z.email()`, `z.iso.datetime()`, `z.url()`, `z.treeifyError()`, `ctx.addIssue({code:'custom'})`. Recommended: YES (with D-02) → Decision: [x ] YES  [ ] NO
+**B-22 · Medium · Migrate 61 deprecated zod v3-compat calls.** `z.string().uuid()/.email()/.datetime()/.url()`, `.flatten()`, `.format()`, `ZodIssueCode.custom` → `z.uuid()`, `z.email()`, `z.iso.datetime()`, `z.url()`, `z.treeifyError()`, `ctx.addIssue({code:'custom'})`. Recommended: YES (with D-02) → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
 **B-23 · Medium ·** `unreadOnly` **query param is always true.** `src/notifications.ts:153` + `src/index.ts:4398`: `z.coerce.boolean()` turns the string `"false"` into `true`. Fix: `z.stringbool()`. Recommended: YES → Decision: [ x] YES  [ ] NO
 
@@ -133,7 +133,7 @@ The two headline findings:
 
 **B-28 · Low ·** `derSignatureToRaw` **mangles ~1/256 legitimate ES256 signatures** (any raw signature starting with `0x30`). `:3140-3143`. Fix: if `length === 64` use as-is. Recommended: YES → Decision: [ x] YES  [ ] NO
 
-**B-29 · Low · Malformed JSON → 500 instead of 400 across ~15 handlers; several lines have multiple statements merged (bad merge).** `:2483-2488,2504-2510,2599,3892-3901,4614,4727,5299-5302,5406-5418,5499-5501`. Fix: central `readJson()` helper + run Prettier. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-29 · Low · Malformed JSON → 500 instead of 400 across ~15 handlers; several lines have multiple statements merged (bad merge).** `:2483-2488,2504-2510,2599,3892-3901,4614,4727,5299-5302,5406-5418,5499-5501`. Fix: central `readJson()` helper + run Prettier. Recommended: YES → Decision: [ x] YES  [ ] NO **readJson() done 2026-09-07 (P2-05); Prettier pass pending (P5-03).**
 
 **B-30 · Low · Assorted small bugs:** soft-deleted livestock ID gives false 409 (`:4620-4657`); signup race → 500 not 409 (`:1439-1456`); `errorResponse` at `:5410` bypasses CORS pass; `historical.ts:225` "slope" is first-vs-last delta and `:271` runs 9 sequential queries; `v_weekly_averages` mixes Monday/Sunday week starts (`0006:463-483`); N+1 in `:4335`; no `AbortSignal` timeout on the gateway fetch (`:957`). Recommended: YES (bundle) → Decision: [ x] YES  [ ] NO
 
@@ -183,7 +183,7 @@ The two headline findings:
 
 **C-01 · High · Fix the wrangler environment layout** (see B-05). Production at top level, `[env.dev]` named `reefbuddy-dev`, `npm run deploy` = production, `npm run deploy:dev`. Update CLAUDE.md/README. Recommended: YES → Decision: [ x] YES  [ ] NO
 
-**C-02 · Medium · Bump** `compatibility_date` **from** `2024-01-01` **to a current date.** Run tests + `wrangler deploy --dry-run`. `nodejs_compat` not needed unless B-03 option (a) is chosen. Recommended: YES → Decision: [ x] YES  [ ] NO
+**C-02 · Medium · Bump** `compatibility_date` **from** `2024-01-01` **to a current date.** Run tests + `wrangler deploy --dry-run`. `nodejs_compat` not needed unless B-03 option (a) is chosen. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
 **C-03 · Low · Point iOS at** `api.reefbuddy.aethers.com.au` **and then set** `workers_dev = false`**.** The custom domain is live and healthy but unused; the app hard-codes the personal `reefbuddy.fredylg.workers.dev` host (`APIClient.swift:14`). Recommended: YES → Decision: [ x] YES  [ ] NO
 
@@ -324,15 +324,15 @@ The two headline findings:
 
 ## 14. Tests
 
-**T-01 · High · Make the suite hermetic.** Blank `ANTHROPIC_API_KEY`/`CF_AI_GATEWAY_TOKEN` in the pool bindings and mock the gateway URL with `fetchMock` from `cloudflare:test`; keep one opt-in integration file behind an env var. Today every run spends money and asserts different things depending on whether `.dev.vars` exists. Recommended: YES → Decision: [ x] YES  [ ] NO
+**T-01 · High · Make the suite hermetic.** Blank `ANTHROPIC_API_KEY`/`CF_AI_GATEWAY_TOKEN` in the pool bindings and mock the gateway URL with `fetchMock` from `cloudflare:test`; keep one opt-in integration file behind an env var. Today every run spends money and asserts different things depending on whether `.dev.vars` exists. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**T-02 · Medium · Remove test-owned schemas.** `db.test.ts:57-135` and `tanks-backward-compat.test.ts:22-62` DROP the migrated tables and recreate divergent ones (`salt_type`, no `nitrite`/`notes`); `db.test.ts` never calls the worker. Rely on `apply-d1-migrations.ts`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**T-02 · Medium · Remove test-owned schemas.** `db.test.ts:57-135` and `tanks-backward-compat.test.ts:22-62` DROP the migrated tables and recreate divergent ones (`salt_type`, no `nitrite`/`notes`); `db.test.ts` never calls the worker. Rely on `apply-d1-migrations.ts`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**T-03 · Medium · Delete the no-op tests in** `security-stage2.test.ts` (bcrypt at the wrong rounds, `randomUUID`, string length) and the `receipt-crypto` test if B-33 is YES. Recommended: YES → Decision: [ x] YES  [ ] NO
+**T-03 · Medium · Delete the no-op tests in** `security-stage2.test.ts` (bcrypt at the wrong rounds, `randomUUID`, string length) and the `receipt-crypto` test if B-33 is YES. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
 **T-04 · Medium · Add coverage for the routes the app actually calls and the security fixes**: `/api/livestock/`*, `/api/measurements`, `/api/tanks/:id` GET/PUT/DELETE, `/maintenance/schedules` PUT/DELETE, `/credits/purchase` with a fixture JWS (forged sandbox payload must be rejected), refund path, concurrent credit consumption. Recommended: YES → Decision: [ x] YES  [ ] NO
 
-**T-05 · Low · Move** `devicecheck-production.test.ts` **to** `tests/e2e/` **excluded from default** `include`**; fix random-IP collisions (**`Math.random()` **in a /24 with a 10/min limit); remove unused imports; remove the phantom** `FREE_TIER_LIMIT` **binding.** Recommended: YES → Decision: [x ] YES  [ ] NO
+**T-05 · Low · Move** `devicecheck-production.test.ts` **to** `tests/e2e/` **excluded from default** `include`**; fix random-IP collisions (**`Math.random()` **in a /24 with a 10/min limit); remove unused imports; remove the phantom** `FREE_TIER_LIMIT` **binding.** Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
 **T-06 · Low · Rewrite** `tests/README.md` (describes a "3/month" limit and "Premium Bypass" that no longer exist). Recommended: YES → Decision: [ x] YES  [ ] NO
 

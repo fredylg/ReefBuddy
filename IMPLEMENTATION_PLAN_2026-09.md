@@ -16,8 +16,8 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 |---|---|---|---|---|
 | 0 | Prep and safety net | 6 | 6 | **done** 2026-09-07 |
 | 1 | Stop the bleeding (backend hotfix + deploy) | 16 | 16 | **done** 2026-09-07 |
-| 2 | Toolchain and hermetic tests | 12 | 0 | in progress (branch `maint/p2-toolchain`) |
-| 3 | Backend correctness and hardening | 30 | 0 | not started |
+| 2 | Toolchain and hermetic tests | 12 | 12 | **done** 2026-09-07 |
+| 3 | Backend correctness and hardening | 30 | 0 | in progress (branch `maint/p3-hardening`) |
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 0 | not started |
 | 5 | Backend structure | 4 | 0 | not started |
 | 6 | iOS modernisation | 8 | 0 | not started |
@@ -94,18 +94,18 @@ Goal: close the credit-grant holes and the broken refund, make deploys safe, shi
 
 Goal: green `tsc`, green offline `vitest`, zero audit findings, current wrangler.
 
-- [ ] **P2-01** (D-01) `wrangler@4.129`, `vitest@4.1.x`, `@cloudflare/vitest-pool-workers@0.22`. Run suite; fix pool config breakage.
-- [ ] **P2-02** (D-02) `jose@6`, `bcryptjs@3`, `zod@4.5`. Verify `SignJWT`/`importPKCS8` and `bcrypt.hash/compare` usage compiles.
-- [ ] **P2-03** (D-03) `typescript@6.0.3`. Confirm `tsc --noEmit` runs.
-- [ ] **P2-04** (D-04) Remove `@cloudflare/workers-types`; add `wrangler types` → `worker-configuration.d.ts` (committed), `tsconfig` types updated; `Env` in `src/index.ts` derived from the generated interface. This clears the 34 `ProvidedEnv` test errors.
-- [ ] **P2-05** (D-05) Fix the remaining `src/index.ts` type errors: `readJson<T>()` helper with 400 on malformed JSON (also B-29), typed D1 row mappers instead of `as X[]` casts.
-- [ ] **P2-06** (D-06) `npm run typecheck`; `deploy` scripts run `typecheck && vitest run` first. Add `noUnusedLocals`/`noUnusedParameters` (B-34 prep).
-- [ ] **P2-07** (C-02) `compatibility_date` → current date. Run suite and `deploy --dry-run`.
-- [ ] **P2-08** (T-01) Hermetic suite: blank `ANTHROPIC_API_KEY`/`CF_AI_GATEWAY_TOKEN` in pool bindings; `fetchMock` for the gateway URL with success, refusal, `max_tokens`, 429, 500 fixtures. Move the real-gateway test to `tests/integration/` gated by `RUN_INTEGRATION=1`. `npx vitest run` must pass with `.dev.vars` renamed away.
-- [ ] **P2-09** (T-02) Delete the DROP/CREATE schema blocks in `db.test.ts` and `tanks-backward-compat.test.ts`; convert `db.test.ts` to go through worker handlers or fold it into `api.test.ts`.
-- [ ] **P2-10** (T-03, B-33) Delete no-op tests in `security-stage2.test.ts`; delete `src/receipt-crypto.ts` and its test.
-- [ ] **P2-11** (T-05) Move `devicecheck-production.test.ts` to `tests/e2e/` (excluded by default); counter-based IPs for rate-limit tests; remove unused imports and the `FREE_TIER_LIMIT` binding.
-- [ ] **P2-12** (B-22) Migrate the 61 zod v3-compat calls to zod 4 idioms. Suite green.
+- [x] **P2-01** (D-01) `wrangler@4.129`, `vitest@4.1.x`, `@cloudflare/vitest-pool-workers@0.22`. Run suite; fix pool config breakage.
+- [x] **P2-02** (D-02) `jose@6`, `bcryptjs@3`, `zod@4.5`. Verify `SignJWT`/`importPKCS8` and `bcrypt.hash/compare` usage compiles.
+- [x] **P2-03** (D-03) `typescript@6.0.3`. Confirm `tsc --noEmit` runs.
+- [x] **P2-04** (D-04) Remove `@cloudflare/workers-types`; add `wrangler types` → `worker-configuration.d.ts` (committed), `tsconfig` types updated; `Env` in `src/index.ts` derived from the generated interface. This clears the 34 `ProvidedEnv` test errors.
+- [x] **P2-05** (D-05) Fix the remaining `src/index.ts` type errors: `readJson<T>()` helper with 400 on malformed JSON (also B-29), typed D1 row mappers instead of `as X[]` casts.
+- [x] **P2-06** (D-06) `npm run typecheck`; `deploy` scripts run `typecheck && vitest run` first. Add `noUnusedLocals`/`noUnusedParameters` (B-34 prep).
+- [x] **P2-07** (C-02) `compatibility_date` → current date. Run suite and `deploy --dry-run`.
+- [x] **P2-08** (T-01) Hermetic suite: blank `ANTHROPIC_API_KEY`/`CF_AI_GATEWAY_TOKEN` in pool bindings; `fetchMock` for the gateway URL with success, refusal, `max_tokens`, 429, 500 fixtures. Move the real-gateway test to `tests/integration/` gated by `RUN_INTEGRATION=1`. `npx vitest run` must pass with `.dev.vars` renamed away.
+- [x] **P2-09** (T-02) Delete the DROP/CREATE schema blocks in `db.test.ts` and `tanks-backward-compat.test.ts`; convert `db.test.ts` to go through worker handlers or fold it into `api.test.ts`.
+- [x] **P2-10** (T-03, B-33) Delete no-op tests in `security-stage2.test.ts`; delete `src/receipt-crypto.ts` and its test.
+- [x] **P2-11** (T-05) Move `devicecheck-production.test.ts` to `tests/e2e/` (excluded by default); counter-based IPs for rate-limit tests; remove unused imports and the `FREE_TIER_LIMIT` binding.
+- [x] **P2-12** (B-22) Migrate the 61 zod v3-compat calls to zod 4 idioms. Suite green.
 
 **Exit:** `npm run typecheck` 0 errors, `npm audit` 0 findings, `npx vitest run` passes offline in under 60s.
 
@@ -295,4 +295,6 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P1-15 (CF-02) · production: 3 non-owner sandbox purchase rows deleted, paid_credits zeroed on 9 devices (287 credits); owner device 8B629A9B keeps 11 credits and its 5 audit rows · (data change, no commit)
 - 2026-09-07 · P1-16 (CF-03) · production: 39 probe-only device_credits rows deleted (34 previewed + 5 test devices that P1-15 had just zeroed); 162 rows remain, 0 probe-only left · (data change, no commit)
 - 2026-09-07 · **Phase 1 complete.**
+- 2026-09-07 · P2-01..P2-07, P2-12 · wrangler 4.129, vitest 4.1.11, TS 6.0.3, jose 6, bcryptjs 3, zod 4.5; **`@cloudflare/vitest-plugin` 1.1.4 instead of pool-workers 0.22** (Cloudflare deprecated the pool package mid-upgrade); `npm audit` 13 → 0; workers-types replaced by generated `worker-configuration.d.ts`; compat date 2026-08-15; `readJson()` in 15 handlers; zod v3-compat calls migrated; **tsc 99 → 0 errors** · 267168e
+- 2026-09-07 · **Phase 2 complete.**
 
