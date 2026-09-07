@@ -166,7 +166,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -214,7 +214,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -241,7 +241,7 @@ describe("Livestock API", () => {
       // Use a valid UUID format for the tank ID to ensure proper route matching
       const fakeTankId = generateUUID();
       const response = await SELF.fetch(
-        `http://localhost/tanks/${fakeTankId}/livestock`,
+        `http://localhost/api/tanks/${fakeTankId}/livestock`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -261,7 +261,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -284,7 +284,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -304,7 +304,7 @@ describe("Livestock API", () => {
 
       const fakeTankId = generateUUID();
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${fakeTankId}/livestock`,
+        `http://localhost/api/tanks/${fakeTankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -324,7 +324,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user2Token,
         {
           method: "POST",
@@ -346,7 +346,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         { method: "GET" }
       );
@@ -370,7 +370,7 @@ describe("Livestock API", () => {
       // Use a valid UUID format for the tank ID to ensure proper route matching
       const fakeTankId = generateUUID();
       const response = await SELF.fetch(
-        `http://localhost/tanks/${fakeTankId}/livestock`,
+        `http://localhost/api/tanks/${fakeTankId}/livestock`,
         { method: "GET" }
       );
 
@@ -384,7 +384,7 @@ describe("Livestock API", () => {
 
       const fakeTankId = generateUUID();
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${fakeTankId}/livestock`,
+        `http://localhost/api/tanks/${fakeTankId}/livestock`,
         testState.user1Token,
         { method: "GET" }
       );
@@ -398,7 +398,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user2Token,
         { method: "GET" }
       );
@@ -414,7 +414,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}`,
+        `http://localhost/api/livestock/${testState.livestockId}`,
         testState.user1Token,
         {
           method: "PUT",
@@ -445,7 +445,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}`,
+        `http://localhost/api/livestock/${testState.livestockId}`,
         testState.user1Token,
         {
           method: "PUT",
@@ -463,7 +463,7 @@ describe("Livestock API", () => {
       // Use a valid UUID format for the livestock ID to ensure proper route matching
       const fakeLivestockId = generateUUID();
       const response = await SELF.fetch(
-        `http://localhost/livestock/${fakeLivestockId}`,
+        `http://localhost/api/livestock/${fakeLivestockId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -480,7 +480,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}`,
+        `http://localhost/api/livestock/${testState.livestockId}`,
         testState.user1Token,
         {
           method: "PUT",
@@ -500,7 +500,7 @@ describe("Livestock API", () => {
 
       const fakeLivestockId = generateUUID();
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${fakeLivestockId}`,
+        `http://localhost/api/livestock/${fakeLivestockId}`,
         testState.user1Token,
         {
           method: "PUT",
@@ -517,7 +517,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}`,
+        `http://localhost/api/livestock/${testState.livestockId}`,
         testState.user2Token,
         {
           method: "PUT",
@@ -537,7 +537,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user1Token,
         {
           method: "POST",
@@ -572,7 +572,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user1Token,
         {
           method: "POST",
@@ -592,7 +592,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user1Token,
         {
           method: "POST",
@@ -613,7 +613,7 @@ describe("Livestock API", () => {
 
       // Create a new livestock to test death log
       const createResponse = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -633,7 +633,7 @@ describe("Livestock API", () => {
 
       // Log death
       const deathLogResponse = await authenticatedFetch(
-        `http://localhost/livestock/${snailId}/logs`,
+        `http://localhost/api/livestock/${snailId}/logs`,
         testState.user1Token,
         {
           method: "POST",
@@ -648,7 +648,7 @@ describe("Livestock API", () => {
 
       // Verify health status was updated
       const listResponse = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         { method: "GET" }
       );
@@ -667,7 +667,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user1Token,
         {
           method: "POST",
@@ -685,7 +685,7 @@ describe("Livestock API", () => {
       // Use a valid UUID format for the livestock ID to ensure proper route matching
       const fakeLivestockId = generateUUID();
       const response = await SELF.fetch(
-        `http://localhost/livestock/${fakeLivestockId}/logs`,
+        `http://localhost/api/livestock/${fakeLivestockId}/logs`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -706,7 +706,7 @@ describe("Livestock API", () => {
 
       const fakeLivestockId = generateUUID();
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${fakeLivestockId}/logs`,
+        `http://localhost/api/livestock/${fakeLivestockId}/logs`,
         testState.user1Token,
         {
           method: "POST",
@@ -726,7 +726,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user2Token,
         {
           method: "POST",
@@ -748,7 +748,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user1Token,
         { method: "GET" }
       );
@@ -773,7 +773,7 @@ describe("Livestock API", () => {
       // Use a valid UUID format for the livestock ID to ensure proper route matching
       const fakeLivestockId = generateUUID();
       const response = await SELF.fetch(
-        `http://localhost/livestock/${fakeLivestockId}/logs`,
+        `http://localhost/api/livestock/${fakeLivestockId}/logs`,
         { method: "GET" }
       );
 
@@ -787,7 +787,7 @@ describe("Livestock API", () => {
 
       const fakeLivestockId2 = generateUUID();
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${fakeLivestockId2}/logs`,
+        `http://localhost/api/livestock/${fakeLivestockId2}/logs`,
         testState.user1Token,
         { method: "GET" }
       );
@@ -801,7 +801,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}/logs`,
+        `http://localhost/api/livestock/${testState.livestockId}/logs`,
         testState.user2Token,
         { method: "GET" }
       );
@@ -818,7 +818,7 @@ describe("Livestock API", () => {
 
       // Create a livestock to delete
       const createResponse = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         {
           method: "POST",
@@ -838,7 +838,7 @@ describe("Livestock API", () => {
 
       // Delete it
       const deleteResponse = await authenticatedFetch(
-        `http://localhost/livestock/${deleteId}`,
+        `http://localhost/api/livestock/${deleteId}`,
         testState.user1Token,
         { method: "DELETE" }
       );
@@ -858,7 +858,7 @@ describe("Livestock API", () => {
 
       // Verify it's no longer in list
       const listResponse = await authenticatedFetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         testState.user1Token,
         { method: "GET" }
       );
@@ -875,7 +875,7 @@ describe("Livestock API", () => {
       // Use a valid UUID format for the livestock ID to ensure proper route matching
       const fakeLivestockId = generateUUID();
       const response = await SELF.fetch(
-        `http://localhost/livestock/${fakeLivestockId}`,
+        `http://localhost/api/livestock/${fakeLivestockId}`,
         { method: "DELETE" }
       );
 
@@ -889,7 +889,7 @@ describe("Livestock API", () => {
 
       const fakeLivestockId2 = generateUUID();
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${fakeLivestockId2}`,
+        `http://localhost/api/livestock/${fakeLivestockId2}`,
         testState.user1Token,
         { method: "DELETE" }
       );
@@ -903,7 +903,7 @@ describe("Livestock API", () => {
       }
 
       const response = await authenticatedFetch(
-        `http://localhost/livestock/${testState.livestockId}`,
+        `http://localhost/api/livestock/${testState.livestockId}`,
         testState.user2Token,
         { method: "DELETE" }
       );
@@ -1657,7 +1657,7 @@ describe("Edge Cases and Error Handling", () => {
       }
 
       const response = await SELF.fetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         {
           method: "POST",
           headers: authHeaders(testState.user1Token),
@@ -1675,7 +1675,7 @@ describe("Edge Cases and Error Handling", () => {
       }
 
       const response = await SELF.fetch(
-        `http://localhost/tanks/${testState.tankId}/livestock`,
+        `http://localhost/api/tanks/${testState.tankId}/livestock`,
         {
           method: "POST",
           headers: authHeaders(testState.user1Token),
@@ -1697,7 +1697,7 @@ describe("Edge Cases and Error Handling", () => {
         }
 
         const response = await authenticatedFetch(
-          `http://localhost/tanks/${testState.tankId}/livestock`,
+          `http://localhost/api/tanks/${testState.tankId}/livestock`,
           testState.user1Token,
           {
             method: "POST",
