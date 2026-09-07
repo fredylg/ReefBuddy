@@ -107,8 +107,15 @@ describe("livestock via /api", () => {
     const text = await res.text();
     expect(text.toLowerCase()).toContain(livestockId.toLowerCase());
   });
-  it("PUT /api/livestock/:id", async () => {
-    expect((await call("PUT", `/api/livestock/${livestockId}`, { quantity: 3 })).status).toBe(200);
+  it("PUT /api/livestock/:id accepts the app's health statuses", async () => {
+    expect((await call("PUT", `/api/livestock/${livestockId}`, { quantity: 3, healthStatus: "thriving" })).status).toBe(200);
+    expect((await call("PUT", `/api/livestock/${livestockId}`, { healthStatus: "stressed" })).status).toBe(200);
+  });
+  it("POST /api/tanks/:id/livestock accepts Anemone and Other categories", async () => {
+    const res = await call("POST", `/api/tanks/${tankId}`.replace(/$/, "/livestock"), { name: "BTA", species: "Entacmaea quadricolor", category: "Anemone", quantity: 1 });
+    expect([200, 201]).toContain(res.status);
+    const other = await call("POST", `/api/tanks/${tankId}/livestock`, { name: "Mystery snail", category: "Other", quantity: 1 });
+    expect([200, 201]).toContain(other.status);
   });
   it("POST + GET /api/livestock/:id/logs", async () => {
     expect([200, 201]).toContain((await call("POST", `/api/livestock/${livestockId}/logs`, { logType: "feeding", description: "Mysis" })).status);

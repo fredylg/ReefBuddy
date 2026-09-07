@@ -434,12 +434,12 @@ const ExportQuerySchema = z.object({
 /**
  * Valid livestock categories from existing schema
  */
-const LivestockCategoryEnum = z.enum(['SPS', 'LPS', 'Soft', 'Fish', 'Invertebrate']);
+const LivestockCategoryEnum = z.enum(['SPS', 'LPS', 'Soft', 'Fish', 'Invertebrate', 'Anemone', 'Other']);
 
 /**
  * Valid health status values
  */
-const HealthStatusEnum = z.enum(['healthy', 'sick', 'deceased', 'quarantine']);
+const HealthStatusEnum = z.enum(['thriving', 'healthy', 'stressed', 'declining', 'critical', 'sick', 'deceased', 'quarantine']);
 
 /**
  * Valid log types for livestock health tracking
