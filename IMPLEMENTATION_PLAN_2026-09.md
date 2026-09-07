@@ -20,7 +20,7 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 3 | Backend correctness and hardening | 30 | 30 | **done** 2026-09-07 (live version 572828b5) |
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
 | 5 | Backend structure | 4 | 4 | done (branch `maint/p5-structure`, live `e667dee4`) |
-| 6 | iOS modernisation | 8 | 0 | not started |
+| 6 | iOS modernisation | 8 | 7 | code complete (branch `maint/p6-ios`); **P6-08 TestFlight 1.0.8 is yours** |
 | 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 1 | not started (P7-15 pre-done) |
 | 8 | Final verification and handover | 5 | 0 | not started |
 | 9 | Deferred / declined (no work) | — | — | — |
@@ -197,7 +197,7 @@ Compliance and project
 - [x] **P4-25** (I-36) Small-bugs bundle: throwing `requestAnalysis` with typed errors; `hasAnyValue` includes ammonia/nitrite; remove stale double PUT in `LivestockDetailView`; `if let` volume; real `updatedAt`; RFC 4180 CSV; dead state removed; previews fixed; `Tab.logWaterChange` removed in favour of the modal.
 - [x] **P4-26** (I-37) Photos to Application Support with one-time migration from Documents.
 - [x] **P4-27** Build + simulator run of: tank create/edit/delete, measurement save, analysis, purchase (StoreKit config), livestock add, schedule create, reminder tap. Confirm server rows appear via D1 (dev worker).
-- [!] **P4-28** 🧑 (waiting on you: archive → TestFlight → device test → App Store) Archive, upload to TestFlight, run on a physical device against production; then App Store submission. After 1.0.7 is live: set `workers_dev = false` (C-03 tail).
+- [!] **P4-28** 🧑 (waiting on you: archive → TestFlight → device test → App Store) Archive, upload to TestFlight, run on a physical device against production; then App Store submission. After the release is live: set `workers_dev = false` (C-03 tail). **2026-09-07:** the project is now at 1.0.8 build 7 (Phase 6 included) — archive that instead of 1.0.7; see P6-08.
 
 **Exit:** a fresh install on the simulator creates exactly one server row per tank/measurement/livestock/schedule save; no decode errors in the log; privacy manifest accepted by App Store Connect.
 
@@ -220,14 +220,14 @@ Goal: `src/index.ts` becomes a router; behaviour unchanged (suite is the guard).
 
 Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change except performance.
 
-- [ ] **P6-01** (I-29) `SWIFT_STRICT_CONCURRENCY = complete` in Swift 5 mode; fix: `Task.detached` capture, `UIDevice.current` in `APIClient`, `Sendable` singletons, `@MainActor AppDelegate`, `Timer.publish` in view.
-- [ ] **P6-02** (I-30) `SWIFT_VERSION = 6`; build clean.
-- [ ] **P6-03** (I-31) Deprecation sweep: `.foregroundStyle`, `.topBarLeading/Trailing`, value-based `NavigationLink`, `@FocusState`, async notification APIs.
-- [ ] **P6-04** (I-32) `@Observable` `AppState`, `StoreManager`, stores; `@Environment` injection; remove `@EnvironmentObject`.
-- [ ] **P6-05** (I-33) Stores become actors persisting JSON files in Application Support; one-time migration from UserDefaults; measurement history no longer in UserDefaults.
-- [ ] **P6-06** (I-34) Swift Charts replaces hand-drawn paths in `ChartView`/`HistoryView`.
-- [ ] **P6-07** (I-35, adjusted for P-01 b) Delete `AnalysisView.swift`, `BrutalistPicker`, `BrutalistIconButton`; move `AppIconGenerator.swift` out of the app target (keep in repo under `tools/`); **keep** `User.swift` and `KeychainManager.swift`.
-- [ ] **P6-08** Full simulator regression of P4-27 list; 🧑 TestFlight 1.0.8.
+- [x] **P6-01** (I-29) `SWIFT_STRICT_CONCURRENCY = complete` in Swift 5 mode; fix: `Task.detached` capture, `UIDevice.current` in `APIClient`, `Sendable` singletons, `@MainActor AppDelegate`, `Timer.publish` in view.
+- [x] **P6-02** (I-30) `SWIFT_VERSION = 6`; build clean.
+- [x] **P6-03** (I-31) Deprecation sweep: `.foregroundStyle`, `.topBarLeading/Trailing`, value-based `NavigationLink`, `@FocusState`, async notification APIs.
+- [x] **P6-04** (I-32) `@Observable` `AppState`, `StoreManager`, stores; `@Environment` injection; remove `@EnvironmentObject`.
+- [x] **P6-05** (I-33) Stores become actors persisting JSON files in Application Support; one-time migration from UserDefaults; measurement history no longer in UserDefaults.
+- [x] **P6-06** (I-34) Swift Charts replaces hand-drawn paths in `ChartView`/`HistoryView`.
+- [x] **P6-07** (I-35, adjusted for P-01 b) Delete `AnalysisView.swift`, `BrutalistPicker`, `BrutalistIconButton`; move `AppIconGenerator.swift` out of the app target (keep in repo under `tools/`); **keep** `User.swift` and `KeychainManager.swift`.
+- [!] **P6-08** Simulator regression done 2026-09-07 (see log); 🧑 **TestFlight 1.0.8 build 7 is yours** — it supersedes the 1.0.7 archive in P4-28 (one archive covers Phases 4 and 6).
 
 **Exit:** Swift 6 build with zero warnings in the concurrency category; regression list passes.
 
@@ -319,3 +319,12 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P5-03 · Prettier 3.9.6 (`.prettierrc.json`, `.prettierignore`, `npm run format[:check]`); one formatting-only commit over src/ and tests/ (39 files); tsc 0, 240 tests before and after · ff7d232
 - 2026-09-07 · P5-04 · `npm run deploy` → version `e667dee4-0da8-412b-b30b-108bd1b44af6` (gate: tsc 0, 240 tests; 1444 KiB / 245 KiB gzip; startup 35.7 ms vs 35 ms baseline). Smoke on workers.dev + `api.reefbuddy.aethers.com.au`: health 200, owner-device tanks 200 (data intact, 11 credits), schedules 200, legacy `/measurements` 404, no-device 401, malformed JSON 400, HSTS + X-Request-Id present · (deploy)
 - 2026-09-07 · **Phase 5 complete.**
+- 2026-09-07 · P6-01 · strict concurrency in Swift 5 mode: 20 warnings → 0 (nonisolated notification delegate with `[String: String]` payload, async UserNotifications calls, Sendable singletons, `nonisolated(unsafe)` ISO formatters, PhotosPicker label view, `@MainActor` preview helper) · 2068d34
+- 2026-09-07 · P6-02 · `SWIFT_VERSION = 6.0`, zero warnings · d253944
+- 2026-09-07 · P6-03 · `.foregroundStyle` ×345, `.topBarLeading/Trailing` ×7; `NavigationLink(destination:label:)` in the settings rows is not deprecated and stays · 0ceb9e6
+- 2026-09-07 · P6-04 · `@Observable` for AppState, StoreManager and the six stores; `@Environment(Type.self)` / `.environment(_:)` / `@State` everywhere; listener task `@ObservationIgnored` · b101bc3
+- 2026-09-07 · P6-05 · `JSONFileStore` actor (Application Support/ReefBuddy/Data, atomic writes off the main actor, generation-ordered, `*.corrupt` quarantine) + `JSONDocument`; all seven UserDefaults blobs migrate on first launch and the keys are removed — verified on the iPhone 17 simulator (4 blobs migrated, `defaults read` clean, UI intact) · 1a8c691
+- 2026-09-07 · P6-06 · Swift Charts in `ChartView` (line/point/range/rule marks, touch selection via `chartOverlay`) and the history mini chart; hand-drawn `Path` code removed · 5e58891
+- 2026-09-07 · P6-07 · `AnalysisView.swift`, `BrutalistPicker`, `BrutalistIconButton` deleted; `AppIconGenerator.swift` moved to `tools/` (out of the target); pbxproj edited by hand, verify script green · 9c9e844
+- 2026-09-07 · P6-08 · simulator Debug build (Swift 6) against production with `API_BASE_URL`: launch clean, no crash reports, tanks list rendered from the migrated `tanks.json`, credit balance fetched (3), no subsystem errors. Version bumped to **1.0.8 build 7** for your archive. Remaining 🧑: TestFlight + device test (also covers P4-28).
+- 2026-09-07 · **Phase 6 code complete.**
