@@ -17,8 +17,8 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 0 | Prep and safety net | 6 | 6 | **done** 2026-09-07 |
 | 1 | Stop the bleeding (backend hotfix + deploy) | 16 | 16 | **done** 2026-09-07 |
 | 2 | Toolchain and hermetic tests | 12 | 12 | **done** 2026-09-07 |
-| 3 | Backend correctness and hardening | 30 | 0 | in progress (branch `maint/p3-hardening`) |
-| 4 | iOS sync fixes and 1.0.7 release | 28 | 0 | not started |
+| 3 | Backend correctness and hardening | 30 | 30 | **done** 2026-09-07 (live version 572828b5) |
+| 4 | iOS sync fixes and 1.0.7 release | 28 | 0 | in progress (branch `maint/p4-ios`) |
 | 5 | Backend structure | 4 | 0 | not started |
 | 6 | iOS modernisation | 8 | 0 | not started |
 | 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 1 | not started (P7-15 pre-done) |
@@ -116,44 +116,44 @@ Goal: green `tsc`, green offline `vitest`, zero audit findings, current wrangler
 Goal: every route the app calls works with device auth; security items closed; AI path robust. Response shapes stay backward compatible with iOS 1.0.6 until Phase 4 ships.
 
 Routing and auth
-- [ ] **P3-01** (B-18) Lowercase `url.pathname` once at the router; add `/i` to all UUID matchers; handlers use `tankResult.id`.
-- [ ] **P3-02** (B-19, P-03) Device-or-session auth (`resolveActor`) on `/api/tanks/:id` GET/PUT/DELETE, `/tanks/:id/{history,trends,averages,export}`, `/maintenance/schedules*`. Tests for each with `X-Device-ID`.
-- [ ] **P3-03** (B-07) Validate `X-Device-ID` as UUID (allow-list the two legacy `test-device-*` IDs out); rate-limit all device routes (60/min/IP) via the existing KV limiter.
-- [ ] **P3-04** (B-08) Reject `@reefbuddy.device` addresses in `/auth/signup`. Keep `/auth/*` routes (P-01 b).
-- [ ] **P3-05** (B-12) Rate-limit `/auth/login` and `/auth/signup` (10/min/IP); `password.max(128)`.
-- [ ] **P3-06** (B-14) CORS: `Vary: Origin`; unknown origin → no ACAO header; no `*` fallback. Native app unaffected (no Origin).
-- [ ] **P3-07** (B-13) Central `errorResponse` with generic message + `requestId` (from `cf-ray`); `error.message` only to `console.error`.
-- [ ] **P3-08** (B-11) Structured logger `log(level, event, fields)` gated on `ENVIRONMENT`; remove all body/token/JWS dumps.
-- [ ] **P3-09** (B-15) `APPLE_BUNDLE_ID` var; remove the two hard-coded literals.
+- [x] **P3-01** (B-18) Lowercase `url.pathname` once at the router; add `/i` to all UUID matchers; handlers use `tankResult.id`.
+- [x] **P3-02** (B-19, P-03) Device-or-session auth (`resolveActor`) on `/api/tanks/:id` GET/PUT/DELETE, `/tanks/:id/{history,trends,averages,export}`, `/maintenance/schedules*`. Tests for each with `X-Device-ID`.
+- [x] **P3-03** (B-07) Validate `X-Device-ID` as UUID (allow-list the two legacy `test-device-*` IDs out); rate-limit all device routes (60/min/IP) via the existing KV limiter.
+- [x] **P3-04** (B-08) Reject `@reefbuddy.device` addresses in `/auth/signup`. Keep `/auth/*` routes (P-01 b).
+- [x] **P3-05** (B-12) Rate-limit `/auth/login` and `/auth/signup` (10/min/IP); `password.max(128)`.
+- [x] **P3-06** (B-14) CORS: `Vary: Origin`; unknown origin → no ACAO header; no `*` fallback. Native app unaffected (no Origin).
+- [x] **P3-07** (B-13) Central `errorResponse` with generic message + `requestId` (from `cf-ray`); `error.message` only to `console.error`.
+- [x] **P3-08** (B-11) Structured logger `log(level, event, fields)` gated on `ENVIRONMENT`; remove all body/token/JWS dumps.
+- [x] **P3-09** (B-15) `APPLE_BUNDLE_ID` var; remove the two hard-coded literals.
 
 StoreKit and DeviceCheck
-- [ ] **P3-10** (B-03, P-07 a) X.509 chain validation for the JWS `x5c`: leaf → intermediate → pinned Apple Root CA G3; check validity dates and the App Store receipt OID (1.2.840.113635.100.6.11.1); extract the leaf public key properly. Use `@peculiar/x509` (WebCrypto-based; add `nodejs_compat` only if it turns out to be required). Fixtures: a real sandbox JWS from `purchase_history` (owner device) must pass; a self-signed JWS must fail.
-- [ ] **P3-11** (B-28) `derSignatureToRaw`: treat 64-byte signatures as raw.
-- [ ] **P3-12** (B-04) DeviceCheck bit0 = free tier consumed: `query_two_bits` on first `/analyze`, `update_two_bits` when the third free analysis is used; a rotated `deviceId` on a device with bit0 set gets no free credits. Tests with mocked Apple responses.
+- [x] **P3-10** (B-03, P-07 a) X.509 chain validation for the JWS `x5c`: leaf → intermediate → pinned Apple Root CA G3; check validity dates and the App Store receipt OID (1.2.840.113635.100.6.11.1); extract the leaf public key properly. Use `@peculiar/x509` (WebCrypto-based; add `nodejs_compat` only if it turns out to be required). Fixtures: a real sandbox JWS from `purchase_history` (owner device) must pass; a self-signed JWS must fail.
+- [x] **P3-11** (B-28) `derSignatureToRaw`: treat 64-byte signatures as raw.
+- [x] **P3-12** (B-04) DeviceCheck bit0 = free tier consumed: `query_two_bits` on first `/analyze`, `update_two_bits` when the third free analysis is used; a rotated `deviceId` on a device with bit0 set gets no free credits. Tests with mocked Apple responses.
 
 Data correctness
-- [ ] **P3-13** (B-25) Soft-delete maintenance schedules; filter `deleted_at IS NULL` in list/get.
-- [ ] **P3-14** (B-23) `unreadOnly` via `z.stringbool()`.
-- [ ] **P3-15** (B-24) Pass `salinity_unit` into alert evaluation; PPT thresholds.
-- [ ] **P3-16** (B-26) Widen `WaterParametersSchema` to plausible physical ranges (pH 6.0–9.5, ammonia 0–10, nitrate 0–200, phosphate 0–5, SG 1.000–1.040 / PPT 0–50).
-- [ ] **P3-17** (B-27) Nitrite end to end: `WaterParametersSchema`, prompt, `historical.ts` `Measurement`/`WATER_PARAMETERS`/SELECT, CSV header, alert thresholds.
-- [ ] **P3-18** (B-30) Small-bugs bundle: soft-deleted livestock 409; signup race → 409; `errorResponse` at the `/measurements` switch goes through CORS; real regression slope; `Promise.all` in trends; N+1 in notification settings; `AbortSignal.timeout(25_000)` on the gateway fetch; `v_weekly_averages` week-start consistency (migration 0015, with M-02).
-- [ ] **P3-19** (B-32, P-04 a) Delete `checkPremiumAccess`; export ungated by design; comment in migration README that Stripe columns are retained but unused.
-- [ ] **P3-20** (B-34) Remove unused symbols; `noUnusedLocals` green.
+- [x] **P3-13** (B-25) Soft-delete maintenance schedules; filter `deleted_at IS NULL` in list/get.
+- [x] **P3-14** (B-23) `unreadOnly` via `z.stringbool()`.
+- [x] **P3-15** (B-24) Pass `salinity_unit` into alert evaluation; PPT thresholds.
+- [x] **P3-16** (B-26) Widen `WaterParametersSchema` to plausible physical ranges (pH 6.0–9.5, ammonia 0–10, nitrate 0–200, phosphate 0–5, SG 1.000–1.040 / PPT 0–50).
+- [x] **P3-17** (B-27) Nitrite end to end: `WaterParametersSchema`, prompt, `historical.ts` `Measurement`/`WATER_PARAMETERS`/SELECT, CSV header, alert thresholds.
+- [x] **P3-18** (B-30) Small-bugs bundle: soft-deleted livestock 409; signup race → 409; `errorResponse` at the `/measurements` switch goes through CORS; real regression slope; `Promise.all` in trends; N+1 in notification settings; `AbortSignal.timeout(25_000)` on the gateway fetch; `v_weekly_averages` week-start consistency (migration 0015, with M-02).
+- [x] **P3-19** (B-32, P-04 a) Delete `checkPremiumAccess`; export ungated by design; comment in migration README that Stripe columns are retained but unused.
+- [x] **P3-20** (B-34) Remove unused symbols; `noUnusedLocals` green.
 
 AI path (backward compatible)
-- [ ] **P3-21** (A-02) `AI_MODEL` (`claude-haiku-4-5`, P-05 a) and `AI_MAX_TOKENS` vars in `wrangler.toml`; code reads them.
-- [ ] **P3-22** (A-03) Branch on `stop_reason`: `end_turn` → success; `max_tokens` → retry once with +1024 then return with `truncated: true`; `refusal` → 422 `analysis_refused`, credit refunded. Log `usage` (input/output tokens) per request.
-- [ ] **P3-23** (A-04) Structured output via `output_config.format` with a fixed schema (`summary`, `parameters[] {name, value, status, note}`, `dosing[]`, `warnings[]`). Response keeps the existing `recommendation` string (rendered from the structure) so 1.0.6 clients keep working; adds `structured` object for 1.0.7.
-- [ ] **P3-24** (A-05) Remove the manual retry loop; rely on AI Gateway retries (`cf-aig-max-attempts: 3`, `cf-aig-retry-delay`); honour `retry-after` on 429 once.
+- [x] **P3-21** (A-02) `AI_MODEL` (`claude-haiku-4-5`, P-05 a) and `AI_MAX_TOKENS` vars in `wrangler.toml`; code reads them.
+- [x] **P3-22** (A-03) Branch on `stop_reason`: `end_turn` → success; `max_tokens` → retry once with +1024 then return with `truncated: true`; `refusal` → 422 `analysis_refused`, credit refunded. Log `usage` (input/output tokens) per request.
+- [x] **P3-23** (A-04) Structured output via `output_config.format` with a fixed schema (`summary`, `parameters[] {name, value, status, note}`, `dosing[]`, `warnings[]`). Response keeps the existing `recommendation` string (rendered from the structure) so 1.0.6 clients keep working; adds `structured` object for 1.0.7.
+- [x] **P3-24** (A-05) Remove the manual retry loop; rely on AI Gateway retries (`cf-aig-max-attempts: 3`, `cf-aig-retry-delay`); honour `retry-after` on 429 once.
 
 Config
-- [ ] **P3-25** (C-04) Flatten `AI_GATEWAY_ID`; fix `kv namespace` comment; `[observability]` at top level with `head_sampling_rate = 1`; verify in dashboard after deploy.
-- [ ] **P3-26** (M-02) Migration `0015_index_cleanup.sql`: drop redundant indexes, add `idx_water_changes_source_schedule`, drop `v_parameter_stats`, recreate `v_weekly_averages` consistently. Apply local, then remote after P3-28.
-- [ ] **P3-27** (T-04 rest) Coverage for `/api/livestock/*`, `/api/measurements`, `/api/tanks/:id` CRUD, `/maintenance/schedules` PUT/DELETE, `/tanks/:id/history|trends|averages|export` with device auth, `/credits/balance`.
-- [ ] **P3-28** ⛔ Deploy; verify `/health`; run `tests/e2e` against production with the owner device (read-only endpoints); apply 0015 remote.
-- [ ] **P3-29** (B-37) Normalise UUIDs to lowercase on insert paths and drop `LOWER(id) = ?` comparisons (23 sites). Production data already has 0 uppercase IDs, so no backfill needed.
-- [ ] **P3-30** ⛔ Deploy P3-29; smoke test.
+- [x] **P3-25** (C-04) Flatten `AI_GATEWAY_ID`; fix `kv namespace` comment; `[observability]` at top level with `head_sampling_rate = 1`; verify in dashboard after deploy.
+- [x] **P3-26** (M-02) Migration `0015_index_cleanup.sql`: drop redundant indexes, add `idx_water_changes_source_schedule`, drop `v_parameter_stats`, recreate `v_weekly_averages` consistently. Apply local, then remote after P3-28.
+- [x] **P3-27** (T-04 rest) Coverage for `/api/livestock/*`, `/api/measurements`, `/api/tanks/:id` CRUD, `/maintenance/schedules` PUT/DELETE, `/tanks/:id/history|trends|averages|export` with device auth, `/credits/balance`.
+- [x] **P3-28** ⛔ Deploy; verify `/health`; run `tests/e2e` against production with the owner device (read-only endpoints); apply 0015 remote.
+- [x] **P3-29** (B-37) Normalise UUIDs to lowercase on insert paths and drop `LOWER(id) = ?` comparisons (23 sites). Production data already has 0 uppercase IDs, so no backfill needed.
+- [x] **P3-30** ⛔ Deploy P3-29; smoke test.
 
 **Exit:** every endpoint the app calls returns 2xx with device auth in tests; forged and self-signed JWS rejected; a real sandbox JWS accepted only in dev.
 
@@ -297,4 +297,17 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · **Phase 1 complete.**
 - 2026-09-07 · P2-01..P2-07, P2-12 · wrangler 4.129, vitest 4.1.11, TS 6.0.3, jose 6, bcryptjs 3, zod 4.5; **`@cloudflare/vitest-plugin` 1.1.4 instead of pool-workers 0.22** (Cloudflare deprecated the pool package mid-upgrade); `npm audit` 13 → 0; workers-types replaced by generated `worker-configuration.d.ts`; compat date 2026-08-15; `readJson()` in 15 handlers; zod v3-compat calls migrated; **tsc 99 → 0 errors** · 267168e
 - 2026-09-07 · **Phase 2 complete.**
+- 2026-09-07 · P3-01..P3-09 · table-driven router (lowercased paths, anchored patterns), `resolveActor()` session-or-device on all app routes, bounded device ids + scoped rate limits (device 60/min, auth 10/min), signup domain guard, CORS allow-list only + `Vary`, generic 500s (34 sites), `X-Request-Id`, debug logs gated off in production, `APPLE_BUNDLE_ID` var. Device id rule is a bounded charset rather than strict UUID so the legacy test ids keep working. `src/index.ts` 5091 → 4573 lines. Suite 202 passed · ac972e3
+- 2026-09-07 · P3-11 · already done in Phase 1 (raw 64-byte signatures) · f50b8aa
+- 2026-09-07 · P3-10 · x5c chain validation with pinned Apple Root CA G3 (`@peculiar/x509` + `reflect-metadata`); leaf marker OID + WWDR marker required; Xcode-signed transactions accepted only outside production; real Apple-signed Sandbox fixture + tampered copy + Xcode fixture in tests; the former `it.fails` gap test now passes as a normal test. Bundle 951 → 1439 KiB raw (243 KiB gzip) · aa8dae5
+- 2026-09-07 · P3-12 · DeviceCheck bit0 marks free tier consumed per physical device; query first, validate via update(bit1) on first sight, set bit0 after the 3rd free analysis; fresh device ids on a marked device get 402; 5 new tests with mocked Apple endpoints · b54f9c1
+- 2026-09-07 · P3-13..P3-20 · soft-delete schedules, stringbool, PPT→SG alerts, plausibility ranges, nitrite end to end, small-bugs bundle (livestock 409, signup race, regression slope, parallel trends, N+1, gateway timeout), premium gate removed, unused-symbol checks on. Weekly-view fix deferred to migration 0015 (P3-26) · 2ba8aa8
+- 2026-09-07 · P3-21..P3-25 · AI_MODEL/AI_MAX_TOKENS vars, structured JSON output matching the iOS model (+ rendered `recommendation`), refusal → 422 + refund, max_tokens retry + `truncated`, single gateway attempt, AI_GATEWAY_ID flattened, observability sampling · d5ec2c0
+- 2026-09-07 · P3-26 · migration 0015: 6 redundant indexes dropped, water_changes FK index, v_parameter_stats dropped, averages views with avg_nitrite and Monday-start weeks · 9f03a47
+- 2026-09-07 · P3-27 · `tests/device-routes.test.ts`: 21 tests covering every app-facing route with X-Device-ID and uppercase UUIDs · 9f03a47
+- 2026-09-07 · P3-02 follow-up · migration 0016 + zod enums accept the iOS livestock categories (Anemone, Other) and health statuses (thriving, stressed, declining, critical) · ff9c3be
+- 2026-09-07 · P3-28 · `npm run deploy` → version `1508ba3f-9488-419d-aefe-719e9585696d` (gate: tsc 0, 239 tests); both hosts healthy, HSTS + X-Request-Id present, debug route 404, route table served at `/`. Migrations: 0015 applied first try; **0016 failed on the livestock_logs FK** (D1 enforces FKs; deferred checks do not survive a parent DROP), production left intact (81 livestock / 5 logs), migration rewritten to park child rows, proven locally with FK on, then applied · 14ceed5
+- 2026-09-07 · P3-29 · `LowercaseUuid` schema for all body ids; 29 `LOWER()` comparisons removed (indexes usable again) · cea9266
+- 2026-09-07 · P3-30 · deploy → version `572828b5-658a-4ada-ac52-f29cc80aa2a1` (gate: tsc 0, 240 tests); health OK on both hosts; owner-device smoke: tanks list, uppercase tank GET, livestock list, history, balance all 200 · (deploy)
+- 2026-09-07 · **Phase 3 complete.**
 

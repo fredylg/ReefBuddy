@@ -71,35 +71,35 @@ The two headline findings:
 
 ## 2. Backend — critical security
 
-**B-01 · Critical · Sandbox/Xcode JWS skips signature verification.** `src/index.ts:3674-3701`. The payload is decoded *before* verification; if it says `environment: "Sandbox"` the unsigned payload is trusted. POSTing a hand-made base64 payload with `productId: com.reefbuddy.credits50` grants 50 credits per request in production. Fix: always verify the signature first, then require `environment === "Production"` when `ENVIRONMENT === "production"`; also check `type === "Consumable"` and `bundleId`. **Live evidence:** all 8 rows in production `purchase_history` are `Sandbox`/`Xcode` transactions (Jan 2026) that were accepted and granted 180 credits; 298 paid credits sit on 10 devices and not one is a real App Store purchase. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-01 · Critical · Sandbox/Xcode JWS skips signature verification.** `src/index.ts:3674-3701`. The payload is decoded *before* verification; if it says `environment: "Sandbox"` the unsigned payload is trusted. POSTing a hand-made base64 payload with `productId: com.reefbuddy.credits50` grants 50 credits per request in production. Fix: always verify the signature first, then require `environment === "Production"` when `ENVIRONMENT === "production"`; also check `type === "Consumable"` and `bundleId`. **Live evidence:** all 8 rows in production `purchase_history` are `Sandbox`/`Xcode` transactions (Jan 2026) that were accepted and granted 180 credits; 298 paid credits sit on 10 devices and not one is a real App Store purchase. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-02 · Critical ·** `transactionId === "0"` **skips duplicate check and audit insert.** `src/index.ts:1221-1234`. Combined with B-01, infinitely replayable. Fix: remove the special case; accept Xcode transactions only outside production. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-02 · Critical ·** `transactionId === "0"` **skips duplicate check and audit insert.** `src/index.ts:1221-1234`. Combined with B-01, infinitely replayable. Fix: remove the special case; accept Xcode transactions only outside production. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-03 · Critical · Production JWS verification does not validate the x5c chain.** `src/index.ts:3239-3410`. It scans `x5c[0]` for a 65-byte EC point and never checks the chain to Apple Root CA G3, validity dates, or the App Store leaf OID. A self-signed JWS with a homemade leaf verifies. Fix options: (a) proper X.509 chain validation pinned to Apple's root (`@peculiar/x509`, needs `nodejs_compat`), or (b) confirm server-to-server via App Store Server API `GET /inApps/v1/transactions/{id}` (needs an App Store Connect API key). Recommended: YES — option (b) is simpler and stronger. → Decision: [ ] YES  [ ] NO   Option: [ ] a  [ x] b **Resolved 2026-09-07 with P-07: option (a) X.509 chain validation in the Worker.**
+**B-03 · Critical · Production JWS verification does not validate the x5c chain.** `src/index.ts:3239-3410`. It scans `x5c[0]` for a 65-byte EC point and never checks the chain to Apple Root CA G3, validity dates, or the App Store leaf OID. A self-signed JWS with a homemade leaf verifies. Fix options: (a) proper X.509 chain validation pinned to Apple's root (`@peculiar/x509`, needs `nodejs_compat`), or (b) confirm server-to-server via App Store Server API `GET /inApps/v1/transactions/{id}` (needs an App Store Connect API key). Recommended: YES — option (b) is simpler and stronger. → Decision: [ ] YES  [ ] NO   Option: [ ] a  [ x] b **Resolved 2026-09-07 with P-07: option (a) X.509 chain validation in the Worker.** **Done 2026-09-07 (P3-10).**
 
-**B-04 · High · Free-tier is keyed on the client-supplied** `deviceId` **string.** `src/index.ts:2616,2779,810-916`. DeviceCheck bits are set to `false,false` and never read; the token is not bound to `deviceId`. Rotating `deviceId` gives unlimited free analyses, bounded only by 10 req/min/IP. Fix: persist bit0 = "free tier consumed" via DeviceCheck `update_two_bits` and read it back, so free credits follow the physical device. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-04 · High · Free-tier is keyed on the client-supplied** `deviceId` **string.** `src/index.ts:2616,2779,810-916`. DeviceCheck bits are set to `false,false` and never read; the token is not bound to `deviceId`. Rotating `deviceId` gives unlimited free analyses, bounded only by 10 req/min/IP. Fix: persist bit0 = "free tier consumed" via DeviceCheck `update_two_bits` and read it back, so free credits follow the physical device. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P3-12).**
 
-**B-05 · High · Plain** `npx wrangler deploy` **overwrites production with development config.** `wrangler.toml:4,27,78`; `package.json:9`; `CLAUDE.md:14`. Top-level and `[env.production]` share `name = "reefbuddy"`; top-level has `ENVIRONMENT = "development"`. A wrong deploy enables `/debug/jws-test` and the DeviceCheck bypass. The `TEST_FAILURE_REPORT.md` from Feb 2026 records this having happened. Fix: make production the top-level config, move dev to `[env.dev]` with a distinct name, and add a post-deploy `/health` check. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-05 · High · Plain** `npx wrangler deploy` **overwrites production with development config.** `wrangler.toml:4,27,78`; `package.json:9`; `CLAUDE.md:14`. Top-level and `[env.production]` share `name = "reefbuddy"`; top-level has `ENVIRONMENT = "development"`. A wrong deploy enables `/debug/jws-test` and the DeviceCheck bypass. The `TEST_FAILURE_REPORT.md` from Feb 2026 records this having happened. Fix: make production the top-level config, move dev to `[env.dev]` with a distinct name, and add a post-deploy `/health` check. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-06 · High ·** `isDevWorker` **matches every** `*.workers.dev` **host.** `src/index.ts:2708-2712`: `hostname.includes('dev')` is true for the `.workers.dev` suffix itself, so with a dev deploy any request without a `deviceToken` skips DeviceCheck. Fix: match an explicit dev hostname or drop the bypass. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-06 · High ·** `isDevWorker` **matches every** `*.workers.dev` **host.** `src/index.ts:2708-2712`: `hostname.includes('dev')` is true for the `.workers.dev` suffix itself, so with a dev deploy any request without a `deviceToken` skips DeviceCheck. Fix: match an explicit dev hostname or drop the bypass. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-07 · High · Unauthenticated device routes create DB rows per arbitrary header.** `getOrCreateDeviceUser` and `checkDeviceCredits` insert a `users` / `device_credits` row for every new `X-Device-ID` value; no rate limit outside `/analyze`. Fix: validate `deviceId` as a UUID, rate-limit all device routes. **Live evidence:** 200 `device_credits` rows vs 117 users; 105 rows have zero analyses and zero purchases (probe-only IDs). Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-07 · High · Unauthenticated device routes create DB rows per arbitrary header.** `getOrCreateDeviceUser` and `checkDeviceCredits` insert a `users` / `device_credits` row for every new `X-Device-ID` value; no rate limit outside `/analyze`. Fix: validate `deviceId` as a UUID, rate-limit all device routes. **Live evidence:** 200 `device_credits` rows vs 117 users; 105 rows have zero analyses and zero purchases (probe-only IDs). Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-08 · Medium · Device identity is a synthetic email anyone can pre-register.** `src/index.ts:1387,1421`. `/auth/signup` accepts `device_<id>@reefbuddy.device`, hijacking that device's tanks. Fix: reject the `@reefbuddy.device` suffix in signup; longer term, model device users with a column. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-08 · Medium · Device identity is a synthetic email anyone can pre-register.** `src/index.ts:1387,1421`. `/auth/signup` accepts `device_<id>@reefbuddy.device`, hijacking that device's tanks. Fix: reject the `@reefbuddy.device` suffix in signup; longer term, model device users with a column. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-09 · Medium · Remove the legacy** `verifyReceipt` **path.** `src/index.ts:398-404,3414-3475,3804-3878`. Apple deprecated it in 2023; it binds any receipt containing the product to any `deviceId` with no ownership check. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-09 · Medium · Remove the legacy** `verifyReceipt` **path.** `src/index.ts:398-404,3414-3475,3804-3878`. Apple deprecated it in 2023; it binds any receipt containing the product to any `deviceId` with no ownership check. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-10 · Medium · Delete** `/debug/jws-test`**.** `src/index.ts:3559-3645,5436`. Gated only by `ENVIRONMENT`, see B-05. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-10 · Medium · Delete** `/debug/jws-test`**.** `src/index.ts:3559-3645,5436`. Gated only by `ENVIRONMENT`, see B-05. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-11 · Medium · Stop logging request bodies, DeviceCheck tokens and JWS.** 60 `console.log` calls; `:2655-2668,3487-3495,881,3208-3346`. Production invocation logs are a PII sink. Fix: structured logger gated on environment; never log tokens. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-11 · Medium · Stop logging request bodies, DeviceCheck tokens and JWS.** 60 `console.log` calls; `:2655-2668,3487-3495,881,3208-3346`. Production invocation logs are a PII sink. Fix: structured logger gated on environment; never log tokens. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-12 · Medium · Rate-limit** `/auth/login` **and** `/auth/signup`**; cap password length.** `src/index.ts:1488-1549,212`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-12 · Medium · Rate-limit** `/auth/login` **and** `/auth/signup`**; cap password length.** `src/index.ts:1488-1549,212`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-13 · Medium · Stop echoing** `error.message` **and upstream** `details` **to clients.** ~30 sites like `:1476-1480`, `:988`. Return a generic message plus request ID; details go to logs. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-13 · Medium · Stop echoing** `error.message` **and upstream** `details` **to clients.** ~30 sites like `:1476-1480`, `:988`. Return a generic message plus request ID; details go to logs. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-14 · Low · CORS: return** `Vary: Origin`**, never fall back to** `capacitor://localhost`**, and don't return** `*` **when** `Origin` **is absent.** `:557,5131-5139,5753`. Native app sends no `Origin`, so low impact. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-14 · Low · CORS: return** `Vary: Origin`**, never fall back to** `capacitor://localhost`**, and don't return** `*` **when** `Origin` **is absent.** `:557,5131-5139,5753`. Native app sends no `Origin`, so low impact. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-15 · Low · Move the bundle ID (hard-coded twice,** `:3608,3743`**) to an env var.** Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-15 · Low · Move the bundle ID (hard-coded twice,** `:3608,3743`**) to an env var.** Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
 ---
 
@@ -107,37 +107,37 @@ The two headline findings:
 
 ## 3. Backend — bugs
 
-**B-16 · High · Credit refunds have never worked.** `src/index.ts:1182,1194` use `GREATEST(...)`; SQLite has no such function (verified with `sqlite3`), so `refundDeviceCredit` always throws and returns `false` while the 503 body says "Your credit has been refunded". Fix: `MAX(0, total_analyses - 1)` + a test. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-16 · High · Credit refunds have never worked.** `src/index.ts:1182,1194` use `GREATEST(...)`; SQLite has no such function (verified with `sqlite3`), so `refundDeviceCredit` always throws and returns `false` while the 503 body says "Your credit has been refunded". Fix: `MAX(0, total_analyses - 1)` + a test. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-17 · High · Non-retryable AI errors are returned as HTTP 200 success and the credit is kept.** `:2871-2905`. `callAIGateway` signals errors as a JSON string on the same channel as model text; only `retryable` triggers refund. Fix: return a typed `{ok, text} | {ok:false, status, retryable}` union, refund on every failure, respond 502/503. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-17 · High · Non-retryable AI errors are returned as HTTP 200 success and the credit is kept.** `:2871-2905`. `callAIGateway` signals errors as a JSON string on the same channel as model text; only `retryable` triggers refund. Fix: return a typed `{ok, text} | {ok:false, status, retryable}` union, refund on every failure, respond 502/503. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-18 · High · Route regexes are case-sensitive but iOS sends uppercase UUIDs.** `:5329,5342,5355,5446-5488`. `GET/PUT/DELETE /api/tanks/:id` and `/tanks/:id/{history,trends,averages,export}` 404 for all real app traffic. Water-change routes already use `/i`. Fix: lowercase `pathname` once at the router, use `tankResult.id` in handlers (`:3946,4004,4062,4124`). Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-18 · High · Route regexes are case-sensitive but iOS sends uppercase UUIDs.** `:5329,5342,5355,5446-5488`. `GET/PUT/DELETE /api/tanks/:id` and `/tanks/:id/{history,trends,averages,export}` 404 for all real app traffic. Water-change routes already use `/i`. Fix: lowercase `pathname` once at the router, use `tankResult.id` in handlers (`:3946,4004,4062,4124`). Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-19 · High · Same routes require a Bearer session the app never has.** `:5332,5345,5358,5449-5488`, and all `/maintenance/schedules`* (`:5226-5270`). Fix: reuse the device-or-session `authenticateWaterChangeRequest` for every device-facing route. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-19 · High · Same routes require a Bearer session the app never has.** `:5332,5345,5358,5449-5488`, and all `/maintenance/schedules`* (`:5226-5270`). Fix: reuse the device-or-session `authenticateWaterChangeRequest` for every device-facing route. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-20 · High · Credit consumption is check-then-act; concurrent requests drive** `paid_credits` **negative.** `:1131-1160,2779-2828`. Fix: conditional `UPDATE ... AND paid_credits > 0`, treat `meta.changes === 0` as no credit. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-20 · High · Credit consumption is check-then-act; concurrent requests drive** `paid_credits` **negative.** `:1131-1160,2779-2828`. Fix: conditional `UPDATE ... AND paid_credits > 0`, treat `meta.changes === 0` as no credit. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-21 · Medium ·** `addDeviceCredits` **is not atomic; duplicate purchases can double-grant.** `:1221-1273`. Fix: INSERT `purchase_history` (UNIQUE) first, then UPDATE, in `DB.batch()`; map UNIQUE violation to 409. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-21 · Medium ·** `addDeviceCredits` **is not atomic; duplicate purchases can double-grant.** `:1221-1273`. Fix: INSERT `purchase_history` (UNIQUE) first, then UPDATE, in `DB.batch()`; map UNIQUE violation to 409. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
 **B-22 · Medium · Migrate 61 deprecated zod v3-compat calls.** `z.string().uuid()/.email()/.datetime()/.url()`, `.flatten()`, `.format()`, `ZodIssueCode.custom` → `z.uuid()`, `z.email()`, `z.iso.datetime()`, `z.url()`, `z.treeifyError()`, `ctx.addIssue({code:'custom'})`. Recommended: YES (with D-02) → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**B-23 · Medium ·** `unreadOnly` **query param is always true.** `src/notifications.ts:153` + `src/index.ts:4398`: `z.coerce.boolean()` turns the string `"false"` into `true`. Fix: `z.stringbool()`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-23 · Medium ·** `unreadOnly` **query param is always true.** `src/notifications.ts:153` + `src/index.ts:4398`: `z.coerce.boolean()` turns the string `"false"` into `true`. Fix: `z.stringbool()`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-24 · Medium · Salinity alerts ignore** `salinity_unit`**; a 35 PPT reading always alerts "too high at 35SG".** `notifications.ts:175`, `index.ts:2552-2569`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-24 · Medium · Salinity alerts ignore** `salinity_unit`**; a 35 PPT reading always alerts "too high at 35SG".** `notifications.ts:175`, `index.ts:2552-2569`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-25 · Medium · Hard** `DELETE FROM maintenance_schedules` **violates the FK from** `water_changes.source_schedule_id` **→ 500.** `:2250`; migrations 0013/0014. Also list/get never filter `deleted_at`. Fix: soft delete + filter. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-25 · Medium · Hard** `DELETE FROM maintenance_schedules` **violates the FK from** `water_changes.source_schedule_id` **→ 500.** `:2250`; migrations 0013/0014. Also list/get never filter `deleted_at`. Fix: soft delete + filter. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-26 · Medium ·** `/analyze` **validation rejects the tanks that most need analysis.** `WaterParametersSchema` (`:137-188`) 400s on pH < 7.8, ammonia > 1, nitrate > 50, phosphate > 0.5, SG outside 1.020–1.030. `CreateMeasurementSchema` accepts them. Fix: widen to physically plausible ranges and let the model comment. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-26 · Medium ·** `/analyze` **validation rejects the tanks that most need analysis.** `WaterParametersSchema` (`:137-188`) 400s on pH < 7.8, ammonia > 1, nitrate > 50, phosphate > 0.5, SG outside 1.020–1.030. `CreateMeasurementSchema` accepts them. Fix: widen to physically plausible ranges and let the model comment. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-27 · Medium · Nitrite is collected but never sent to the AI or exported.** `WaterParametersSchema`, `historical.ts:15-29,107-117,147`, `export.ts:51-64`, iOS `Measurement.swift:346-357`. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-27 · Medium · Nitrite is collected but never sent to the AI or exported.** `WaterParametersSchema`, `historical.ts:15-29,107-117,147`, `export.ts:51-64`, iOS `Measurement.swift:346-357`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
-**B-28 · Low ·** `derSignatureToRaw` **mangles ~1/256 legitimate ES256 signatures** (any raw signature starting with `0x30`). `:3140-3143`. Fix: if `length === 64` use as-is. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-28 · Low ·** `derSignatureToRaw` **mangles ~1/256 legitimate ES256 signatures** (any raw signature starting with `0x30`). `:3140-3143`. Fix: if `length === 64` use as-is. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
 **B-29 · Low · Malformed JSON → 500 instead of 400 across ~15 handlers; several lines have multiple statements merged (bad merge).** `:2483-2488,2504-2510,2599,3892-3901,4614,4727,5299-5302,5406-5418,5499-5501`. Fix: central `readJson()` helper + run Prettier. Recommended: YES → Decision: [ x] YES  [ ] NO **readJson() done 2026-09-07 (P2-05); Prettier pass pending (P5-03).**
 
-**B-30 · Low · Assorted small bugs:** soft-deleted livestock ID gives false 409 (`:4620-4657`); signup race → 500 not 409 (`:1439-1456`); `errorResponse` at `:5410` bypasses CORS pass; `historical.ts:225` "slope" is first-vs-last delta and `:271` runs 9 sequential queries; `v_weekly_averages` mixes Monday/Sunday week starts (`0006:463-483`); N+1 in `:4335`; no `AbortSignal` timeout on the gateway fetch (`:957`). Recommended: YES (bundle) → Decision: [ x] YES  [ ] NO
+**B-30 · Low · Assorted small bugs:** soft-deleted livestock ID gives false 409 (`:4620-4657`); signup race → 500 not 409 (`:1439-1456`); `errorResponse` at `:5410` bypasses CORS pass; `historical.ts:225` "slope" is first-vs-last delta and `:271` runs 9 sequential queries; `v_weekly_averages` mixes Monday/Sunday week starts (`0006:463-483`); N+1 in `:4335`; no `AbortSignal` timeout on the gateway fetch (`:957`). Recommended: YES (bundle) → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-31 · Low · Delete the 29 leftover debug beacons** `fetch('http://127.0.0.1:7242/ingest/...')` in the livestock handlers (`:4584-5622`, `// #region agent log` blocks). Floating promises posting user IDs and stack traces on every production livestock request. Recommended: YES → Decision: [ x] YES  [ ] NO
+**B-31 · Low · Delete the 29 leftover debug beacons** `fetch('http://127.0.0.1:7242/ingest/...')` in the livestock handlers (`:4584-5622`, `// #region agent log` blocks). Floating promises posting user IDs and stack traces on every production livestock request. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
 ---
 
@@ -145,17 +145,17 @@ The two headline findings:
 
 ## 4. Backend — dead code and structure
 
-**B-32 · Medium · Remove or wire the Stripe / premium remnants.** Migration 0003 columns have zero references; `subscription_tier` always `'free'`; `checkPremiumAccess` (`export.ts:203`) never called, so CSV export is ungated. Your call: see P-04. → Decision: [ x] YES remove  [ ] NO keep
+**B-32 · Medium · Remove or wire the Stripe / premium remnants.** Migration 0003 columns have zero references; `subscription_tier` always `'free'`; `checkPremiumAccess` (`export.ts:203`) never called, so CSV export is ungated. Your call: see P-04. → Decision: [ x] YES remove  [ ] NO keep **Done 2026-09-07.**
 
-**B-33 · Low · Delete** `src/receipt-crypto.ts` **and its test, or wire it in.** Only imported by `tests/security-stage2.test.ts`; `RECEIPT_ENCRYPTION_KEY` exists nowhere. Recommended: YES delete → Decision: [ x] YES  [ ] NO
+**B-33 · Low · Delete** `src/receipt-crypto.ts` **and its test, or wire it in.** Only imported by `tests/security-stage2.test.ts`; `RECEIPT_ENCRYPTION_KEY` exists nowhere. Recommended: YES delete → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**B-34 · Low · Remove unused symbols:** `getMonthlyAverages`, `getAllHeaders`, `CreditBalanceSchema`, `AnalysisRequestSchema` (`:193`), `ALLOWED_ORIGINS` fallback, `SessionData.created_at`, `APNsConfig`/`FCMConfig`. Add `noUnusedLocals` to tsconfig. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-34 · Low · Remove unused symbols:** `getMonthlyAverages`, `getAllHeaders`, `CreditBalanceSchema`, `AnalysisRequestSchema` (`:193`), `ALLOWED_ORIGINS` fallback, `SessionData.created_at`, `APNsConfig`/`FCMConfig`. Add `noUnusedLocals` to tsconfig. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
 **B-35 · Low · Collapse the duplicate route families.** `/tanks/:id/livestock`, `/livestock/:id`, `/livestock/:id/logs`, `/measurements` (session-only) duplicate the `/api/...` versions the app uses. Keep `/api/`*, delete the rest. Recommended: YES → Decision: [ x] YES  [ ] NO
 
 **B-36 · Medium · Split** `src/index.ts` **(5,759 lines) into modules.** Proposed: `index.ts` (router only) · `env.ts` · `http.ts` · `schemas/`* · `auth/{session,devicecheck}.ts` · `ai/gateway.ts` · `credits/{store,storekit}.ts` · `routes/{auth,tanks,measurements,analysis,credits,maintenance,water-changes,livestock,notifications,history}.ts`. Do it *after* the bug fixes so the diff is reviewable. Recommended: YES → Decision: [ x] YES  [ ] NO
 
-**B-37 · Medium · Normalise UUIDs to lowercase at the boundary and drop** `WHERE LOWER(id) = ?` (23 sites). Those comparisons defeat every index. Recommended: YES → Decision: [x ] YES  [ ] NO
+**B-37 · Medium · Normalise UUIDs to lowercase at the boundary and drop** `WHERE LOWER(id) = ?` (23 sites). Those comparisons defeat every index. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P3-29).**
 
 ---
 
@@ -165,13 +165,13 @@ The two headline findings:
 
 **A-01 · Info · Current model** `claude-haiku-4-5-20251001` **is still served.** It is a dated snapshot; the alias is `claude-haiku-4-5`. Current lineup and list prices per 1M tokens: Haiku 4.5 $1/$5, Sonnet 5 $2/$10, Opus 5 $5/$25. For a single-turn 2k-token reply Haiku is a defensible cost choice; Sonnet 5 would give noticeably better reef-chemistry reasoning at ~2x the cost. Your call: see P-05.
 
-**A-02 · Medium · Move the model ID and** `max_tokens` **to env vars** so the next retirement is a config change, not a deploy. Recommended: YES → Decision: [ x] YES  [ ] NO
+**A-02 · Medium · Move the model ID and** `max_tokens` **to env vars** so the next retirement is a config change, not a deploy. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**A-03 · Medium · Handle** `stop_reason` **and log** `usage`**.** `:962,994-1006`. `max_tokens` truncation is returned as a complete recommendation; `refusal` becomes "unexpected shape → retryable" → broken refund path → 503. Fix: branch on `end_turn` / `max_tokens` / `refusal`; log `usage` for cost tracking. Recommended: YES → Decision: [ x] YES  [ ] NO
+**A-03 · Medium · Handle** `stop_reason` **and log** `usage`**.** `:962,994-1006`. `max_tokens` truncation is returned as a complete recommendation; `refusal` becomes "unexpected shape → retryable" → broken refund path → 503. Fix: branch on `end_turn` / `max_tokens` / `refusal`; log `usage` for cost tracking. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**A-04 · Medium · Use structured output (**`output_config.format`**) so the client always gets one fixed JSON schema** instead of the current "prose becomes `{recommendation}`, JSON-looking prose becomes `analysis`" dual shape (`:2901`). Also lowers prompt-injection steering risk. Recommended: YES → Decision: [ x] YES  [ ] NO
+**A-04 · Medium · Use structured output (**`output_config.format`**) so the client always gets one fixed JSON schema** instead of the current "prose becomes `{recommendation}`, JSON-looking prose becomes `analysis`" dual shape (`:2901`). Also lowers prompt-injection steering risk. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**A-05 · Low · Pick one retry layer.** Manual loop (1s+2s+4s) × `cf-aig-max-attempts: 3` can reach 12 upstream attempts; 429/500/503 are not retried by the loop at all. Fix: let AI Gateway retry, honour `retry-after`. Recommended: YES → Decision: [x ] YES  [ ] NO
+**A-05 · Low · Pick one retry layer.** Manual loop (1s+2s+4s) × `cf-aig-max-attempts: 3` can reach 12 upstream attempts; 429/500/503 are not retried by the loop at all. Fix: let AI Gateway retry, honour `retry-after`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
 **A-06 · Low · Consider AI Gateway BYOK** so the Worker does not hold `ANTHROPIC_API_KEY`. Your call. → Decision: [ ] YES  [ x] NO
 
@@ -181,17 +181,17 @@ The two headline findings:
 
 ## 6. Config and deploy
 
-**C-01 · High · Fix the wrangler environment layout** (see B-05). Production at top level, `[env.dev]` named `reefbuddy-dev`, `npm run deploy` = production, `npm run deploy:dev`. Update CLAUDE.md/README. Recommended: YES → Decision: [ x] YES  [ ] NO
+**C-01 · High · Fix the wrangler environment layout** (see B-05). Production at top level, `[env.dev]` named `reefbuddy-dev`, `npm run deploy` = production, `npm run deploy:dev`. Update CLAUDE.md/README. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
 **C-02 · Medium · Bump** `compatibility_date` **from** `2024-01-01` **to a current date.** Run tests + `wrangler deploy --dry-run`. `nodejs_compat` not needed unless B-03 option (a) is chosen. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
 **C-03 · Low · Point iOS at** `api.reefbuddy.aethers.com.au` **and then set** `workers_dev = false`**.** The custom domain is live and healthy but unused; the app hard-codes the personal `reefbuddy.fredylg.workers.dev` host (`APIClient.swift:14`). Recommended: YES → Decision: [ x] YES  [ ] NO
 
-**C-04 · Low · Flatten** `[vars.AI_GATEWAY] gateway_id` **to** `AI_GATEWAY_ID`**; fix the deprecated** `kv:namespace` **comment; verify observability applies to the production env; add** `head_sampling_rate`**.** Recommended: YES → Decision: [ x] YES  [ ] NO
+**C-04 · Low · Flatten** `[vars.AI_GATEWAY] gateway_id` **to** `AI_GATEWAY_ID`**; fix the deprecated** `kv:namespace` **comment; verify observability applies to the production env; add** `head_sampling_rate`**.** Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**C-05 · Low ·** `.dev.vars` ****`APPLE_PRIVATE_KEY` **is an unquoted multi-line PEM**, so local `wrangler dev` sees DeviceCheck "configured" but the import fails and every local `/analyze` 403s. Fix: quote it or use `\n`. Recommended: YES → Decision: [ x] YES  [ ] NO
+**C-05 · Low ·** `.dev.vars` ****`APPLE_PRIVATE_KEY` **is an unquoted multi-line PEM**, so local `wrangler dev` sees DeviceCheck "configured" but the import fails and every local `/analyze` 403s. Fix: quote it or use `\n`. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
-**C-06 · Low · Move** `AuthKey_27VKZ6LCQ3.p8` **out of the working tree.** Never committed, but one `git add -f` away. The secret is already in `wrangler secret` and `.dev.vars`. Recommended: YES → Decision: [x ] YES  [ ] NO
+**C-06 · Low · Move** `AuthKey_27VKZ6LCQ3.p8` **out of the working tree.** Never committed, but one `git add -f` away. The secret is already in `wrangler secret` and `.dev.vars`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07.**
 
 ---
 
@@ -209,7 +209,7 @@ The two headline findings:
 
 **I-05 · High · Livestock create/list/update decoding fails on every call.** `Livestock.swift:411-456`: `createdAt` required but server sends only `added_at`; `category` optionality differs across three duplicate `LivestockDBRecord` structs. Users see "Saved locally, but failed to sync" on every add. Fix: one DTO, optional `createdAt`. Recommended: YES → Decision: [x ] YES  [ ] NO
 
-**I-06 · High · Health status and category enums don't match the backend.** iOS sends `thriving|stressed|declining|critical`; server accepts `healthy|sick|deceased|quarantine` → 400. `.anemone` and `.other` are silently sent as `Invertebrate`. Fix: extend server enums (preferred) or map in the DTO. **Live evidence:** all 81 livestock rows in production have `health_status = healthy`; no other value has ever been stored. Recommended: YES → Decision: [ x] YES  [ ] NO
+**I-06 · High · Health status and category enums don't match the backend.** iOS sends `thriving|stressed|declining|critical`; server accepts `healthy|sick|deceased|quarantine` → 400. `.anemone` and `.other` are silently sent as `Invertebrate`. Fix: extend server enums (preferred) or map in the DTO. **Live evidence:** all 81 livestock rows in production have `health_status = healthy`; no other value has ever been stored. Recommended: YES → Decision: [ x] YES  [ ] NO **Server side done 2026-09-07 (migration 0016); iOS DTO mapping in P4-06.**
 
 **I-07 · Medium ·** `Measurement.pH` **has no** `CodingKeys`**, so** `ph` **from the server decodes as nil.** `Measurement.swift:31`. Recommended: YES → Decision: [x ] YES  [ ] NO
 
@@ -312,7 +312,7 @@ The two headline findings:
 **M-01 · Resolved · Migrations 0013/0014 are applied remotely.** Verified with `wrangler d1 migrations list --remote` (no pending) and the `d1_migrations` table (13 rows, 0013/0014 applied 2026-05-06). Nothing to do.
 → Decision: [x] N/A
 
-**M-02 · Low · Migration 0015: drop redundant indexes** (4 overlapping on `measurements(tank_id, measured_at)`; 3 duplicating UNIQUE constraints), add `water_changes(source_schedule_id)` index, drop unused view `v_parameter_stats`. Recommended: YES → Decision: [x ] YES  [ ] NO
+**M-02 · Low · Migration 0015: drop redundant indexes** (4 overlapping on `measurements(tank_id, measured_at)`; 3 duplicating UNIQUE constraints), add `water_changes(source_schedule_id)` index, drop unused view `v_parameter_stats`. Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (P3-26).**
 
 **M-03 · Low · Document that 0008 never existed** (confirmed via git history and the D1 comparison) and fix misleading headers (0006 says "0003"; 0011 says "skip locally"). Recommended: YES → Decision: [ x] YES  [ ] NO
 
@@ -330,7 +330,7 @@ The two headline findings:
 
 **T-03 · Medium · Delete the no-op tests in** `security-stage2.test.ts` (bcrypt at the wrong rounds, `randomUUID`, string length) and the `receipt-crypto` test if B-33 is YES. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
-**T-04 · Medium · Add coverage for the routes the app actually calls and the security fixes**: `/api/livestock/`*, `/api/measurements`, `/api/tanks/:id` GET/PUT/DELETE, `/maintenance/schedules` PUT/DELETE, `/credits/purchase` with a fixture JWS (forged sandbox payload must be rejected), refund path, concurrent credit consumption. Recommended: YES → Decision: [ x] YES  [ ] NO
+**T-04 · Medium · Add coverage for the routes the app actually calls and the security fixes**: `/api/livestock/`*, `/api/measurements`, `/api/tanks/:id` GET/PUT/DELETE, `/maintenance/schedules` PUT/DELETE, `/credits/purchase` with a fixture JWS (forged sandbox payload must be rejected), refund path, concurrent credit consumption. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
 **T-05 · Low · Move** `devicecheck-production.test.ts` **to** `tests/e2e/` **excluded from default** `include`**; fix random-IP collisions (**`Math.random()` **in a /24 with a 10/min limit); remove unused imports; remove the phantom** `FREE_TIER_LIMIT` **binding.** Recommended: YES → Decision: [x ] YES  [ ] NO **Done 2026-09-07 (Phase 2).**
 
@@ -459,7 +459,7 @@ Read-only inspection with your logged-in wrangler session: deployments, versions
 
 **CF-05 · Low · Delete the orphan Pages project** `reefbuddy-site`**.** `reefbuddy-web` owns the custom domain. Recommended: YES → Decision: [ x] YES  [ ] NO
 
-**CF-06 · Medium · Add** `Strict-Transport-Security` **to the security headers** (`src/index.ts:56-57`). Both hosts serve without HSTS today. Recommended: YES → Decision: [ x] YES  [ ] NO
+**CF-06 · Medium · Add** `Strict-Transport-Security` **to the security headers** (`src/index.ts:56-57`). Both hosts serve without HSTS today. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 
 **CF-07 · Low · Version the website deploy.** `reefbuddy-web` was pushed from a working tree that included the untracked TikTok file; add `npm run deploy:web` = `wrangler pages deploy web --project-name reefbuddy-web` and commit `web/tiktok*.txt` (H-02). Recommended: YES → Decision: [ x] YES  [ ] NO
 
