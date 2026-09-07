@@ -455,9 +455,9 @@ Read-only inspection with your logged-in wrangler session: deployments, versions
 
 **CF-03 · Low · Prune the 105 probe-only** `device_credits` **rows** (no analyses, no purchases) after B-07 lands. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P1-16: 39 probe-only rows deleted, data change).**
 
-**CF-04 · Low · Delete orphan KV namespaces** `SESSIONS` **and** `SESSIONS_preview`**.** Empty, unreferenced. Recommended: YES → Decision: [ x] YES  [ ] NO
+**CF-04 · Low · Delete orphan KV namespaces** `SESSIONS` **and** `SESSIONS_preview`**.** Empty, unreferenced. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-12: both namespaces deleted).**
 
-**CF-05 · Low · Delete the orphan Pages project** `reefbuddy-site`**.** `reefbuddy-web` owns the custom domain. Recommended: YES → Decision: [ x] YES  [ ] NO
+**CF-05 · Low · Delete the orphan Pages project** `reefbuddy-site`**.** `reefbuddy-web` owns the custom domain. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07 (P7-13: `reefbuddy-site` deleted).**
 
 **CF-06 · Medium · Add** `Strict-Transport-Security` **to the security headers** (`src/index.ts:56-57`). Both hosts serve without HSTS today. Recommended: YES → Decision: [ x] YES  [ ] NO **Done 2026-09-07.**
 

@@ -21,8 +21,8 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
 | 5 | Backend structure | 4 | 4 | done (branch `maint/p5-structure`, live `e667dee4`) |
 | 6 | iOS modernisation | 8 | 7 | code complete (branch `maint/p6-ios`); **P6-08 TestFlight 1.0.8 is yours** |
-| 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 12 | branch `maint/p7-hygiene`; **P7-12/P7-13 need your go-ahead, P7-05 mailboxes and P7-14 WAF rule are yours** |
-| 8 | Final verification and handover | 5 | 3 | gates green; **P8-03 needs the deploy go-ahead** |
+| 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 14 | done except **P7-05 mailboxes and P7-14 WAF rule (yours)** |
+| 8 | Final verification and handover | 5 | 5 | done; live version `12176692` |
 | 9 | Deferred / declined (no work) | — | — | — |
 
 ## Standing rules for every task
@@ -246,8 +246,8 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 - [x] **P7-09** (H-04) `scripts/` with parameterised base URL; delete `test-iap-fix.sh`; fix `capture-app-screenshots.sh` for bash 3.2; `core.hooksPath` for the pre-commit hook.
 - [x] **P7-10** (H-05) `package.json` `private: true`, license `UNLICENSED`, author; dedupe pbxproj rules to `CLAUDE.md` only; remove duplicate `StoreKit.plist`/`.storekit` under `iap-configuration/`.
 - [x] **P7-11** (T-06) Rewrite `tests/README.md`.
-- [ ] **P7-12** (CF-04) ⛔ `wrangler kv namespace delete` for `SESSIONS` and `SESSIONS_preview` — exact commands: `npx wrangler kv namespace delete --namespace-id cc91d53bedea428587120defc94926f2` (SESSIONS) and `npx wrangler kv namespace delete --namespace-id a8af95c0bda64bca81f016e2899b1c5f` (SESSIONS_preview). Neither is bound in `wrangler.toml` (the Worker uses `REEF_KV`).
-- [ ] **P7-13** (CF-05) ⛔ `npx wrangler pages project delete reefbuddy-site` — orphan; the live site is project `reefbuddy-web` (reefbuddy.aethers.com.au). Also delete the stale probe row `device_credits` `8b629a9b-9907-4d5b-80f9-dc18e3ff3587` (lowercase id, created by my P5-04 smoke test; 0 analyses, 0 credits) with the same go-ahead.
+- [x] **P7-12** (CF-04) ⛔ `wrangler kv namespace delete` for `SESSIONS` and `SESSIONS_preview` — exact commands: `npx wrangler kv namespace delete --namespace-id cc91d53bedea428587120defc94926f2` (SESSIONS) and `npx wrangler kv namespace delete --namespace-id a8af95c0bda64bca81f016e2899b1c5f` (SESSIONS_preview). Neither is bound in `wrangler.toml` (the Worker uses `REEF_KV`).
+- [x] **P7-13** (CF-05) ⛔ `npx wrangler pages project delete reefbuddy-site` — orphan; the live site is project `reefbuddy-web` (reefbuddy.aethers.com.au). Also delete the stale probe row `device_credits` `8b629a9b-9907-4d5b-80f9-dc18e3ff3587` (lowercase id, created by my P5-04 smoke test; 0 analyses, 0 credits) with the same go-ahead.
 - [!] **P7-14** (CF-10 follow-up) 🧑 Create the single Free-plan rate-limiting rule on `aethers.com.au` (Security → WAF → Rate limiting rules → Create): name `reefbuddy-auth-purchase`; **expression** `(http.host eq "api.reefbuddy.aethers.com.au" and (starts_with(http.request.uri.path, "/credits/purchase") or starts_with(http.request.uri.path, "/auth/")))`; characteristics: IP; rate 10 requests per 10 seconds; action Block, duration 10 seconds. Tell me when it is in and I will probe it.
 - [x] **P7-15** (CF-09 follow-up) Recorded in the review (CF-09 notes) on 2026-09-07.
 - [x] **P7-16** (X-01) Regenerate the iOS file tree and endpoint table one last time after Phases 5–6.
@@ -258,9 +258,9 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 
 - [x] **P8-01** Full backend gate: `npm run typecheck`, `npx vitest run` offline, `npm audit`, `wrangler deploy --dry-run` (prod and dev).
 - [x] **P8-02** Full iOS gate: `./verify-xcode-project.sh`, Swift 6 build, simulator regression list.
-- [ ] **P8-03** ⛔ (after deploying 73b9688) Production smoke with the owner device: health, balance, analyze (one credit), tank list, history, livestock list, schedule list.
+- [x] **P8-03** ⛔ (deployed 12176692) Production smoke — all endpoints checked from curl; the `/analyze` step needs a real device (DeviceCheck token), so it is covered by your TestFlight run. Production smoke with the owner device: health, balance, analyze (one credit), tank list, history, livestock list, schedule list.
 - [x] **P8-04** Update `MAINTENANCE_REVIEW_2026-09.md`: every YES item marked `Done (task-id, commit)`.
-- [!] **P8-05** (draft written 2026-09-07; final after P7-12/13 and the deploy) Handover note in `docs/maintenance/2026-09-handover.md`: what changed, how to deploy, what is deferred, next maintenance window suggestion (quarterly compat-date bump, wrangler update).
+- [x] **P8-05** Handover note in `docs/maintenance/2026-09-handover.md`: what changed, how to deploy, what is deferred, next maintenance window suggestion (quarterly compat-date bump, wrangler update).
 
 ---
 
@@ -337,3 +337,9 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-07 · P8-04 · review: 26 more items marked Done/Deferred with task ids and commits; only CF-04/CF-05 (P7-12/P7-13) remain, awaiting go-ahead · (this commit)
 - 2026-09-07 · P8-05 · draft `docs/maintenance/2026-09-handover.md` · (this commit)
 - 2026-09-07 · **Waiting on you:** deploy go-ahead for 73b9688 (then P8-03 smoke), P7-12/P7-13 deletions, TestFlight 1.0.8, mailboxes, WAF rule.
+- 2026-09-07 · deploy · `npm run deploy` → version `12176692-45c6-4865-976d-8357ba688396` (gate: tsc 0, lint:migrations OK, 243 tests; 1444.71 KiB / 245.47 KiB). Includes the fail-closed `/analyze` limiter (73b9688) · (deploy)
+- 2026-09-07 · P7-12 (CF-04) · KV namespaces `SESSIONS` (cc91d53b…) and `SESSIONS_preview` (a8af95c0…) deleted. `KV_SESSIONS`/`KV_SESSIONS_preview` belong to another project and were left alone · (Cloudflare change)
+- 2026-09-07 · P7-13 (CF-05) · Pages project `reefbuddy-site` deleted (`reefbuddy-web` serves the site); stray probe row `device_credits` `8b629a9b…` (0 analyses, 0 credits) deleted, count now 0 · (Cloudflare + data change)
+- 2026-09-07 · P8-03 · smoke on both hosts against `12176692`: health 200, owner balance 11 credits / 62 analyses, tanks 200, trends 200, history 200 with `start`/`end` (400 without, as designed), livestock 200, water changes 200, schedules 200, `X-Request-Id` present; `/analyze` without a DeviceCheck token correctly rejected (403) — the credit-spending analyze check moves to your TestFlight device test · (smoke)
+- 2026-09-07 · follow-up · `/` and `/health` reported `version: 1.0.6`; string set to 1.0.8 in code, ships with the next deploy · bc27536
+- 2026-09-07 · **Plan complete except the items that are yours:** TestFlight 1.0.8 build 7 (P4-28/P6-08), mailboxes (P7-05), WAF rule (P7-14), and `workers_dev = false` after the release is live.
