@@ -37,7 +37,7 @@ struct ChartView: View {
                         dismiss()
                     }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
         }
@@ -80,21 +80,21 @@ struct ChartView: View {
                 VStack(spacing: BrutalistTheme.Spacing.xs) {
                     Text(formatValue(point.value))
                         .font(BrutalistTheme.Typography.headerLarge)
-                        .foregroundColor(statusColor(for: point.value))
+                        .foregroundStyle(statusColor(for: point.value))
 
                     Text(formatDate(point.date))
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
             } else {
                 VStack(spacing: BrutalistTheme.Spacing.xs) {
                     Text("TAP CHART FOR DETAILS")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
 
                     Text(parameter.displayName)
                         .font(BrutalistTheme.Typography.headerSmall)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
         }
@@ -269,11 +269,11 @@ struct ChartView: View {
         VStack(spacing: BrutalistTheme.Spacing.xs) {
             Text(value)
                 .font(BrutalistTheme.Typography.headerSmall)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text(label)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, BrutalistTheme.Spacing.md)
@@ -304,7 +304,7 @@ struct ChartView: View {
 
             Text(label)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
     }
 

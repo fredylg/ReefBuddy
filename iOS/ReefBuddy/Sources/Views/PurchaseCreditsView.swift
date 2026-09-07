@@ -39,12 +39,12 @@ struct PurchaseCreditsView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { dismiss() }) {
                         Text("CLOSE")
                             .font(BrutalistTheme.Typography.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                     }
                 }
             }
@@ -73,16 +73,16 @@ struct PurchaseCreditsView: View {
             Text("GET MORE")
                 .font(BrutalistTheme.Typography.headerLarge)
                 .fontWeight(.black)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
             
             Text("ANALYSES")
                 .font(BrutalistTheme.Typography.headerLarge)
                 .fontWeight(.black)
-                .foregroundColor(BrutalistTheme.Colors.action)
+                .foregroundStyle(BrutalistTheme.Colors.action)
             
             Text("Unlock AI-powered water analysis")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .padding(.top, BrutalistTheme.Spacing.xs)
         }
         .frame(maxWidth: .infinity)
@@ -96,12 +96,12 @@ struct PurchaseCreditsView: View {
             Text("YOUR BALANCE")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
 
             if storeManager.balanceUnavailable {
                 Text("Balance unavailable. Check your connection and try again.")
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
             }
             
             HStack(spacing: BrutalistTheme.Spacing.lg) {
@@ -141,12 +141,12 @@ struct PurchaseCreditsView: View {
         VStack(spacing: BrutalistTheme.Spacing.xs) {
             Text("\(value)")
                 .font(.system(size: 36, weight: .black, design: .monospaced))
-                .foregroundColor(isHighlighted ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text)
+                .foregroundStyle(isHighlighted ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text)
             
             Text(label)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
     }
     
@@ -172,7 +172,7 @@ struct PurchaseCreditsView: View {
                     Text(savings)
                         .font(BrutalistTheme.Typography.caption)
                         .fontWeight(.black)
-                        .foregroundColor(BrutalistTheme.Colors.background)
+                        .foregroundStyle(BrutalistTheme.Colors.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, BrutalistTheme.Spacing.xs)
                         .background(BrutalistTheme.Colors.action)
@@ -184,11 +184,11 @@ struct PurchaseCreditsView: View {
                         Text(creditProduct.displayName)
                             .font(BrutalistTheme.Typography.headerMedium)
                             .fontWeight(.black)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                         
                         Text("\(creditProduct.credits) water analyses")
                             .font(BrutalistTheme.Typography.body)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     }
                     
                     Spacer()
@@ -198,12 +198,12 @@ struct PurchaseCreditsView: View {
                         // Prices come from StoreKit in the user's storefront currency; never hardcoded.
                         Text(storeManager.displayPrice(for: creditProduct) ?? "—")
                             .font(.system(size: 28, weight: .black))
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
 
                         if let each = storeManager.perCreditPrice(for: creditProduct) {
                             Text("\(each)/each")
                                 .font(BrutalistTheme.Typography.caption)
-                                .foregroundColor(creditProduct == .credits50 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text.opacity(0.6))
+                                .foregroundStyle(creditProduct == .credits50 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text.opacity(0.6))
                                 .fontWeight(creditProduct == .credits50 ? .bold : .regular)
                         }
                     }
@@ -236,11 +236,11 @@ struct PurchaseCreditsView: View {
         HStack(spacing: BrutalistTheme.Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.action)
+                .foregroundStyle(BrutalistTheme.Colors.action)
             
             Text(text)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
         }
     }
     
@@ -255,7 +255,7 @@ struct PurchaseCreditsView: View {
             Text("RESTORE PURCHASES")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .underline()
         }
         .padding(.top, BrutalistTheme.Spacing.sm)
@@ -276,7 +276,7 @@ struct PurchaseCreditsView: View {
                 Text("PROCESSING...")
                     .font(BrutalistTheme.Typography.body)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.background)
+                    .foregroundStyle(BrutalistTheme.Colors.background)
             }
             .padding(BrutalistTheme.Spacing.xl)
             .background(BrutalistTheme.Colors.text)

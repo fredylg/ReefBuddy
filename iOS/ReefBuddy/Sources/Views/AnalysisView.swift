@@ -66,7 +66,7 @@ struct AnalysisView: View {
                 Button(action: { showingShareSheet = true }) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
         }
@@ -83,11 +83,11 @@ struct AnalysisView: View {
                 VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
                     Text(tank.name.uppercased())
                         .font(BrutalistTheme.Typography.headerMedium)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text(tank.tankType.displayName)
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
 
                 Spacer()
@@ -104,7 +104,7 @@ struct AnalysisView: View {
                 Text(formattedDate)
                     .font(BrutalistTheme.Typography.caption)
             }
-            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
         .padding(BrutalistTheme.Spacing.lg)
         .background(BrutalistTheme.Colors.action.opacity(0.1))
@@ -118,7 +118,7 @@ struct AnalysisView: View {
 
         return Text(status)
             .font(.system(size: 10, weight: .bold))
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
             .padding(.horizontal, BrutalistTheme.Spacing.sm)
             .padding(.vertical, BrutalistTheme.Spacing.xs)
             .background(color)
@@ -137,7 +137,7 @@ struct AnalysisView: View {
         VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
             Text("PARAMETERS")
                 .font(BrutalistTheme.Typography.headerSmall)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BrutalistTheme.Spacing.md) {
                 parameterCell("TEMP", value: measurement.temperature, unit: "°F", range: ParameterRange.temperature)
@@ -166,27 +166,27 @@ struct AnalysisView: View {
             Text(label)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if let val = value {
                     Text(String(format: unit == "SG" ? "%.3f" : "%.1f", val))
                         .font(BrutalistTheme.Typography.headerMedium)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text(unit)
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                 } else {
                     Text("---")
                         .font(BrutalistTheme.Typography.headerMedium)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
                 }
             }
 
             Text(status.displayText)
                 .font(.system(size: 9, weight: .bold))
-                .foregroundColor(status == .unknown ? BrutalistTheme.Colors.text.opacity(0.5) : BrutalistTheme.Colors.text)
+                .foregroundStyle(status == .unknown ? BrutalistTheme.Colors.text.opacity(0.5) : BrutalistTheme.Colors.text)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(statusColor.opacity(status == .unknown ? 0.1 : 1))
@@ -204,11 +204,11 @@ struct AnalysisView: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
 
                 Text("WARNINGS")
                     .font(BrutalistTheme.Typography.headerSmall)
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
             }
 
             VStack(spacing: BrutalistTheme.Spacing.sm) {
@@ -221,7 +221,7 @@ struct AnalysisView: View {
 
                         Text(warning)
                             .font(BrutalistTheme.Typography.body)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -238,11 +238,11 @@ struct AnalysisView: View {
         VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.md) {
             Text("SUMMARY")
                 .font(BrutalistTheme.Typography.headerSmall)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text(analysis.summary)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(BrutalistTheme.Spacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -258,11 +258,11 @@ struct AnalysisView: View {
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .foregroundStyle(BrutalistTheme.Colors.action)
 
                 Text("RECOMMENDATIONS")
                     .font(BrutalistTheme.Typography.headerSmall)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             VStack(spacing: BrutalistTheme.Spacing.sm) {
@@ -270,13 +270,13 @@ struct AnalysisView: View {
                     HStack(alignment: .top, spacing: BrutalistTheme.Spacing.md) {
                         Text("\(index + 1)")
                             .font(BrutalistTheme.Typography.bodyBold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                             .frame(width: 24, height: 24)
                             .background(BrutalistTheme.Colors.action)
 
                         Text(recommendation)
                             .font(BrutalistTheme.Typography.body)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(BrutalistTheme.Spacing.md)
@@ -294,11 +294,11 @@ struct AnalysisView: View {
             HStack {
                 Image(systemName: "eyedropper")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Text("DOSING ADVICE")
                     .font(BrutalistTheme.Typography.headerSmall)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             VStack(spacing: BrutalistTheme.Spacing.md) {
@@ -306,31 +306,31 @@ struct AnalysisView: View {
                     VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
                         Text(advice.product.uppercased())
                             .font(BrutalistTheme.Typography.bodyBold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
 
                         HStack(spacing: BrutalistTheme.Spacing.lg) {
                             VStack(alignment: .leading) {
                                 Text("AMOUNT")
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                                 Text(advice.amount)
                                     .font(BrutalistTheme.Typography.headerSmall)
-                                    .foregroundColor(BrutalistTheme.Colors.action)
+                                    .foregroundStyle(BrutalistTheme.Colors.action)
                             }
 
                             VStack(alignment: .leading) {
                                 Text("FREQUENCY")
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                                 Text(advice.frequency)
                                     .font(BrutalistTheme.Typography.bodyBold)
-                                    .foregroundColor(BrutalistTheme.Colors.text)
+                                    .foregroundStyle(BrutalistTheme.Colors.text)
                             }
                         }
 
                         Text(advice.reason)
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                     }
                     .padding(BrutalistTheme.Spacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -347,16 +347,16 @@ struct AnalysisView: View {
         HStack(alignment: .top, spacing: BrutalistTheme.Spacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.warning)
+                .foregroundStyle(BrutalistTheme.Colors.warning)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("AI DISCLAIMER")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Text("This analysis is generated by AI and is for reference only. Always verify readings with multiple tests. Consult a marine aquarium professional for critical issues.")
                     .font(.system(size: 11))
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
             }
         }
         .padding(BrutalistTheme.Spacing.md)

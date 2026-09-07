@@ -22,13 +22,13 @@ struct AppIconView: View {
             // Hard shadow for the letters
             Text("RB")
                 .font(.system(size: size * 0.45, weight: .black, design: .default))
-                .foregroundColor(Color(hex: "000000"))
+                .foregroundStyle(Color(hex: "000000"))
                 .offset(x: size * 0.02, y: size * 0.02)
 
             // Main letters - Pure Black
             Text("RB")
                 .font(.system(size: size * 0.45, weight: .black, design: .default))
-                .foregroundColor(Color(hex: "FFFFFF"))
+                .foregroundStyle(Color(hex: "FFFFFF"))
 
             // Border
             Rectangle()
@@ -63,12 +63,12 @@ struct AppIconWaveView: View {
             ZStack {
                 Text("RB")
                     .font(.system(size: size * 0.4, weight: .black))
-                    .foregroundColor(Color(hex: "000000"))
+                    .foregroundStyle(Color(hex: "000000"))
                     .offset(x: size * 0.015, y: size * 0.015)
 
                 Text("RB")
                     .font(.system(size: size * 0.4, weight: .black))
-                    .foregroundColor(Color(hex: "FFFFFF"))
+                    .foregroundStyle(Color(hex: "FFFFFF"))
             }
 
             // Border

@@ -80,7 +80,7 @@ struct TankListView: View {
                 Text("ADD NEW TANK")
                     .font(BrutalistTheme.Typography.button)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
             .frame(maxWidth: .infinity)
             .padding(BrutalistTheme.Spacing.lg)
             .background(BrutalistTheme.Colors.background)
@@ -89,7 +89,7 @@ struct TankListView: View {
                     .strokeBorder(
                         style: StrokeStyle(lineWidth: BrutalistTheme.Borders.standard, dash: [10, 5])
                     )
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
             )
         }
     }
@@ -100,15 +100,15 @@ struct TankListView: View {
         VStack(spacing: BrutalistTheme.Spacing.lg) {
             Image(systemName: "drop.triangle")
                 .font(.system(size: 80, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.2))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.2))
 
             Text("NO TANKS YET")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("Add your first aquarium to start tracking water parameters")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical, BrutalistTheme.Spacing.xl)
@@ -132,11 +132,11 @@ struct TankCard: View {
                     VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
                         Text(tank.name.uppercased())
                             .font(BrutalistTheme.Typography.headerSmall)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
 
                         Text(tank.tankType.displayName.uppercased())
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     }
 
                     Spacer()
@@ -145,7 +145,7 @@ struct TankCard: View {
                     if isSelected {
                         Text("ACTIVE")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                             .padding(.horizontal, BrutalistTheme.Spacing.sm)
                             .padding(.vertical, BrutalistTheme.Spacing.xs)
                             .background(BrutalistTheme.Colors.action)
@@ -165,7 +165,7 @@ struct TankCard: View {
                     Button(action: onDelete) {
                         Image(systemName: "trash")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.warning)
+                            .foregroundStyle(BrutalistTheme.Colors.warning)
                             .frame(width: 36, height: 36)
                             .background(BrutalistTheme.Colors.background)
                             .brutalistBorder(width: 2, color: BrutalistTheme.Colors.warning)
@@ -176,7 +176,7 @@ struct TankCard: View {
                 if let notes = tank.notes, !notes.isEmpty {
                     Text(notes)
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                         .lineLimit(2)
                         .padding(.top, BrutalistTheme.Spacing.xs)
                 }
@@ -195,11 +195,11 @@ struct TankCard: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text(label)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
         }
     }
 
@@ -257,7 +257,7 @@ struct AddTankSheet: View {
                         Text("TANK TYPE")
                             .font(BrutalistTheme.Typography.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
 
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BrutalistTheme.Spacing.sm) {
                             ForEach(TankType.allCases, id: \.self) { type in
@@ -291,7 +291,7 @@ struct AddTankSheet: View {
                         dismiss()
                     }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
         }
@@ -302,11 +302,11 @@ struct AddTankSheet: View {
             VStack(spacing: BrutalistTheme.Spacing.xs) {
                 Text(type.displayName.uppercased())
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Text(type.description)
                     .font(.system(size: 9))
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)

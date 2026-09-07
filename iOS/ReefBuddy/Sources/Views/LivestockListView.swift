@@ -79,7 +79,7 @@ struct LivestockListView: View {
             // Category filter could go here in future
             Text("\(appState.livestock.count) ITEMS")
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
 
             Spacer()
         }
@@ -126,15 +126,15 @@ struct LivestockListView: View {
 
             Image(systemName: "fish.fill")
                 .font(.system(size: 60, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
 
             Text("NO LIVESTOCK YET")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("Add your first coral, fish, or invertebrate")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .multilineTextAlignment(.center)
 
             BrutalistButton.primary("ADD LIVESTOCK") {
@@ -155,7 +155,7 @@ struct LivestockListView: View {
         }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(width: 60, height: 60)
                 .background(BrutalistTheme.Colors.action)
                 .brutalistCard(
@@ -194,7 +194,7 @@ struct LivestockListItem: View {
                 // Name
                 Text(livestock.name.uppercased())
                     .font(BrutalistTheme.Typography.bodyBold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                     .lineLimit(1)
 
                 // Category and quantity
@@ -204,7 +204,7 @@ struct LivestockListItem: View {
                     if livestock.quantity > 1 {
                         Text("x\(livestock.quantity)")
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     }
                 }
 
@@ -212,7 +212,7 @@ struct LivestockListItem: View {
                 if let scientificName = livestock.scientificName {
                     Text(scientificName)
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                         .italic()
                         .lineLimit(1)
                 }
@@ -247,7 +247,7 @@ struct LivestockListItem: View {
 
                     Image(systemName: livestock.category.icon)
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
                 }
             }
         }
@@ -263,7 +263,7 @@ struct LivestockListItem: View {
             Text(livestock.category.displayName.uppercased())
                 .font(.system(size: 10, weight: .bold))
         }
-        .foregroundColor(BrutalistTheme.Colors.text)
+        .foregroundStyle(BrutalistTheme.Colors.text)
         .padding(.horizontal, BrutalistTheme.Spacing.xs)
         .padding(.vertical, 2)
         .background(BrutalistTheme.Colors.action.opacity(0.3))
@@ -274,11 +274,11 @@ struct LivestockListItem: View {
         VStack(spacing: 2) {
             Image(systemName: livestock.healthStatus.icon)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.action)
+                .foregroundStyle(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.action)
 
             Text(livestock.healthStatus.displayName)
                 .font(.system(size: 8, weight: .bold))
-                .foregroundColor(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text.opacity(0.6))
         }
         .frame(width: 60)
     }

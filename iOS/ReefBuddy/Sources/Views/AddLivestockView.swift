@@ -104,12 +104,12 @@ struct AddLivestockView: View {
             .navigationTitle("ADD LIVESTOCK")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
         }
@@ -122,7 +122,7 @@ struct AddLivestockView: View {
             Text("PHOTO (OPTIONAL)")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             // The PhotosPicker label closure is nonisolated in the SDK, so it only receives a plain value
             // and the main-actor work (styling, state mutation) lives in the label view and the overlay.
@@ -140,7 +140,7 @@ struct AddLivestockView: View {
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.warning)
+                            .foregroundStyle(BrutalistTheme.Colors.warning)
                             .background(Circle().fill(BrutalistTheme.Colors.background))
                     }
                     .buttonStyle(.plain)
@@ -160,7 +160,7 @@ struct AddLivestockView: View {
             Text("CATEGORY *")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -181,7 +181,7 @@ struct AddLivestockView: View {
                                 .font(.system(size: 9, weight: .bold))
                                 .lineLimit(1)
                         }
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, BrutalistTheme.Spacing.sm)
                         .background(selectedCategory == category ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -200,7 +200,7 @@ struct AddLivestockView: View {
             Text("PURCHASE DATE")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Button(action: {
                 withAnimation {
@@ -210,13 +210,13 @@ struct AddLivestockView: View {
                 HStack {
                     Text(formatDate(purchaseDate))
                         .font(BrutalistTheme.Typography.body)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Spacer()
 
                     Image(systemName: showingDatePicker ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                 }
                 .padding(BrutalistTheme.Spacing.md)
                 .background(BrutalistTheme.Colors.background)
@@ -332,11 +332,11 @@ private struct PhotoPickerLabel: View {
                 VStack(spacing: BrutalistTheme.Spacing.sm) {
                     Image(systemName: "camera.fill")
                         .font(.system(size: 36, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
 
                     Text("TAP TO ADD PHOTO")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
                 }
                 Spacer()
             }

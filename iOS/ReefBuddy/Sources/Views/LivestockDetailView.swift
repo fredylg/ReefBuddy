@@ -54,21 +54,21 @@ struct LivestockDetailView: View {
             .background(BrutalistTheme.Colors.background)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Close") {
                         dismiss()
                     }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
 
                 ToolbarItem(placement: .principal) {
                     Text(livestock.name.uppercased())
                         .font(BrutalistTheme.Typography.headerSmall)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                 }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button(action: { isEditing = true }) {
                             Label("Edit", systemImage: "pencil")
@@ -79,7 +79,7 @@ struct LivestockDetailView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                     }
                 }
             }
@@ -133,11 +133,11 @@ struct LivestockDetailView: View {
                     VStack(spacing: BrutalistTheme.Spacing.md) {
                         Image(systemName: livestock.category.icon)
                             .font(.system(size: 60, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
 
                         Text("NO PHOTO")
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
                     }
                 }
             }
@@ -150,7 +150,7 @@ struct LivestockDetailView: View {
                 Text(livestock.category.displayName.uppercased())
                     .font(BrutalistTheme.Typography.button)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
             .padding(.horizontal, BrutalistTheme.Spacing.md)
             .padding(.vertical, BrutalistTheme.Spacing.sm)
             .background(BrutalistTheme.Colors.action)
@@ -177,7 +177,7 @@ struct LivestockDetailView: View {
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -224,7 +224,7 @@ struct LivestockDetailView: View {
                         Text("LOG")
                             .font(.system(size: 12, weight: .bold))
                     }
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                     .padding(.horizontal, BrutalistTheme.Spacing.sm)
                     .padding(.vertical, 4)
                     .background(BrutalistTheme.Colors.action)
@@ -232,7 +232,7 @@ struct LivestockDetailView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -242,16 +242,16 @@ struct LivestockDetailView: View {
             HStack(spacing: BrutalistTheme.Spacing.md) {
                 Image(systemName: livestock.healthStatus.icon)
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.action)
+                    .foregroundStyle(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.action)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(livestock.healthStatus.displayName)
                         .font(BrutalistTheme.Typography.headerMedium)
-                        .foregroundColor(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
+                        .foregroundStyle(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
 
                     Text("Last updated: \(livestock.updatedAt.formatted(date: .abbreviated, time: .omitted))")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
 
                 Spacer()
@@ -275,7 +275,7 @@ struct LivestockDetailView: View {
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -311,7 +311,7 @@ struct LivestockDetailView: View {
                         .font(BrutalistTheme.Typography.caption)
                         .fontWeight(.bold)
                 }
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Rectangle()
                     .fill(BrutalistTheme.Colors.text)
@@ -319,7 +319,7 @@ struct LivestockDetailView: View {
 
                 Text(notes)
                     .font(BrutalistTheme.Typography.body)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.8))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.8))
             }
             .padding(BrutalistTheme.Spacing.md)
             .background(BrutalistTheme.Colors.cardBackground)
@@ -343,9 +343,9 @@ struct LivestockDetailView: View {
 
                 Text("\(healthLogs.count) ENTRIES")
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -355,7 +355,7 @@ struct LivestockDetailView: View {
                 VStack(spacing: BrutalistTheme.Spacing.sm) {
                     Text("No health logs yet")
                         .font(BrutalistTheme.Typography.body)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
 
                     BrutalistButton.secondary("Add First Log") {
                         showingHealthLogSheet = true
@@ -394,19 +394,19 @@ struct LivestockDetailView: View {
                 HStack {
                     Text(log.healthStatus.displayName)
                         .font(BrutalistTheme.Typography.bodyBold)
-                        .foregroundColor(log.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
+                        .foregroundStyle(log.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
 
                     Spacer()
 
                     Text(formatDate(log.loggedAt))
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                 }
 
                 if let notes = log.notes {
                     Text(notes)
                         .font(BrutalistTheme.Typography.body)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                 }
             }
             .padding(.bottom, BrutalistTheme.Spacing.md)
@@ -419,13 +419,13 @@ struct LivestockDetailView: View {
         HStack {
             Text(label.uppercased())
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
 
             Spacer()
 
             Text(value)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .italic(isItalic)
         }
     }
@@ -474,7 +474,7 @@ struct AddHealthLogSheet: View {
                     Text("HEALTH STATUS")
                         .font(BrutalistTheme.Typography.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     LazyVGrid(columns: [
                         GridItem(.flexible()),
@@ -489,7 +489,7 @@ struct AddHealthLogSheet: View {
                                     Text(status.displayName)
                                         .font(.system(size: 10, weight: .bold))
                                 }
-                                .foregroundColor(status.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
+                                .foregroundStyle(status.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, BrutalistTheme.Spacing.sm)
                                 .background(selectedStatus == status ? BrutalistTheme.Colors.action.opacity(0.3) : BrutalistTheme.Colors.background)
@@ -526,12 +526,12 @@ struct AddHealthLogSheet: View {
             .navigationTitle("LOG HEALTH")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
         }

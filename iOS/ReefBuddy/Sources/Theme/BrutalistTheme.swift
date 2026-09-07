@@ -207,7 +207,7 @@ extension View {
     VStack(spacing: 20) {
         Text("REEFBUDDY THEME")
             .font(BrutalistTheme.Typography.headerLarge)
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
         HStack(spacing: 20) {
             colorSwatch("Background", color: BrutalistTheme.Colors.background)

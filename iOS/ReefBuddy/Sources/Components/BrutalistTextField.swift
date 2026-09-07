@@ -49,7 +49,7 @@ struct BrutalistTextField: View {
                 Text(label.uppercased())
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             // Input Field
@@ -66,11 +66,11 @@ struct BrutalistTextField: View {
             if let errorText = errorText {
                 Text(errorText)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
             } else if let helperText = helperText {
                 Text(helperText)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
             }
         }
     }
@@ -82,11 +82,11 @@ struct BrutalistTextField: View {
         if isSecure {
             SecureField(placeholder, text: $text)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
         } else {
             TextField(placeholder, text: $text)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .keyboardType(keyboardType)
                 .autocorrectionDisabled()
         }
@@ -144,7 +144,7 @@ struct BrutalistTextArea: View {
                 Text(label.uppercased())
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             // Text Editor with placeholder
@@ -152,14 +152,14 @@ struct BrutalistTextArea: View {
                 if text.isEmpty {
                     Text(placeholder)
                         .font(BrutalistTheme.Typography.body)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
                         .padding(.horizontal, 4)
                         .padding(.vertical, 8)
                 }
 
                 TextEditor(text: $text)
                     .font(BrutalistTheme.Typography.body)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .focused($isFocused)
@@ -190,7 +190,7 @@ struct BrutalistPicker<T: Hashable>: View {
                 Text(label.uppercased())
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             HStack(spacing: 0) {
@@ -199,7 +199,7 @@ struct BrutalistPicker<T: Hashable>: View {
                         Text(labelForOption(option).uppercased())
                             .font(BrutalistTheme.Typography.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, BrutalistTheme.Spacing.sm)
                             .background(selection == option ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -244,14 +244,14 @@ struct BrutalistStepper: View {
             Text(label.uppercased())
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             HStack(spacing: 0) {
                 // Decrement button
                 Button(action: decrement) {
                     Image(systemName: "minus")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                         .frame(width: 44, height: 44)
                         .background(BrutalistTheme.Colors.background)
                 }
@@ -265,7 +265,7 @@ struct BrutalistStepper: View {
                 // Value display
                 Text("\(value)")
                     .font(BrutalistTheme.Typography.headerMedium)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
                     .background(BrutalistTheme.Colors.action.opacity(0.2))
@@ -278,7 +278,7 @@ struct BrutalistStepper: View {
                 Button(action: increment) {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                         .frame(width: 44, height: 44)
                         .background(BrutalistTheme.Colors.background)
                 }

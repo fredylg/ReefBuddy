@@ -71,11 +71,11 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
                 Text("REEFBUDDY")
                     .font(BrutalistTheme.Typography.headerLarge)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Text(selectedTab.subtitle)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(subtitleColor)
+                    .foregroundStyle(subtitleColor)
             }
 
             Spacer()
@@ -99,11 +99,11 @@ struct ContentView: View {
         return VStack(spacing: 2) {
             Text("\(credits)")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(credits > 0 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning)
+                .foregroundStyle(credits > 0 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.warning)
 
             Text("CREDITS")
                 .font(.system(size: 8, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
         }
         .padding(.horizontal, BrutalistTheme.Spacing.sm)
         .padding(.vertical, BrutalistTheme.Spacing.xs)
@@ -162,15 +162,15 @@ struct ContentView: View {
         VStack(spacing: BrutalistTheme.Spacing.lg) {
             Image(systemName: "drop.triangle")
                 .font(.system(size: 60, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
 
             Text("NO TANK SELECTED")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("Create or select a tank first")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
 
             BrutalistButton.primary("GO TO TANKS") {
                 selectedTab = .tanks
@@ -213,12 +213,12 @@ struct ContentView: View {
 
                     Image(systemName: tab.icon)
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.45))
+                        .foregroundStyle(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.45))
                 }
 
                 Text(tab.title)
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.4))
+                    .foregroundStyle(selectedTab == tab ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.4))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
@@ -254,16 +254,16 @@ private struct MaintenanceQuickActionsSheet: View {
             HStack {
                 Text("MAINTENANCE")
                     .font(BrutalistTheme.Typography.headerMedium)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 Spacer()
                 Button("CLOSE") { onClose() }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             Text(subtitle)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
 
             BrutalistButton.primary(primaryActionTitle, isFullWidth: true) {
                 onGoToMeasure()
@@ -339,11 +339,11 @@ struct WaterChangeLogSheet: View {
                 VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.lg) {
                     Text("LOG WATER CHANGE")
                         .font(BrutalistTheme.Typography.headerMedium)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text(tank?.name.uppercased() ?? "SELECTED TANK")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.65))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.65))
 
                     BrutalistButton.secondary("VIEW WATER CHANGE HISTORY", isFullWidth: true) {
                         showingHistory = true
@@ -375,7 +375,7 @@ struct WaterChangeLogSheet: View {
                         Text("NOTES")
                             .font(BrutalistTheme.Typography.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                         TextEditor(text: $notes)
                             .frame(minHeight: 110)
                             .padding(BrutalistTheme.Spacing.sm)
@@ -386,7 +386,7 @@ struct WaterChangeLogSheet: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.warning)
+                            .foregroundStyle(BrutalistTheme.Colors.warning)
                     }
 
                     BrutalistButton.primary(isSaving ? "SAVING..." : "SAVE WATER CHANGE", isFullWidth: true) {
@@ -463,23 +463,23 @@ private struct WaterChangeHistorySheet: View {
                     HStack {
                         Text("WATER CHANGE HISTORY")
                             .font(BrutalistTheme.Typography.headerMedium)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                         Spacer()
                         Button("CLOSE") { onClose() }
                             .font(BrutalistTheme.Typography.button)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                     }
 
                     if let tank {
                         Text(tank.name.uppercased())
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.65))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.65))
 
                         let items = appState.recentWaterChanges(for: tank.id)
                         if items.isEmpty {
                             Text("No water changes logged yet.")
                                 .font(BrutalistTheme.Typography.body)
-                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                                 .padding(.top, BrutalistTheme.Spacing.md)
                         } else {
                             ForEach(items) { wc in
@@ -489,7 +489,7 @@ private struct WaterChangeHistorySheet: View {
                     } else {
                         Text("No tank selected.")
                             .font(BrutalistTheme.Typography.body)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                     }
                 }
                 .padding(BrutalistTheme.Spacing.lg)
@@ -503,17 +503,17 @@ private struct WaterChangeHistorySheet: View {
             HStack {
                 Text(formattedDate(wc.performedAt))
                     .font(BrutalistTheme.Typography.bodyBold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 Spacer()
                 Text(amountText(wc))
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
             }
 
             if let notes = wc.notes, !notes.isEmpty {
                 Text(notes)
                     .font(BrutalistTheme.Typography.body)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.85))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.85))
             }
         }
         .padding(BrutalistTheme.Spacing.md)
@@ -680,15 +680,15 @@ struct SettingsView: View {
                 VStack(spacing: BrutalistTheme.Spacing.sm) {
                     Image(systemName: "drop.fill")
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.action)
+                        .foregroundStyle(BrutalistTheme.Colors.action)
 
                     Text("REEFBUDDY")
                         .font(BrutalistTheme.Typography.headerSmall)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text("Water chemistry for serious reefers")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
                 .padding(.vertical, BrutalistTheme.Spacing.xl)
             }
@@ -701,12 +701,12 @@ struct SettingsView: View {
                     .navigationTitle("NOTIFICATIONS")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
+                        ToolbarItem(placement: .topBarLeading) {
                             Button("Done") {
                                 showingNotificationSettings = false
                             }
                             .font(BrutalistTheme.Typography.button)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                         }
                     }
             }
@@ -724,12 +724,12 @@ struct SettingsView: View {
                 SavedAnalysesView()
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
+                        ToolbarItem(placement: .topBarLeading) {
                             Button("Done") {
                                 showingSavedAnalyses = false
                             }
                             .font(BrutalistTheme.Typography.button)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                         }
                     }
             }
@@ -751,7 +751,7 @@ struct SettingsView: View {
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             content()
                 .background(BrutalistTheme.Colors.cardBackground)
@@ -769,24 +769,24 @@ struct SettingsView: View {
             HStack(spacing: BrutalistTheme.Spacing.md) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .foregroundStyle(BrutalistTheme.Colors.action)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(BrutalistTheme.Typography.bodyBold)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text(subtitle)
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
             }
             .padding(BrutalistTheme.Spacing.md)
         }
@@ -803,24 +803,24 @@ struct SettingsView: View {
             HStack(spacing: BrutalistTheme.Spacing.md) {
                 Image(systemName: icon)
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .foregroundStyle(BrutalistTheme.Colors.action)
                     .frame(width: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(BrutalistTheme.Typography.bodyBold)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text(subtitle)
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
             }
             .padding(BrutalistTheme.Spacing.md)
         }
@@ -831,13 +831,13 @@ struct SettingsView: View {
         HStack {
             Text(label)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Spacer()
 
             Text(value)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
         .padding(BrutalistTheme.Spacing.md)
     }

@@ -68,11 +68,11 @@ struct SavedAnalysesView: View {
             VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
                 Text("SAVED ANALYSES")
                     .font(BrutalistTheme.Typography.headerMedium)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 
                 Text("\(filteredAnalyses.count) saved")
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
             }
             
             Spacer()
@@ -80,7 +80,7 @@ struct SavedAnalysesView: View {
             // Analysis count badge
             Text("\(analysisStorage.savedAnalyses.count)")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.action)
+                .foregroundStyle(BrutalistTheme.Colors.action)
                 .padding(.horizontal, BrutalistTheme.Spacing.sm)
                 .padding(.vertical, BrutalistTheme.Spacing.xs)
                 .background(BrutalistTheme.Colors.background)
@@ -130,7 +130,7 @@ struct SavedAnalysesView: View {
             Text(title)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(isSelected ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(isSelected ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.5))
                 .padding(.horizontal, BrutalistTheme.Spacing.md)
                 .padding(.vertical, BrutalistTheme.Spacing.sm)
                 .background(isSelected ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -154,16 +154,16 @@ struct SavedAnalysesView: View {
                 
                 Image(systemName: "doc.text.magnifyingglass")
                     .font(.system(size: 40, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
             }
             
             Text("NO SAVED ANALYSES")
                 .font(BrutalistTheme.Typography.headerSmall)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
             
             Text("Analyses you save will appear here.\nRun an analysis and tap 'Save' to keep it.")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .multilineTextAlignment(.center)
             
             Spacer()
@@ -200,11 +200,11 @@ struct SavedAnalysesView: View {
                     VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
                         Text(analysis.tankName.uppercased())
                             .font(BrutalistTheme.Typography.bodyBold)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                         
                         Text(formattedDate(analysis.analyzedAt))
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     }
                     
                     Spacer()
@@ -213,14 +213,14 @@ struct SavedAnalysesView: View {
                     if let warnings = analysis.warnings, !warnings.isEmpty {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.warning)
+                            .foregroundStyle(BrutalistTheme.Colors.warning)
                             .padding(.trailing, BrutalistTheme.Spacing.sm)
                     }
                     
                     // Expand indicator
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                 }
                 .padding(BrutalistTheme.Spacing.md)
                 .background(BrutalistTheme.Colors.background)
@@ -240,11 +240,11 @@ struct SavedAnalysesView: View {
                         Text("SUMMARY")
                             .font(BrutalistTheme.Typography.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                         
                         Text(analysis.summary)
                             .font(BrutalistTheme.Typography.body)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                     }
 
                     if analysis.measurementId != nil || analysis.waterChangeEventId != nil {
@@ -252,17 +252,17 @@ struct SavedAnalysesView: View {
                             Text("LINKED RECORDS")
                                 .font(BrutalistTheme.Typography.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
 
                             if let measurementId = analysis.measurementId {
                                 Text("Measurement: \(shortId(measurementId))")
                                     .font(BrutalistTheme.Typography.caption)
-                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                             }
                             if let waterChangeEventId = analysis.waterChangeEventId {
                                 Text("Water change: \(shortId(waterChangeEventId))")
                                     .font(BrutalistTheme.Typography.caption)
-                                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                             }
                         }
                         .padding(BrutalistTheme.Spacing.md)
@@ -276,15 +276,15 @@ struct SavedAnalysesView: View {
                             Text("⚠️ WARNINGS")
                                 .font(BrutalistTheme.Typography.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(BrutalistTheme.Colors.warning)
+                                .foregroundStyle(BrutalistTheme.Colors.warning)
                             
                             ForEach(warnings, id: \.self) { warning in
                                 HStack(alignment: .top, spacing: BrutalistTheme.Spacing.sm) {
                                     Text("•")
-                                        .foregroundColor(BrutalistTheme.Colors.warning)
+                                        .foregroundStyle(BrutalistTheme.Colors.warning)
                                     Text(warning)
                                         .font(BrutalistTheme.Typography.body)
-                                        .foregroundColor(BrutalistTheme.Colors.text)
+                                        .foregroundStyle(BrutalistTheme.Colors.text)
                                 }
                             }
                         }
@@ -299,15 +299,15 @@ struct SavedAnalysesView: View {
                             Text("RECOMMENDATIONS")
                                 .font(BrutalistTheme.Typography.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                             
                             ForEach(analysis.recommendations, id: \.self) { rec in
                                 HStack(alignment: .top, spacing: BrutalistTheme.Spacing.sm) {
                                     Text("→")
-                                        .foregroundColor(BrutalistTheme.Colors.action)
+                                        .foregroundStyle(BrutalistTheme.Colors.action)
                                     Text(rec)
                                         .font(BrutalistTheme.Typography.body)
-                                        .foregroundColor(BrutalistTheme.Colors.text)
+                                        .foregroundStyle(BrutalistTheme.Colors.text)
                                 }
                             }
                         }
@@ -319,11 +319,11 @@ struct SavedAnalysesView: View {
                             Text("DOSING ADVICE")
                                 .font(BrutalistTheme.Typography.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(BrutalistTheme.Colors.action)
+                                .foregroundStyle(BrutalistTheme.Colors.action)
                             
                             Text(dosing)
                                 .font(BrutalistTheme.Typography.body)
-                                .foregroundColor(BrutalistTheme.Colors.text)
+                                .foregroundStyle(BrutalistTheme.Colors.text)
                         }
                         .padding(BrutalistTheme.Spacing.md)
                         .background(BrutalistTheme.Colors.action.opacity(0.1))
@@ -345,7 +345,7 @@ struct SavedAnalysesView: View {
                                 .font(BrutalistTheme.Typography.caption)
                                 .fontWeight(.bold)
                         }
-                        .foregroundColor(BrutalistTheme.Colors.warning)
+                        .foregroundStyle(BrutalistTheme.Colors.warning)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, BrutalistTheme.Spacing.sm)
                         .background(BrutalistTheme.Colors.warning.opacity(0.1))
@@ -368,7 +368,7 @@ struct SavedAnalysesView: View {
             Text("PARAMETERS AT TIME OF ANALYSIS")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -396,11 +396,11 @@ struct SavedAnalysesView: View {
         VStack(spacing: 2) {
             Text(label)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
             Text(value)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, BrutalistTheme.Spacing.xs)

@@ -96,7 +96,7 @@ struct HistoryView: View {
             Text(range.displayName)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, BrutalistTheme.Spacing.sm)
                 .background(selectedRange == range ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -108,7 +108,7 @@ struct HistoryView: View {
         Button(action: { selectedParameter = param }) {
             Text(param.displayName)
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(selectedParameter == param ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(selectedParameter == param ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.5))
                 .padding(.horizontal, BrutalistTheme.Spacing.sm)
                 .padding(.vertical, BrutalistTheme.Spacing.xs)
                 .background(selectedParameter == param ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -129,11 +129,11 @@ struct HistoryView: View {
                     VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
                         Text("TREND CHART")
                             .font(BrutalistTheme.Typography.headerSmall)
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
 
                         Text("\(selectedParameter.displayName) over \(selectedRange.displayName.lowercased())")
                             .font(BrutalistTheme.Typography.caption)
-                            .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     }
 
                     Spacer()
@@ -143,7 +143,7 @@ struct HistoryView: View {
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                 }
 
                 // Mini chart preview
@@ -164,7 +164,7 @@ struct HistoryView: View {
             Text(trend.label)
                 .font(.system(size: 10, weight: .bold))
         }
-        .foregroundColor(trend.color)
+        .foregroundStyle(trend.color)
         .padding(.horizontal, BrutalistTheme.Spacing.sm)
         .padding(.vertical, BrutalistTheme.Spacing.xs)
         .background(trend.color.opacity(0.1))
@@ -186,7 +186,7 @@ struct HistoryView: View {
                 // No data placeholder
                 Text("NO DATA")
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
@@ -201,7 +201,7 @@ struct HistoryView: View {
             HStack {
                 Text("MEASUREMENTS")
                     .font(BrutalistTheme.Typography.headerSmall)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Spacer()
 
@@ -213,7 +213,7 @@ struct HistoryView: View {
                         Text("EXPORT")
                             .font(.system(size: 10, weight: .bold))
                     }
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                     .padding(.horizontal, BrutalistTheme.Spacing.sm)
                     .padding(.vertical, BrutalistTheme.Spacing.xs)
                     .background(BrutalistTheme.Colors.background)
@@ -237,15 +237,15 @@ struct HistoryView: View {
         VStack(spacing: BrutalistTheme.Spacing.md) {
             Image(systemName: "chart.line.downtrend.xyaxis")
                 .font(.system(size: 40, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.2))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.2))
 
             Text("NO MEASUREMENTS")
                 .font(BrutalistTheme.Typography.bodyBold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("No data for the selected time range")
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, BrutalistTheme.Spacing.xl)
@@ -425,13 +425,13 @@ struct MeasurementHistoryCard: View {
             HStack {
                 Text(formattedDate)
                     .font(BrutalistTheme.Typography.bodyBold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Spacer()
 
                 Text(formattedTime)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
             }
 
             // Parameters grid
@@ -445,7 +445,7 @@ struct MeasurementHistoryCard: View {
             if let notes = measurement.notes, !notes.isEmpty {
                 Text(notes)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                     .padding(.top, BrutalistTheme.Spacing.xs)
             }
         }
@@ -514,11 +514,11 @@ struct MeasurementHistoryCard: View {
         VStack(spacing: 2) {
             Text(param.value)
                 .font(BrutalistTheme.Typography.bodyBold)
-                .foregroundColor(statusColor(param.status))
+                .foregroundStyle(statusColor(param.status))
 
             Text(param.label)
                 .font(.system(size: 9, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
         }
         .frame(maxWidth: .infinity)
     }

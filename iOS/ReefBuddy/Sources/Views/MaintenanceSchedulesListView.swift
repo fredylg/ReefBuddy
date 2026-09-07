@@ -73,11 +73,11 @@ struct MaintenanceSchedulesListView: View {
         VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.xs) {
             Text("MAINTENANCE SCHEDULES")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("Reminders are scheduled on this device.")
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
     }
 
@@ -86,11 +86,11 @@ struct MaintenanceSchedulesListView: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
                 Text("NOTIFICATIONS ARE OFF")
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
             }
 
             Rectangle()
@@ -99,7 +99,7 @@ struct MaintenanceSchedulesListView: View {
 
             Text("Turn on notifications in Settings to receive maintenance reminders.")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.8))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.8))
 
             BrutalistButton.secondary("OPEN SETTINGS", isFullWidth: true) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -116,11 +116,11 @@ struct MaintenanceSchedulesListView: View {
         VStack(spacing: BrutalistTheme.Spacing.md) {
             Text("NO SCHEDULES YET")
                 .font(BrutalistTheme.Typography.headerSmall)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("Create reminders for water changes, filter service, or testing.")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .multilineTextAlignment(.center)
 
             BrutalistButton.primary("+ ADD SCHEDULE", isFullWidth: true) {
@@ -160,16 +160,16 @@ private struct MaintenanceScheduleCard: View {
 
             Text(schedule.type.title)
                 .font(BrutalistTheme.Typography.headerSmall)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(schedule.enabled ? 1 : 0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(schedule.enabled ? 1 : 0.6))
 
             Text(summaryText)
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(schedule.enabled ? 0.75 : 0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(schedule.enabled ? 0.75 : 0.5))
 
             Text("Tank: \(tankName)")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(schedule.enabled ? 0.6 : 0.45))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(schedule.enabled ? 0.6 : 0.45))
 
             HStack(spacing: BrutalistTheme.Spacing.sm) {
                 BrutalistButton.secondary("EDIT", isFullWidth: true) { onEdit() }
@@ -191,7 +191,7 @@ private struct MaintenanceScheduleCard: View {
     private var typeBadge: some View {
         Text(schedule.type.badgeText)
             .font(.system(size: 10, weight: .black))
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
             .padding(.horizontal, BrutalistTheme.Spacing.sm)
             .padding(.vertical, 6)
             .background(BrutalistTheme.Colors.background)

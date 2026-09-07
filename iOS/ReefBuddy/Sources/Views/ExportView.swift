@@ -37,7 +37,7 @@ struct ExportView: View {
                         dismiss()
                     }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
             .sheet(isPresented: $showingShareSheet) {
@@ -89,16 +89,16 @@ struct ExportView: View {
 
                 Image(systemName: "doc.text")
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
 
             Text("EXPORT TO CSV")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("Download your measurements for \(tank.name)")
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
     }
 
@@ -109,7 +109,7 @@ struct ExportView: View {
             Text("DATE RANGE")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             // Quick range buttons
             HStack(spacing: BrutalistTheme.Spacing.sm) {
@@ -142,7 +142,7 @@ struct ExportView: View {
             Text(label)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, BrutalistTheme.Spacing.sm)
                 .background(BrutalistTheme.Colors.background)
@@ -156,7 +156,7 @@ struct ExportView: View {
             Text(label)
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .frame(width: 50, alignment: .leading)
 
             DatePicker(
@@ -180,13 +180,13 @@ struct ExportView: View {
                 Text("PREVIEW")
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Spacer()
 
                 Text("\(filteredMeasurements.count) RECORDS")
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .foregroundStyle(BrutalistTheme.Colors.action)
             }
 
             // CSV Preview
@@ -194,21 +194,21 @@ struct ExportView: View {
                 // Header row
                 Text(csvHeader)
                     .font(.system(size: 9, design: .monospaced))
-                    .foregroundColor(BrutalistTheme.Colors.action)
+                    .foregroundStyle(BrutalistTheme.Colors.action)
                     .lineLimit(1)
 
                 // Data rows
                 ForEach(previewRows.prefix(3), id: \.self) { row in
                     Text(row)
                         .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                         .lineLimit(1)
                 }
 
                 if filteredMeasurements.count > 3 {
                     Text("... \(filteredMeasurements.count - 3) more rows")
                         .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.4))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -238,7 +238,7 @@ struct ExportView: View {
                     Text(isExporting ? "EXPORTING..." : "EXPORT CSV")
                         .font(BrutalistTheme.Typography.button)
                 }
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(maxWidth: .infinity)
                 .padding(BrutalistTheme.Spacing.lg)
                 .background(filteredMeasurements.isEmpty ? BrutalistTheme.Colors.disabled : BrutalistTheme.Colors.action)
@@ -250,7 +250,7 @@ struct ExportView: View {
             if filteredMeasurements.isEmpty {
                 Text("No measurements in selected date range")
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
             }
         }
     }

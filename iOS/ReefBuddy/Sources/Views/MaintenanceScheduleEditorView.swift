@@ -62,7 +62,7 @@ struct MaintenanceScheduleEditorView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("CANCEL") { dismiss() }
                     .font(BrutalistTheme.Typography.button)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
             }
         }
         .onAppear {
@@ -101,14 +101,14 @@ struct MaintenanceScheduleEditorView: View {
             Text("TYPE")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             HStack(spacing: 0) {
                 ForEach(MaintenanceSchedule.ScheduleType.allCases, id: \.self) { t in
                     Button(action: { type = t }) {
                         Text(t.badgeText)
                             .font(.system(size: 11, weight: .black))
-                            .foregroundColor(BrutalistTheme.Colors.text)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(type == t ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -126,16 +126,16 @@ struct MaintenanceScheduleEditorView: View {
             Text("TANK")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             HStack {
                 Text(selectedTankName.uppercased())
                     .font(BrutalistTheme.Typography.bodyBold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 Spacer()
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
             }
             .padding(BrutalistTheme.Spacing.md)
             .background(BrutalistTheme.Colors.background)
@@ -160,7 +160,7 @@ struct MaintenanceScheduleEditorView: View {
             Text("FREQUENCY")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             VStack(spacing: BrutalistTheme.Spacing.sm) {
                 frequencySelector(
@@ -194,12 +194,12 @@ struct MaintenanceScheduleEditorView: View {
             HStack {
                 Text(title)
                     .font(.system(size: 12, weight: .black))
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .black))
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
                 }
             }
             .padding(BrutalistTheme.Spacing.sm)
@@ -214,13 +214,13 @@ struct MaintenanceScheduleEditorView: View {
             squareButton(system: "minus") { intervalDays = max(1, intervalDays - 1) }
             Text("\(intervalDays)")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(minWidth: 60)
             squareButton(system: "plus") { intervalDays += 1 }
             Spacer()
             Text("DAYS")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
         }
         .padding(.top, 4)
     }
@@ -229,7 +229,7 @@ struct MaintenanceScheduleEditorView: View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.system(size: 16, weight: .black))
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(width: 44, height: 36)
                 .background(BrutalistTheme.Colors.background)
                 .brutalistBorder(width: 2)
@@ -255,12 +255,12 @@ struct MaintenanceScheduleEditorView: View {
             Text("TIME")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
                 Text(displayTime(time))
                     .font(BrutalistTheme.Typography.headerMedium)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 DatePicker("", selection: $time, displayedComponents: .hourAndMinute)
                     .datePickerStyle(.wheel)
@@ -278,7 +278,7 @@ struct MaintenanceScheduleEditorView: View {
             Text("TESTING CHECKLIST")
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: BrutalistTheme.Spacing.sm), count: 4), spacing: BrutalistTheme.Spacing.sm) {
                 ForEach(MaintenanceChecklistItem.allCases, id: \.self) { item in
@@ -298,7 +298,7 @@ struct MaintenanceScheduleEditorView: View {
         Button(action: action) {
             Text(text)
                 .font(.system(size: 11, weight: .black))
-                .foregroundColor(isSelected ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text)
+                .foregroundStyle(isSelected ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(isSelected ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.background)
@@ -313,11 +313,11 @@ struct MaintenanceScheduleEditorView: View {
         VStack(spacing: BrutalistTheme.Spacing.lg) {
             Text("ENABLE REMINDERS")
                 .font(BrutalistTheme.Typography.headerMedium)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
 
             Text("ReefBuddy uses notifications to remind you about maintenance.")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
                 .multilineTextAlignment(.center)
 
             BrutalistButton.primary("ALLOW NOTIFICATIONS", isFullWidth: true) {

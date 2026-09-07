@@ -40,7 +40,7 @@ struct BrutalistButton: View {
         }) {
             Text(title.uppercased())
                 .font(BrutalistTheme.Typography.button)
-                .foregroundColor(textColor)
+                .foregroundStyle(textColor)
                 .frame(maxWidth: isFullWidth ? .infinity : nil)
                 .padding(.horizontal, BrutalistTheme.Spacing.lg)
                 .padding(.vertical, BrutalistTheme.Spacing.md)
@@ -223,7 +223,7 @@ struct BrutalistIconButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: size, weight: .bold))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: size + 20, height: size + 20)
                 .background(BrutalistTheme.Colors.background)
                 .brutalistBorder()

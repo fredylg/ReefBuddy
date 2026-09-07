@@ -62,7 +62,7 @@ struct NotificationSettingsView: View {
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -72,11 +72,11 @@ struct NotificationSettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Enable Alerts")
                         .font(BrutalistTheme.Typography.bodyBold)
-                        .foregroundColor(BrutalistTheme.Colors.text)
+                        .foregroundStyle(BrutalistTheme.Colors.text)
 
                     Text("Get notified when parameters are out of range")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
 
                 Spacer()
@@ -97,11 +97,11 @@ struct NotificationSettingsView: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
                 Text("NOTIFICATIONS DISABLED")
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(BrutalistTheme.Colors.warning)
+                    .foregroundStyle(BrutalistTheme.Colors.warning)
             }
 
             Rectangle()
@@ -110,7 +110,7 @@ struct NotificationSettingsView: View {
 
             Text("Notifications are disabled for ReefBuddy. Enable them in Settings to receive parameter alerts.")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.8))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.8))
 
             BrutalistButton.primary("OPEN SETTINGS") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -134,7 +134,7 @@ struct NotificationSettingsView: View {
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -142,7 +142,7 @@ struct NotificationSettingsView: View {
 
             Text("Set min/max thresholds to get notified when values are out of range.")
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .padding(.bottom, BrutalistTheme.Spacing.sm)
 
             ForEach($notificationSettings) { $setting in
@@ -171,7 +171,7 @@ struct NotificationSettingsView: View {
                     .font(BrutalistTheme.Typography.caption)
                     .fontWeight(.bold)
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -179,7 +179,7 @@ struct NotificationSettingsView: View {
 
             Text("Send a test notification to verify your settings are working.")
                 .font(BrutalistTheme.Typography.body)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
 
             BrutalistButton.secondary("SEND TEST NOTIFICATION", isFullWidth: true, isEnabled: notificationsEnabled && permissionStatus == .authorized) {
                 sendTestNotification()
@@ -207,12 +207,12 @@ struct NotificationSettingsView: View {
                     Button(action: clearHistory) {
                         Text("CLEAR")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(BrutalistTheme.Colors.warning)
+                            .foregroundStyle(BrutalistTheme.Colors.warning)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .foregroundColor(BrutalistTheme.Colors.text)
+            .foregroundStyle(BrutalistTheme.Colors.text)
 
             Rectangle()
                 .fill(BrutalistTheme.Colors.text)
@@ -222,11 +222,11 @@ struct NotificationSettingsView: View {
                 VStack(spacing: BrutalistTheme.Spacing.sm) {
                     Image(systemName: "bell.slash")
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.3))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.3))
 
                     Text("No notifications yet")
                         .font(BrutalistTheme.Typography.body)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, BrutalistTheme.Spacing.lg)
@@ -252,18 +252,18 @@ struct NotificationSettingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(BrutalistTheme.Typography.bodyBold)
-                    .foregroundColor(BrutalistTheme.Colors.text)
+                    .foregroundStyle(BrutalistTheme.Colors.text)
 
                 Text(item.message)
                     .font(BrutalistTheme.Typography.caption)
-                    .foregroundColor(BrutalistTheme.Colors.text.opacity(0.7))
+                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.7))
             }
 
             Spacer()
 
             Text(formatTime(item.timestamp))
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.5))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.5))
         }
         .padding(.vertical, BrutalistTheme.Spacing.sm)
     }
@@ -348,11 +348,11 @@ struct ParameterThresholdRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(setting.parameter.displayName.uppercased())
                         .font(BrutalistTheme.Typography.bodyBold)
-                        .foregroundColor(isEnabled && setting.isEnabled ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.5))
+                        .foregroundStyle(isEnabled && setting.isEnabled ? BrutalistTheme.Colors.text : BrutalistTheme.Colors.text.opacity(0.5))
 
                     Text("Range: \(formatValue(setting.minValue)) - \(formatValue(setting.maxValue)) \(setting.parameter.unit)")
                         .font(BrutalistTheme.Typography.caption)
-                        .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                        .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 }
 
                 Spacer()
@@ -412,7 +412,7 @@ struct ParameterThresholdRow: View {
         HStack(spacing: BrutalistTheme.Spacing.md) {
             Text(label)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
                 .frame(width: 30)
 
             // Custom brutalist slider
@@ -448,7 +448,7 @@ struct ParameterThresholdRow: View {
 
             Text(formatValue(value.wrappedValue))
                 .font(BrutalistTheme.Typography.caption)
-                .foregroundColor(BrutalistTheme.Colors.text)
+                .foregroundStyle(BrutalistTheme.Colors.text)
                 .frame(width: 50, alignment: .trailing)
         }
     }

@@ -25,7 +25,7 @@ struct BrutalistLoadingView: View {
                 // Animated title
                 Text(loadingTexts[animationPhase % loadingTexts.count])
                     .font(.system(size: 20, weight: .black, design: .monospaced))
-                    .foregroundColor(BrutalistTheme.Colors.background)
+                    .foregroundStyle(BrutalistTheme.Colors.background)
                     .animation(.easeInOut(duration: 0.2), value: animationPhase)
                 
                 // Progress bar container
@@ -70,7 +70,7 @@ struct BrutalistLoadingView: View {
                     Text("AI GATEWAY")
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                 }
-                .foregroundColor(BrutalistTheme.Colors.action)
+                .foregroundStyle(BrutalistTheme.Colors.action)
                 .padding(.horizontal, BrutalistTheme.Spacing.sm)
                 .padding(.vertical, BrutalistTheme.Spacing.xs)
                 .background(BrutalistTheme.Colors.text)
