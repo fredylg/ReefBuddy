@@ -521,7 +521,9 @@ struct MeasurementEntryView: View {
         !measurement.calcium.isEmpty ||
         !measurement.magnesium.isEmpty ||
         !measurement.nitrate.isEmpty ||
-        !measurement.phosphate.isEmpty
+        !measurement.phosphate.isEmpty ||
+        !measurement.ammonia.isEmpty ||
+        !measurement.nitrite.isEmpty
     }
 
     // MARK: - Actions
@@ -542,60 +544,27 @@ struct MeasurementEntryView: View {
         }
 
         let measurementModel = measurement.toMeasurement(tankId: tank.id, temperatureUnit: temperatureUnit, salinityUnit: salinityUnit)
-        
-        // Debug logging: Verify notes are captured from UI
-        print("📝 UI notes field: '\(measurement.notes)'")
-        print("📝 Measurement model notes: \(measurementModel.notes ?? "nil")")
 
         isAnalyzing = true
 
         Task {
             let unitString = temperatureUnit == .celsius ? "C" : "F"
-            do {
-                let savedMeasurement = await appState.submitMeasurement(measurementModel)
-                let linkedWaterChangeId = appState.matchingWaterChangeId(for: tank.id, analyzedAt: Date())
+            let savedMeasurement = await appState.submitMeasurement(measurementModel)
+            let linkedWaterChangeId = appState.matchingWaterChangeId(for: tank.id, analyzedAt: Date())
 
-                if let analysis = try await appState.requestAnalysis(for: savedMeasurement, tank: tank, storeManager: storeManager, temperatureUnit: unitString) {
-                    await MainActor.run {
-                        isAnalyzing = false
-                        analysisResult = analysis
-                        analysisMeasurementId = savedMeasurement.id.uuidString
-                        analysisWaterChangeEventId = linkedWaterChangeId?.uuidString
-                        showingAnalysis = true
-                    }
-                } else if let error = appState.errorMessage {
-                    // Show error to user
-                    await MainActor.run {
-                    isAnalyzing = false
-                    errorMessage = error
-                    showingError = true
-                    // If no credits error, show purchase sheet
-                    if error.contains("credits") {
-                        showingPurchaseCredits = true
-                    }
-                }
-            } else {
-                await MainActor.run {
-                    isAnalyzing = false
-                }
-            }
-            } catch APIError.deviceCheckRequired {
-                await MainActor.run {
-                    isAnalyzing = false
-                    errorMessage = "Please update to the latest app version to continue."
-                    showingError = true
-                }
-            } catch APIError.serviceUnavailable {
-                await MainActor.run {
-                    isAnalyzing = false
-                    errorMessage = "Service temporarily unavailable. Please try again in a moment."
-                    showingError = true
-                }
-            } catch {
-                await MainActor.run {
-                    isAnalyzing = false
-                    errorMessage = "Analysis failed: \(error.localizedDescription)"
-                    showingError = true
+            // requestAnalysis does not throw: it reports failures through appState.errorMessage
+            let analysis = await appState.requestAnalysis(for: savedMeasurement, tank: tank, storeManager: storeManager, temperatureUnit: unitString)
+            isAnalyzing = false
+            if let analysis {
+                analysisResult = analysis
+                analysisMeasurementId = savedMeasurement.id.uuidString
+                analysisWaterChangeEventId = linkedWaterChangeId?.uuidString
+                showingAnalysis = true
+            } else if let error = appState.errorMessage {
+                errorMessage = error
+                showingError = true
+                if appState.showPurchaseCredits {
+                    showingPurchaseCredits = true
                 }
             }
         }
@@ -1259,6 +1228,8 @@ struct AnalysisResultSheet: View {
 #Preview("Measurement Entry") {
     MeasurementEntryView(tank: Tank.sample)
         .environmentObject(AppState())
+        .environmentObject(StoreManager())
+        .environmentObject(AnalysisStorage())
 }
 
 #Preview("Analysis Result") {

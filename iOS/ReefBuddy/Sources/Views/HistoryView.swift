@@ -12,7 +12,6 @@ struct HistoryView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedRange: DateRange = .week
     @State private var selectedParameter: ParameterFilter = .all
-    @State private var isRefreshing = false
     @State private var showingChart = false
     @State private var showingExport = false
 
@@ -266,9 +265,7 @@ struct HistoryView: View {
     // MARK: - Helper Methods
 
     private func refreshData() async {
-        isRefreshing = true
         await appState.fetchMeasurements(for: tank)
-        isRefreshing = false
     }
 
     private func calculateTrend() -> (icon: String, label: String, color: Color) {

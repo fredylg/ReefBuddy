@@ -5,6 +5,15 @@ import os
 
 let appLog = Logger(subsystem: "au.com.aethers.reefbuddy", category: "App")
 
+/// Development-only diagnostics. Anything interpolated is treated as private by the unified log, and
+/// nothing is emitted at all in release builds (I-26). Use `appLog` directly for operational events.
+func debugLog(_ items: Any...) {
+    #if DEBUG
+    let message = items.map { String(describing: $0) }.joined(separator: " ")
+    appLog.debug("\(message, privacy: .private)")
+    #endif
+}
+
 // MARK: - ReefBuddy App
 
 /// Main entry point for the ReefBuddy iOS application.
@@ -34,12 +43,14 @@ struct ReefBuddyApp: App {
                 .environmentObject(analysisStorage)
                 .environmentObject(scheduleStore)
                 .onAppear {
-                    print("🚀 [App] onAppear — configuring notifications, schedules: \(scheduleStore.activeSchedules.count)")
-                    appDelegate.configureNotifications()
+                    // Cold-start taps arrive in the AppDelegate before any view exists; attaching here
+                    // flushes anything buffered (I-19).
+                    appDelegate.attachMaintenanceTapHandler { userInfo in
+                        appState.handleMaintenanceNotification(userInfo: userInfo)
+                    }
                     Task {
                         await MaintenanceNotificationService.shared.scheduleAll(scheduleStore.activeSchedules)
                         await scheduleStore.syncPendingBestEffort()
-                        print("🚀 [App] startup tasks complete")
                     }
                 }
         }
@@ -48,35 +59,44 @@ struct ReefBuddyApp: App {
 
 // MARK: - App Delegate (Notifications)
 
+@MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    func configureNotifications() {
-        print("🔔 [AppDelegate] configureNotifications")
+    private var maintenanceTapHandler: (([AnyHashable: Any]) -> Void)?
+    private var pendingMaintenanceTap: [AnyHashable: Any]?
+
+    /// The delegate must be in place before launch finishes, or a tap that cold-starts the app is lost.
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    /// Register the handler; any tap that arrived before a view existed is delivered immediately.
+    func attachMaintenanceTapHandler(_ handler: @escaping ([AnyHashable: Any]) -> Void) {
+        maintenanceTapHandler = handler
+        if let pending = pendingMaintenanceTap {
+            pendingMaintenanceTap = nil
+            handler(pending)
+        }
     }
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        print("🔔 [AppDelegate] willPresent: \(notification.request.identifier)")
-        return [.banner, .sound]
+        [.banner, .sound]
     }
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        print("🔔 [AppDelegate] didReceive: \(response.notification.request.identifier), action: \(response.actionIdentifier)")
-        NotificationCenter.default.post(
-            name: .maintenanceNotificationTapped,
-            object: nil,
-            userInfo: response.notification.request.content.userInfo
-        )
+        let userInfo = response.notification.request.content.userInfo
+        if let handler = maintenanceTapHandler {
+            handler(userInfo)
+        } else {
+            pendingMaintenanceTap = userInfo
+        }
     }
-}
-
-extension Notification.Name {
-    static let maintenanceNotificationTapped = Notification.Name("MaintenanceNotificationTapped")
 }
 
 // MARK: - App State
@@ -168,9 +188,9 @@ final class AppState: ObservableObject {
     }
 
     func handleMaintenanceNotification(userInfo: [AnyHashable: Any]) {
-        print("🔔 [AppState] handleMaintenanceNotification userInfo: \(userInfo)")
+        debugLog("🔔 [AppState] handleMaintenanceNotification userInfo: \(userInfo)")
         guard let kind = userInfo["kind"] as? String, kind == "maintenance" else {
-            print("🔔 [AppState] ignored — kind=\(userInfo["kind"] ?? "nil")")
+            debugLog("🔔 [AppState] ignored — kind=\(userInfo["kind"] ?? "nil")")
             return
         }
         guard let scheduleIdStr = userInfo["scheduleId"] as? String,
@@ -180,10 +200,10 @@ final class AppState: ObservableObject {
               let tankId = UUID(uuidString: tankIdStr),
               let type = MaintenanceSchedule.ScheduleType(rawValue: typeStr)
         else {
-            print("🔔 [AppState] failed to parse deep link payload")
+            debugLog("🔔 [AppState] failed to parse deep link payload")
             return
         }
-        print("🔔 [AppState] deep link → schedule=\(scheduleIdStr) tank=\(tankIdStr) type=\(typeStr)")
+        debugLog("🔔 [AppState] deep link → schedule=\(scheduleIdStr) tank=\(tankIdStr) type=\(typeStr)")
         maintenanceDeepLink = MaintenanceDeepLink(scheduleId: scheduleId, tankId: tankId, type: type)
     }
 
@@ -197,7 +217,7 @@ final class AppState: ObservableObject {
         livestockLogs = livestockStorage.livestockLogs(for: tank.id)
         measurements = measurementStorage.measurements(for: tank.id)
         waterChanges = waterChangeStorage.waterChanges(for: tank.id)
-        print("📱 Selected tank: \(tank.name) - loaded \(livestock.count) livestock, \(livestockLogs.count) logs, \(measurements.count) measurements, \(waterChanges.count) water changes")
+        debugLog("📱 Selected tank: \(tank.name) - loaded \(livestock.count) livestock, \(livestockLogs.count) logs, \(measurements.count) measurements, \(waterChanges.count) water changes")
     }
 
     /// Fetch all tanks from the backend
@@ -249,7 +269,7 @@ final class AppState: ObservableObject {
             tankStorage.save(newTank)
         } catch {
             // Allow local creation even if API fails (works offline)
-            print("⚠️ API create failed, using local storage: \(error.localizedDescription)")
+            debugLog("⚠️ API create failed, using local storage: \(error.localizedDescription)")
             tanks.append(tank)
             selectTank(tank)
             // Save to local storage
@@ -270,7 +290,7 @@ final class AppState: ObservableObject {
             try await apiClient.deleteTank(tank.id)
         } catch {
             // Log API failure but continue with local deletion
-            print("⚠️ API delete failed, using local deletion: \(error.localizedDescription)")
+            debugLog("⚠️ API delete failed, using local deletion: \(error.localizedDescription)")
         }
 
         // Remove from local state and cascade to everything stored for this tank (I-12)
@@ -312,8 +332,8 @@ final class AppState: ObservableObject {
             measurementStorage.save(backendMeasurements, for: tank.id)
         } catch {
             // If API fails, use local storage
-            print("⚠️ Failed to fetch measurements from backend: \(error.localizedDescription)")
-            print("📦 Using local storage instead")
+            debugLog("⚠️ Failed to fetch measurements from backend: \(error.localizedDescription)")
+            debugLog("📦 Using local storage instead")
             measurements = measurementStorage.measurements(for: tank.id)
             
             // Only show error if we have no local measurements either
@@ -342,7 +362,7 @@ final class AppState: ObservableObject {
             return saved
         } catch {
             // Allow local save even if API fails (works offline)
-            print("⚠️ API save measurement failed, using local storage: \(error.localizedDescription)")
+            debugLog("⚠️ API save measurement failed, using local storage: \(error.localizedDescription)")
             measurements.insert(measurement, at: 0)
             // Save to local storage
             measurementStorage.save(measurement)
@@ -360,7 +380,7 @@ final class AppState: ObservableObject {
             waterChangeStorage.replace(serverChanges, for: tank.id)
             waterChanges = waterChangeStorage.waterChanges(for: tank.id)
         } catch {
-            print("⚠️ Failed to fetch water changes from backend: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to fetch water changes from backend: \(error.localizedDescription)")
         }
     }
 
@@ -384,7 +404,7 @@ final class AppState: ObservableObject {
             pendingWaterChangeContext = AnalysisWaterChangeContext(id: saved.id, tankId: saved.tankId)
             return saved
         } catch {
-            print("⚠️ API water change save failed, using local storage: \(error.localizedDescription)")
+            debugLog("⚠️ API water change save failed, using local storage: \(error.localizedDescription)")
             pendingWaterChangeContext = AnalysisWaterChangeContext(id: local.id, tankId: local.tankId)
             return local
         }
@@ -430,7 +450,7 @@ final class AppState: ObservableObject {
 
             // Update credit balance in StoreManager if available
             if let creditBalance = result.creditBalance {
-                print("💰 Analysis completed, updating credit balance: free=\(creditBalance.freeRemaining), paid=\(creditBalance.paidCredits)")
+                debugLog("💰 Analysis completed, updating credit balance: free=\(creditBalance.freeRemaining), paid=\(creditBalance.paidCredits)")
                 storeManager.updateCreditBalance(creditBalance)
             } else {
                 appLog.error("Analysis response carried no credit balance; refreshing from the server")
@@ -480,7 +500,7 @@ final class AppState: ObservableObject {
             // Reload from storage to get merged data
             livestock = livestockStorage.livestock(for: tank.id)
         } catch {
-            print("⚠️ Failed to fetch livestock from backend: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to fetch livestock from backend: \(error.localizedDescription)")
             // Continue with local storage only
         }
         
@@ -492,13 +512,13 @@ final class AppState: ObservableObject {
     func addLivestock(_ newLivestock: Livestock) async {        isLoading = true
         errorMessage = nil
 
-        var livestockToSave = newLivestock
+        let livestockToSave = newLivestock
         
         // Save image to file system if present
         if let photoData = newLivestock.photoData {
             if let imagePath = imageStorage.saveImage(photoData, for: newLivestock.id) {
                 // Note: We keep photoData in memory for display, but it's also saved to disk
-                print("📸 Saved livestock image to: \(imagePath)")
+                debugLog("📸 Saved livestock image to: \(imagePath)")
             }
         }
 
@@ -515,7 +535,7 @@ final class AppState: ObservableObject {
                 livestock = livestockStorage.livestock(for: tank.id)
             }
         } catch {            // Log error but don't fail - local storage already saved
-            print("⚠️ Failed to save livestock to backend: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save livestock to backend: \(error.localizedDescription)")
             errorMessage = "Saved locally, but failed to sync with server: \(error.localizedDescription)"
         }
 
@@ -534,7 +554,7 @@ final class AppState: ObservableObject {
         // Save image to file system if present
         if let photoData = updated.photoData {
             if let imagePath = imageStorage.saveImage(photoData, for: updated.id) {
-                print("📸 Updated livestock image to: \(imagePath)")
+                debugLog("📸 Updated livestock image to: \(imagePath)")
             }
         }
 
@@ -557,7 +577,7 @@ final class AppState: ObservableObject {
         } catch APIError.notFound {
             // If update fails with 404, try creating the livestock (retroactive compatibility)
             // This handles the case where livestock was created locally but never synced to server
-            print("⚠️ Livestock not found on server, attempting to create it");
+            debugLog("⚠️ Livestock not found on server, attempting to create it");
             do {
                 let createdLivestock = try await apiClient.createLivestock(updated, for: updated.tankId)
                 // Update local storage with server response
@@ -569,11 +589,11 @@ final class AppState: ObservableObject {
                     livestock.append(createdLivestock)
                 }
             } catch let createError {
-                print("⚠️ Failed to create livestock on backend: \(createError.localizedDescription)")
+                debugLog("⚠️ Failed to create livestock on backend: \(createError.localizedDescription)")
                 errorMessage = "Updated locally, but failed to sync with server: \(createError.localizedDescription)"
             }
         } catch let error {
-            print("⚠️ Failed to update livestock on backend: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to update livestock on backend: \(error.localizedDescription)")
             errorMessage = "Updated locally, but failed to sync with server: \(error.localizedDescription)"
         }
 
@@ -601,7 +621,7 @@ final class AppState: ObservableObject {
         do {
             try await apiClient.deleteLivestock(livestockToDelete.id)
         } catch {
-            print("⚠️ Failed to delete livestock on backend: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to delete livestock on backend: \(error.localizedDescription)")
             errorMessage = "Deleted locally, but failed to sync with server: \(error.localizedDescription)"
         }
 
@@ -614,12 +634,12 @@ final class AppState: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        var logToSave = log
+        let logToSave = log
         
         // Save image to file system if present
         if let photoData = log.photoData {
             if let imagePath = imageStorage.saveImage(photoData, for: log.id) {
-                print("📸 Saved log image to: \(imagePath)")
+                debugLog("📸 Saved log image to: \(imagePath)")
             }
         }
 
@@ -658,7 +678,7 @@ final class AppState: ObservableObject {
         } catch {
             // If API call fails, save the local log to storage as fallback
             livestockStorage.saveLog(logToSave)
-            print("⚠️ Failed to save livestock log to backend: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save livestock log to backend: \(error.localizedDescription)")
             errorMessage = "Saved locally, but failed to sync with server: \(error.localizedDescription)"
         }
 

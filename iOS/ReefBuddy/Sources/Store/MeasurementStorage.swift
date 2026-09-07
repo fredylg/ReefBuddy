@@ -103,9 +103,9 @@ class MeasurementStorage: ObservableObject {
                 }
             )
             let totalCount = measurements.values.reduce(0) { $0 + $1.count }
-            print("📦 Loaded \(totalCount) measurements from local storage")
+            debugLog("📦 Loaded \(totalCount) measurements from local storage")
         } catch {
-            print("⚠️ Failed to load measurements from local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to load measurements from local storage: \(error.localizedDescription)")
             measurements = [:]
         }
     }
@@ -120,9 +120,9 @@ class MeasurementStorage: ObservableObject {
             let data = try encoder.encode(stringDict)
             UserDefaults.standard.set(data, forKey: storageKey)
             let totalCount = measurements.values.reduce(0) { $0 + $1.count }
-            print("💾 Saved \(totalCount) measurements to local storage")
+            debugLog("💾 Saved \(totalCount) measurements to local storage")
         } catch {
-            print("⚠️ Failed to save measurements to local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save measurements to local storage: \(error.localizedDescription)")
         }
     }
 }

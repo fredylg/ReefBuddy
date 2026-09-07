@@ -1,5 +1,8 @@
 import Foundation
 import UserNotifications
+import os
+
+private let log = Logger(subsystem: "au.com.aethers.reefbuddy", category: "Notifications")
 
 // MARK: - Maintenance Notification Scheduling
 
@@ -13,19 +16,15 @@ final class MaintenanceNotificationService {
     // MARK: - Public API (requested surface)
 
     func scheduleAll(_ schedules: [MaintenanceSchedule]) async {
-        print("🗓 [Notifications] scheduleAll — \(schedules.count) schedules")
+        log.debug("scheduleAll: \(schedules.count) schedules")
         for schedule in schedules where !schedule.isDeleted {
             await upsertSchedule(schedule)
         }
     }
 
     func upsertSchedule(_ schedule: MaintenanceSchedule) async {
-        print("🗓 [Notifications] upsertSchedule id=\(schedule.id) enabled=\(schedule.enabled) kind=\(schedule.scheduleKind.rawValue)")
         await deleteSchedule(scheduleId: schedule.id)
-        guard schedule.enabled else {
-            print("🗓 [Notifications] skipped (disabled)")
-            return
-        }
+        guard schedule.enabled else { return }
 
         switch schedule.scheduleKind {
         case .weekly:
@@ -47,7 +46,11 @@ final class MaintenanceNotificationService {
         }
     }
 
-    /// For interval schedules, schedule the next rolling window (10 occurrences).
+    /// Pending local notifications are capped at 64 per app, so each interval schedule keeps a small
+    /// rolling window (topped up on every launch and on every visit to the schedules list).
+    static let intervalWindow = 3
+
+    /// For interval schedules, schedule the next rolling window from the schedule's anchor date.
     func rescheduleWindow(_ schedule: MaintenanceSchedule) async {
         guard schedule.scheduleKind == .intervalDays else { return }
         guard let interval = schedule.intervalDays, interval >= 1 else { return }
@@ -61,10 +64,11 @@ final class MaintenanceNotificationService {
         }
 
         let occurrences = computeNextIntervalOccurrences(
+            anchor: schedule.anchorDate,
             intervalDays: interval,
             timeLocal: schedule.timeLocal,
             timezone: schedule.timezone,
-            count: 10
+            count: Self.intervalWindow
         )
 
         for date in occurrences {
@@ -75,7 +79,11 @@ final class MaintenanceNotificationService {
                 repeats: false
             )
             let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
-            _ = try? await addRequest(request)
+            do {
+                try await addRequest(request)
+            } catch {
+                log.error("Could not schedule reminder \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -111,12 +119,17 @@ final class MaintenanceNotificationService {
             comps.weekday = isoToCalendarWeekday(weekday) // Calendar: 1=Sun..7=Sat
             comps.hour = hour
             comps.minute = minute
+            comps.timeZone = TimeZone(identifier: schedule.timezone) ?? .current
 
             let id = weeklyIdentifier(scheduleId: schedule.id, isoWeekday: weekday)
             let content = notificationContent(for: schedule)
             let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
             let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
-            _ = try? await addRequest(request)
+            do {
+                try await addRequest(request)
+            } catch {
+                log.error("Could not schedule weekly reminder \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -177,26 +190,24 @@ final class MaintenanceNotificationService {
         return cal.dateComponents([.year, .month, .day, .hour, .minute], from: date)
     }
 
-    private func computeNextIntervalOccurrences(intervalDays: Int, timeLocal: String, timezone: String, count: Int) -> [Date] {
+    /// Occurrences are anchor day + k * intervalDays at timeLocal, skipping any already in the past.
+    /// Re-running this on every launch yields the same dates, so re-scheduling is idempotent.
+    private func computeNextIntervalOccurrences(anchor: Date, intervalDays: Int, timeLocal: String, timezone: String, count: Int) -> [Date] {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: timezone) ?? .current
-
         let now = Date()
         let (hour, minute) = parseTimeLocal(timeLocal) ?? (9, 0)
 
-        var startComponents = cal.dateComponents([.year, .month, .day], from: now)
-        startComponents.hour = hour
-        startComponents.minute = minute
-
-        var next = cal.date(from: startComponents) ?? now
-        if next <= now {
-            next = cal.date(byAdding: .day, value: 1, to: next) ?? next
-        }
+        var comps = cal.dateComponents([.year, .month, .day], from: anchor)
+        comps.hour = hour
+        comps.minute = minute
+        var cursor = cal.date(from: comps) ?? anchor
 
         var results: [Date] = []
-        var cursor = next
-        while results.count < count {
-            results.append(cursor)
+        var guardCount = 0
+        while results.count < count && guardCount < 10_000 {
+            guardCount += 1
+            if cursor > now { results.append(cursor) }
             cursor = cal.date(byAdding: .day, value: intervalDays, to: cursor) ?? cursor.addingTimeInterval(TimeInterval(intervalDays * 24 * 3600))
         }
         return results
@@ -208,23 +219,14 @@ final class MaintenanceNotificationService {
         return iso == 7 ? 1 : (iso + 1)
     }
 
-    // MARK: - Async wrappers
+    // MARK: - Async wrappers (UNUserNotificationCenter is natively async since iOS 15)
 
     private func pendingRequests() async -> [UNNotificationRequest] {
-        await withCheckedContinuation { cont in
-            center.getPendingNotificationRequests { reqs in
-                cont.resume(returning: reqs)
-            }
-        }
+        await center.pendingNotificationRequests()
     }
 
     private func addRequest(_ request: UNNotificationRequest) async throws {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            center.add(request) { error in
-                if let error { cont.resume(throwing: error) }
-                else { cont.resume(returning: ()) }
-            }
-        }
+        try await center.add(request)
     }
 }
 

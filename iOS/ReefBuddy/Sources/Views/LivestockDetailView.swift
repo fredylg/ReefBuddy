@@ -86,13 +86,13 @@ struct LivestockDetailView: View {
             .sheet(isPresented: $showingHealthLogSheet) {
                 AddHealthLogSheet(livestock: livestock) { newLog in
                     Task {
-                        // Save the log to storage
+                        // addLivestockLog also updates the livestock's health status; refresh this view's copy
+                        // from app state instead of pushing a stale one back to the server.
                         await appState.addLivestockLog(newLog)
-                        // Reload logs to get the updated list
                         loadHealthLogs()
-                        // Update livestock health status
-                        livestock.healthStatus = newLog.healthStatus
-                        await appState.updateLivestock(livestock)
+                        if let refreshed = appState.livestock.first(where: { $0.id == livestock.id }) {
+                            livestock = refreshed
+                        }
                     }
                 }
             }
@@ -249,7 +249,7 @@ struct LivestockDetailView: View {
                         .font(BrutalistTheme.Typography.headerMedium)
                         .foregroundColor(livestock.healthStatus.isWarning ? BrutalistTheme.Colors.warning : BrutalistTheme.Colors.text)
 
-                    Text("Last updated: Today")
+                    Text("Last updated: \(livestock.updatedAt.formatted(date: .abbreviated, time: .omitted))")
                         .font(BrutalistTheme.Typography.caption)
                         .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
                 }

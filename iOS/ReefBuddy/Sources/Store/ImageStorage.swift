@@ -16,12 +16,26 @@ class ImageStorage {
     // MARK: - Initialization
     
     init() {
-        // Get app's documents directory
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        imagesDirectory = documentsPath.appendingPathComponent("LivestockImages", isDirectory: true)
-        
-        // Create directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+        // Application Support keeps photos out of the user-visible Documents folder (and out of Files
+        // if file sharing is ever enabled). Photos taken by earlier versions are moved over once (P4-26).
+        let fm = FileManager.default
+        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        imagesDirectory = appSupport.appendingPathComponent("LivestockImages", isDirectory: true)
+        try? fm.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
+
+        let legacyDirectory = fm.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("LivestockImages", isDirectory: true)
+        if fm.fileExists(atPath: legacyDirectory.path),
+           let files = try? fm.contentsOfDirectory(at: legacyDirectory, includingPropertiesForKeys: nil) {
+            for file in files {
+                let destination = imagesDirectory.appendingPathComponent(file.lastPathComponent)
+                if fm.fileExists(atPath: destination.path) {
+                    try? fm.removeItem(at: file)
+                } else {
+                    try? fm.moveItem(at: file, to: destination)
+                }
+            }
+            try? fm.removeItem(at: legacyDirectory)
+        }
     }
     
     // MARK: - Public Methods
@@ -37,10 +51,10 @@ class ImageStorage {
         
         do {
             try imageData.write(to: fileURL)
-            print("💾 Saved image for \(id.uuidString) to \(fileURL.path)")
+            debugLog("💾 Saved image for \(id.uuidString) to \(fileURL.path)")
             return fileURL.path
         } catch {
-            print("⚠️ Failed to save image for \(id.uuidString): \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save image for \(id.uuidString): \(error.localizedDescription)")
             return nil
         }
     }
@@ -78,9 +92,9 @@ class ImageStorage {
         
         do {
             try FileManager.default.removeItem(at: fileURL)
-            print("🗑️ Deleted image for \(id.uuidString)")
+            debugLog("🗑️ Deleted image for \(id.uuidString)")
         } catch {
-            print("⚠️ Failed to delete image for \(id.uuidString): \(error.localizedDescription)")
+            debugLog("⚠️ Failed to delete image for \(id.uuidString): \(error.localizedDescription)")
         }
     }
     
@@ -90,7 +104,7 @@ class ImageStorage {
         do {
             try FileManager.default.removeItem(atPath: filePath)
         } catch {
-            print("⚠️ Failed to delete image at \(filePath): \(error.localizedDescription)")
+            debugLog("⚠️ Failed to delete image at \(filePath): \(error.localizedDescription)")
         }
     }
     

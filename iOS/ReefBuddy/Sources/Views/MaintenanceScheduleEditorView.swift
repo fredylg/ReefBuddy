@@ -394,6 +394,7 @@ struct MaintenanceScheduleEditorView: View {
             existing.timezone = tz
             existing.notes = notes
             existing.enabled = true
+            existing.anchorDate = Date() // cadence restarts from this configuration
             existing.needsSync = true
             existing.updatedAt = Date()
             return existing

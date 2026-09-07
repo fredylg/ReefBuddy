@@ -13,7 +13,6 @@ struct ChartView: View {
     let parameter: ParameterFilter
     @Environment(\.dismiss) private var dismiss
     @State private var selectedPoint: ChartDataPoint?
-    @State private var showingSubscription = false
 
     // MARK: - Body
 
@@ -41,9 +40,6 @@ struct ChartView: View {
                     .foregroundColor(BrutalistTheme.Colors.text)
                 }
             }
-        }
-        .sheet(isPresented: $showingSubscription) {
-            PurchaseCreditsView()
         }
     }
 

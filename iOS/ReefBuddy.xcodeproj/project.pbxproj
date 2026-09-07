@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		1641E6502F1B2B370017122A /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1641E64F2F1B2B360017122A /* StoreKit.framework */; };
 		1641E6522F1B2B6B0017122A /* ReefBuddy.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 1641E6512F1B2B6B0017122A /* ReefBuddy.storekit */; };
-		1641E6542F1B2C410017122A /* StoreKit.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1641E6532F1B2C410017122A /* StoreKit.plist */; };
 		8A1B2C3D00000001 /* ReefBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000011 /* ReefBuddyApp.swift */; };
 		8A1B2C3D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000012 /* ContentView.swift */; };
 		8A1B2C3D00000003 /* AppIconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000013 /* AppIconGenerator.swift */; };
@@ -24,6 +23,7 @@
 		8A1B2C3D0000000C /* MeasurementEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001C /* MeasurementEntryView.swift */; };
 		8A1B2C3D0000000D /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001D /* AnalysisView.swift */; };
 		8A1B2C3D0000000E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001E /* Assets.xcassets */; };
+		8A1B2C3D000000AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */; };
 		8A1B2C3D0000000F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001F /* HistoryView.swift */; };
 		8A1B2C3D00000021 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000022 /* ChartView.swift */; };
 		8A1B2C3D00000025 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000026 /* ExportView.swift */; };
@@ -71,6 +71,7 @@
 		8A1B2C3D0000001C /* MeasurementEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementEntryView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001D /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8A1B2C3D0000001F /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000022 /* ChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000026 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
@@ -228,6 +229,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1B2C3D0000001E /* Assets.xcassets */,
+				8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -285,7 +287,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					8A1B2C3D00000050 = {
 						CreatedOnToolsVersion = 15.0;
@@ -316,8 +318,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A1B2C3D0000000E /* Assets.xcassets in Resources */,
+				8A1B2C3D000000AC /* PrivacyInfo.xcprivacy in Resources */,
 				1641E6522F1B2B6B0017122A /* ReefBuddy.storekit in Resources */,
-				1641E6542F1B2C410017122A /* StoreKit.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -379,10 +381,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = UAUBPV3Q4Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "ReefBuddy reminds you about scheduled water changes, filter service and testing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -391,7 +395,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = au.com.aethers.reefbuddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -406,10 +410,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = UAUBPV3Q4Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "ReefBuddy reminds you about scheduled water changes, filter service and testing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -418,7 +424,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = au.com.aethers.reefbuddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -479,7 +485,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -536,7 +542,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;

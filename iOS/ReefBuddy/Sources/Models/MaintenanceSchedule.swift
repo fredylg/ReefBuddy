@@ -51,6 +51,10 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
     var timezone: String // IANA identifier
     var notes: String?
 
+    /// Start of the cadence for interval schedules: occurrences are anchor + k * intervalDays.
+    /// Reset whenever the schedule is (re)configured, so reminders keep their rhythm across launches (I-20).
+    var anchorDate: Date
+
     var createdAt: Date
     var updatedAt: Date
 
@@ -69,6 +73,7 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
         timeLocal: String,
         timezone: String = TimeZone.current.identifier,
         notes: String? = nil,
+        anchorDate: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         needsSync: Bool = true,
@@ -77,6 +82,7 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
         self.id = id
         self.tankId = tankId
         self.type = type
+        self.anchorDate = anchorDate ?? createdAt
         self.enabled = enabled
         self.scheduleKind = scheduleKind
         self.intervalDays = intervalDays
@@ -92,7 +98,7 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
 
     // needsSync / isDeleted are local sync metadata the server never sends (I-02).
     enum CodingKeys: String, CodingKey {
-        case id, tankId, type, enabled, scheduleKind, intervalDays, weekdays, timeLocal, timezone, notes, createdAt, updatedAt, needsSync, isDeleted
+        case id, tankId, type, enabled, scheduleKind, intervalDays, weekdays, timeLocal, timezone, notes, anchorDate, createdAt, updatedAt, needsSync, isDeleted
     }
 
     init(from decoder: Decoder) throws {
@@ -109,6 +115,7 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
         notes = try c.decodeIfPresent(String.self, forKey: .notes)
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        anchorDate = try c.decodeIfPresent(Date.self, forKey: .anchorDate) ?? createdAt
         needsSync = try c.decodeIfPresent(Bool.self, forKey: .needsSync) ?? false
         isDeleted = try c.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
     }

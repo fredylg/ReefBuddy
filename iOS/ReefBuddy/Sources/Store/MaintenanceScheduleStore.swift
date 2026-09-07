@@ -68,29 +68,29 @@ final class MaintenanceScheduleStore: ObservableObject {
     /// Best-effort sync for any items marked `needsSync`.
     func syncPendingBestEffort() async {
         let pending = schedules.filter { $0.needsSync }
-        print("☁️ [ScheduleStore] syncPendingBestEffort — \(pending.count) pending of \(schedules.count) total")
+        debugLog("☁️ [ScheduleStore] syncPendingBestEffort — \(pending.count) pending of \(schedules.count) total")
         guard !pending.isEmpty else { return }
 
         for item in pending {
             do {
                 if item.isDeleted {
-                    print("☁️ [ScheduleStore] deleting \(item.id)")
+                    debugLog("☁️ [ScheduleStore] deleting \(item.id)")
                     try await apiClient.deleteMaintenanceSchedule(id: item.id)
                     schedules.removeAll { $0.id == item.id }
                     persist()
                 } else {
                     do {
-                        print("☁️ [ScheduleStore] updating \(item.id)")
+                        debugLog("☁️ [ScheduleStore] updating \(item.id)")
                         _ = try await apiClient.updateMaintenanceSchedule(item)
                     } catch APIError.notFound {
-                        print("☁️ [ScheduleStore] not found → creating \(item.id)")
+                        debugLog("☁️ [ScheduleStore] not found → creating \(item.id)")
                         _ = try await apiClient.createMaintenanceSchedule(item)
                     }
                     markSynced(item.id)
-                    print("☁️ [ScheduleStore] synced \(item.id)")
+                    debugLog("☁️ [ScheduleStore] synced \(item.id)")
                 }
             } catch {
-                print("⚠️ [ScheduleStore] sync failed for \(item.id): \(error)")
+                debugLog("⚠️ [ScheduleStore] sync failed for \(item.id): \(error)")
             }
         }
     }
@@ -111,9 +111,9 @@ final class MaintenanceScheduleStore: ObservableObject {
 
         do {
             schedules = try decoder.decode([MaintenanceSchedule].self, from: data)
-            print("📦 Loaded \(schedules.count) maintenance schedules from local storage")
+            debugLog("📦 Loaded \(schedules.count) maintenance schedules from local storage")
         } catch {
-            print("⚠️ Failed to load maintenance schedules: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to load maintenance schedules: \(error.localizedDescription)")
             schedules = []
         }
     }
@@ -123,7 +123,7 @@ final class MaintenanceScheduleStore: ObservableObject {
             let data = try encoder.encode(schedules)
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
-            print("⚠️ Failed to persist maintenance schedules: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to persist maintenance schedules: \(error.localizedDescription)")
         }
     }
 }
@@ -195,9 +195,9 @@ final class WaterChangeStorage: ObservableObject {
                 }
             )
             let total = waterChangesByTank.values.reduce(0) { $0 + $1.count }
-            print("📦 Loaded \(total) water changes from local storage")
+            debugLog("📦 Loaded \(total) water changes from local storage")
         } catch {
-            print("⚠️ Failed to load water changes: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to load water changes: \(error.localizedDescription)")
             waterChangesByTank = [:]
         }
     }
@@ -210,7 +210,7 @@ final class WaterChangeStorage: ObservableObject {
             let data = try encoder.encode(stringDict)
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
-            print("⚠️ Failed to persist water changes: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to persist water changes: \(error.localizedDescription)")
         }
     }
 }

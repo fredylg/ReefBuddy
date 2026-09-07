@@ -78,7 +78,7 @@ class AnalysisStorage: ObservableObject {
             // Sort by date, newest first
             savedAnalyses.sort { $0.analyzedAt > $1.analyzedAt }
         } catch {
-            print("Error loading saved analyses: \(error)")
+            debugLog("Error loading saved analyses: \(error)")
             savedAnalyses = []
         }
     }
@@ -89,7 +89,7 @@ class AnalysisStorage: ObservableObject {
             let data = try encoder.encode(savedAnalyses)
             UserDefaults.standard.set(data, forKey: storageKey)
         } catch {
-            print("Error saving analyses: \(error)")
+            debugLog("Error saving analyses: \(error)")
         }
     }
 }

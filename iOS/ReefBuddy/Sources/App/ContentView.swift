@@ -29,12 +29,6 @@ struct ContentView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             brutalistTabBar
         }
-        .onReceive(NotificationCenter.default.publisher(for: .maintenanceNotificationTapped)) { note in
-            let userInfo = note.userInfo ?? [:]
-            print("📲 [ContentView] maintenanceNotificationTapped received, userInfo keys: \(userInfo.keys.map { "\($0)" })")
-            appState.handleMaintenanceNotification(userInfo: userInfo)
-            handleMaintenanceDeepLinkIfPossible()
-        }
         .onChange(of: appState.maintenanceDeepLink) { _, _ in
             handleMaintenanceDeepLinkIfPossible()
         }
@@ -161,18 +155,6 @@ struct ContentView: View {
                 noTankSelectedView
             }
 
-        case .logWaterChange:
-            if let tank = appState.selectedTank {
-                WaterChangeLogSheet(
-                    deepLink: nil,
-                    fallbackTank: tank,
-                    onComplete: { selectedTab = .measure },
-                    onCancel: { selectedTab = .measure }
-                )
-                .environmentObject(appState)
-            } else {
-                noTankSelectedView
-            }
         }
     }
 
@@ -254,8 +236,9 @@ private extension ContentView {
         if let tank = appState.tanks.first(where: { $0.id == link.tankId }) {
             appState.selectTank(tank)
         }
-        // Bring user into tank context and show actions
+        // Bring user into tank context and show actions; a sheet already up would block the new one.
         selectedTab = .measure
+        showingWaterChangeLog = false
         showingMaintenanceActions = true
     }
 }
@@ -564,7 +547,6 @@ enum Tab: CaseIterable {
     case measure
     case livestock
     case history
-    case logWaterChange
 
     var title: String {
         switch self {
@@ -578,8 +560,6 @@ enum Tab: CaseIterable {
             return "LIVESTOCK"
         case .history:
             return "HISTORY"
-        case .logWaterChange:
-            return "WATER"
         }
     }
 
@@ -595,8 +575,6 @@ enum Tab: CaseIterable {
             return "Track your corals & fish"
         case .history:
             return "Track your progress"
-        case .logWaterChange:
-            return "Log a water change"
         }
     }
 
@@ -612,8 +590,6 @@ enum Tab: CaseIterable {
             return "fish.fill"
         case .history:
             return "chart.line.uptrend.xyaxis"
-        case .logWaterChange:
-            return "drop.circle.fill"
         }
     }
 }
@@ -692,11 +668,11 @@ struct SettingsView: View {
                 // About Section
                 settingsSection(title: "ABOUT", icon: "info.circle.fill") {
                     VStack(spacing: 0) {
-                        aboutRow(label: "Version", value: "1.0.6")
+                        aboutRow(label: "Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
                         Rectangle()
                             .fill(BrutalistTheme.Colors.text.opacity(0.1))
                             .frame(height: 1)
-                        aboutRow(label: "Build", value: "2026.02")
+                        aboutRow(label: "Build", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")
                     }
                 }
 
@@ -872,4 +848,7 @@ struct SettingsView: View {
 #Preview {
     ContentView()
         .environmentObject(AppState())
+        .environmentObject(StoreManager())
+        .environmentObject(AnalysisStorage())
+        .environmentObject(MaintenanceScheduleStore())
 }

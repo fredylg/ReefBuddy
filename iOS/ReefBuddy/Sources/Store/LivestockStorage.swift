@@ -155,9 +155,9 @@ class LivestockStorage: ObservableObject {
             }
             
             livestock = loadedLivestock
-            print("📦 Loaded \(livestock.count) livestock items from local storage")
+            debugLog("📦 Loaded \(livestock.count) livestock items from local storage")
         } catch {
-            print("⚠️ Failed to load livestock from local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to load livestock from local storage: \(error.localizedDescription)")
             livestock = []
         }
     }
@@ -176,9 +176,9 @@ class LivestockStorage: ObservableObject {
             // Encode livestock (photoData excluded via CodingKeys to prevent UserDefaults size issues)
             let data = try encoder.encode(livestock)
             UserDefaults.standard.set(data, forKey: livestockKey)
-            print("💾 Saved \(livestock.count) livestock items to local storage (\(data.count) bytes)")
+            debugLog("💾 Saved \(livestock.count) livestock items to local storage (\(data.count) bytes)")
         } catch {
-            print("⚠️ Failed to save livestock to local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save livestock to local storage: \(error.localizedDescription)")
         }
     }
     
@@ -202,9 +202,9 @@ class LivestockStorage: ObservableObject {
             }
             
             livestockLogs = loadedLogs
-            print("📦 Loaded \(livestockLogs.count) livestock logs from local storage")
+            debugLog("📦 Loaded \(livestockLogs.count) livestock logs from local storage")
         } catch {
-            print("⚠️ Failed to load livestock logs from local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to load livestock logs from local storage: \(error.localizedDescription)")
             livestockLogs = []
         }
     }
@@ -223,9 +223,9 @@ class LivestockStorage: ObservableObject {
             // Encode logs (photoData excluded via CodingKeys to prevent UserDefaults size issues)
             let data = try encoder.encode(livestockLogs)
             UserDefaults.standard.set(data, forKey: logsKey)
-            print("💾 Saved \(livestockLogs.count) livestock logs to local storage (\(data.count) bytes)")
+            debugLog("💾 Saved \(livestockLogs.count) livestock logs to local storage (\(data.count) bytes)")
         } catch {
-            print("⚠️ Failed to save livestock logs to local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save livestock logs to local storage: \(error.localizedDescription)")
         }
     }
 }

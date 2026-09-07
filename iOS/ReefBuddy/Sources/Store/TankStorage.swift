@@ -81,9 +81,9 @@ class TankStorage: ObservableObject {
         
         do {
             tanks = try decoder.decode([Tank].self, from: data)
-            print("📦 Loaded \(tanks.count) tanks from local storage")
+            debugLog("📦 Loaded \(tanks.count) tanks from local storage")
         } catch {
-            print("⚠️ Failed to load tanks from local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to load tanks from local storage: \(error.localizedDescription)")
             tanks = []
         }
     }
@@ -93,9 +93,9 @@ class TankStorage: ObservableObject {
         do {
             let data = try encoder.encode(tanks)
             UserDefaults.standard.set(data, forKey: storageKey)
-            print("💾 Saved \(tanks.count) tanks to local storage")
+            debugLog("💾 Saved \(tanks.count) tanks to local storage")
         } catch {
-            print("⚠️ Failed to save tanks to local storage: \(error.localizedDescription)")
+            debugLog("⚠️ Failed to save tanks to local storage: \(error.localizedDescription)")
         }
     }
 }

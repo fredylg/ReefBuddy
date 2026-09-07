@@ -240,19 +240,19 @@ struct BrutalistIconButton: View {
             .font(BrutalistTheme.Typography.headerMedium)
 
         BrutalistButton.primary("Primary Action") {
-            print("Primary tapped")
+            debugLog("Primary tapped")
         }
 
         BrutalistButton.secondary("Secondary Action") {
-            print("Secondary tapped")
+            debugLog("Secondary tapped")
         }
 
         BrutalistButton.destructive("Delete Item") {
-            print("Delete tapped")
+            debugLog("Delete tapped")
         }
 
         BrutalistButton.ghost("Ghost Button") {
-            print("Ghost tapped")
+            debugLog("Ghost tapped")
         }
 
         Divider()
@@ -261,11 +261,11 @@ struct BrutalistIconButton: View {
             .font(BrutalistTheme.Typography.caption)
 
         BrutalistButton.primary("Full Width Button", isFullWidth: true) {
-            print("Full width tapped")
+            debugLog("Full width tapped")
         }
 
         BrutalistButton.primary("Disabled Button", isFullWidth: true, isEnabled: false) {
-            print("This won't print")
+            debugLog("This won't print")
         }
     }
     .padding()

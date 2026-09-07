@@ -228,7 +228,8 @@ struct AddTankSheet: View {
     @State private var notes: String = ""
 
     private var isValid: Bool {
-        !name.isEmpty && Double(volumeText) != nil && Double(volumeText)! > 0
+        guard !name.isEmpty, let volume = Double(volumeText) else { return false }
+        return volume > 0
     }
 
     var body: some View {

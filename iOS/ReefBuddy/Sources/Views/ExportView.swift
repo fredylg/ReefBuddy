@@ -295,9 +295,15 @@ struct ExportView: View {
         let po4 = measurement.phosphate.map { String(format: "%.2f", $0) } ?? ""
         let nh3 = measurement.ammonia.map { String(format: "%.2f", $0) } ?? ""
         let no2 = measurement.nitrite.map { String(format: "%.2f", $0) } ?? ""
-        let notes = measurement.notes?.replacingOccurrences(of: ",", with: ";") ?? ""
+        let notes = csvEscape(measurement.notes ?? "")
 
         return "\(date),\(time),\(temp),\(sal),\(ph),\(alk),\(ca),\(mg),\(no3),\(po4),\(nh3),\(no2),\(notes)"
+    }
+
+    /// RFC 4180: quote fields containing commas, quotes or newlines; double embedded quotes.
+    private func csvEscape(_ value: String) -> String {
+        guard value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r") else { return value }
+        return "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\""
     }
 
     private func exportCSV() {
