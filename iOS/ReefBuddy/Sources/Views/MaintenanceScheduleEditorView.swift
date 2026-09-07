@@ -4,8 +4,8 @@ import UserNotifications
 // MARK: - Add/Edit Maintenance Schedule
 
 struct MaintenanceScheduleEditorView: View {
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var scheduleStore: MaintenanceScheduleStore
+    @Environment(AppState.self) private var appState
+    @Environment(MaintenanceScheduleStore.self) private var scheduleStore
     @Environment(\.dismiss) private var dismiss
 
     private let existing: MaintenanceSchedule?

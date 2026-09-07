@@ -8,8 +8,8 @@ struct ContentView: View {
 
     // MARK: - State
 
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var storeManager: StoreManager
+    @Environment(AppState.self) private var appState
+    @Environment(StoreManager.self) private var storeManager
     @State private var selectedTab: Tab = .tanks
     @State private var showingMaintenanceActions = false
     @State private var showingWaterChangeLog = false
@@ -60,7 +60,7 @@ struct ContentView: View {
                     showingWaterChangeLog = false
                 }
             )
-            .environmentObject(appState)
+            .environment(appState)
         }
     }
 
@@ -312,7 +312,7 @@ struct WaterChangeLogSheet: View {
     let onComplete: () -> Void
     let onCancel: () -> Void
 
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var performedAt = Date()
     @State private var percentReplaced = ""
     @State private var gallonsReplaced = ""
@@ -412,7 +412,7 @@ struct WaterChangeLogSheet: View {
                 tank: tank,
                 onClose: { showingHistory = false }
             )
-            .environmentObject(appState)
+            .environment(appState)
         }
     }
 
@@ -454,7 +454,7 @@ private struct WaterChangeHistorySheet: View {
     let tank: Tank?
     let onClose: () -> Void
 
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         NavigationStack {
@@ -600,8 +600,8 @@ enum Tab: CaseIterable {
 /// New Brutalist design: sharp corners, bold borders, high contrast.
 struct SettingsView: View {
 
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var analysisStorage: AnalysisStorage
+    @Environment(AppState.self) private var appState
+    @Environment(AnalysisStorage.self) private var analysisStorage
     @State private var showingNotificationSettings = false
     @State private var showingSubscription = false
     @State private var showingExport = false
@@ -847,8 +847,8 @@ struct SettingsView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AppState())
-        .environmentObject(StoreManager())
-        .environmentObject(AnalysisStorage())
-        .environmentObject(MaintenanceScheduleStore())
+        .environment(AppState())
+        .environment(StoreManager())
+        .environment(AnalysisStorage())
+        .environment(MaintenanceScheduleStore())
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// View for purchasing analysis credits with brutalist design
 struct PurchaseCreditsView: View {
-    @EnvironmentObject private var storeManager: StoreManager
+    @Environment(StoreManager.self) private var storeManager
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -289,5 +289,5 @@ struct PurchaseCreditsView: View {
 
 #Preview {
     PurchaseCreditsView()
-        .environmentObject(StoreManager())
+        .environment(StoreManager())
 }

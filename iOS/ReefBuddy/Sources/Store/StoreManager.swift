@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import StoreKit
 import os
 
@@ -37,16 +38,17 @@ enum CreditProduct: String, CaseIterable {
 
 /// Manages in-app purchases using StoreKit 2
 @MainActor
-class StoreManager: ObservableObject {
+@Observable
+final class StoreManager {
     
     // MARK: - Published Properties
     
-    @Published private(set) var products: [Product] = []
-    @Published private(set) var purchaseInProgress = false
-    @Published private(set) var purchaseError: String?
-    @Published private(set) var creditBalance: CreditBalance?
+    private(set) var products: [Product] = []
+    private(set) var purchaseInProgress = false
+    private(set) var purchaseError: String?
+    private(set) var creditBalance: CreditBalance?
     /// True when no balance could be loaded yet (offline or server error); the analyze button waits.
-    @Published private(set) var balanceUnavailable = false
+    private(set) var balanceUnavailable = false
     
     // MARK: - Private Properties
     
@@ -54,7 +56,8 @@ class StoreManager: ObservableObject {
         Set(CreditProduct.allCases.map { $0.rawValue })
     }
     
-    private var updateListenerTask: Task<Void, Error>?
+    /// Not observed (nothing renders it) and plain-stored so `deinit` can cancel it.
+    @ObservationIgnored private var updateListenerTask: Task<Void, Error>?
     private let apiClient: APIClient
     
     // MARK: - Credit Balance Model

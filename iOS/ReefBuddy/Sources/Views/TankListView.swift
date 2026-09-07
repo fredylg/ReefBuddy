@@ -8,7 +8,7 @@ struct TankListView: View {
 
     // MARK: - State
 
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var showingAddTank = false
     @State private var tankToDelete: Tank?
 
@@ -219,7 +219,7 @@ struct TankCard: View {
 
 /// Modal sheet for creating a new tank
 struct AddTankSheet: View {
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
 
     @State private var name: String = ""
@@ -341,10 +341,10 @@ struct AddTankSheet: View {
 
 #Preview("Tank List") {
     TankListView()
-        .environmentObject(AppState())
+        .environment(AppState())
 }
 
 #Preview("Add Tank Sheet") {
     AddTankSheet()
-        .environmentObject(AppState())
+        .environment(AppState())
 }

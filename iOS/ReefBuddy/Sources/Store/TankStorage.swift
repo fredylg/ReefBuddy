@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 // MARK: - Tank Storage
 
@@ -6,12 +7,13 @@ import Foundation
 /// Provides local storage as fallback when backend is unavailable.
 /// Thread-safe and observable for SwiftUI integration.
 @MainActor
-class TankStorage: ObservableObject {
+@Observable
+final class TankStorage {
     
     // MARK: - Properties
     
     /// All saved tanks
-    @Published private(set) var tanks: [Tank] = []
+    private(set) var tanks: [Tank] = []
     
     /// Key for UserDefaults storage
     private let storageKey = "com.reefbuddy.tanks"

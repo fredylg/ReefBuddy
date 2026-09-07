@@ -8,7 +8,7 @@ struct LivestockListView: View {
 
     // MARK: - State
 
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var showingAddSheet = false
     @State private var selectedLivestock: Livestock?
     @State private var livestockToDelete: Livestock?
@@ -288,7 +288,7 @@ struct LivestockListItem: View {
 
 #Preview("Livestock List") {
     LivestockListView()
-        .environmentObject(AppState())
+        .environment(AppState())
 }
 
 #Preview("List Item") {

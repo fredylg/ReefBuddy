@@ -10,7 +10,7 @@ struct AddLivestockView: View {
     // MARK: - Environment
 
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
 
     // MARK: - Properties
 
@@ -303,13 +303,13 @@ struct AddLivestockView: View {
 
 #Preview("Add Livestock") {
     AddLivestockView(tank: Tank.sample)
-        .environmentObject(AppState())
+        .environment(AppState())
 }
 
 #Preview("Add Livestock - Filled") {
     let view = AddLivestockView(tank: Tank.sample)
     return view
-        .environmentObject(AppState())
+        .environment(AppState())
 }
 
 // MARK: - Photo Picker Label

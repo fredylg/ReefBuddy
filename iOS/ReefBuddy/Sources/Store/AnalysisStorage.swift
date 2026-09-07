@@ -1,16 +1,18 @@
 import Foundation
+import Observation
 
 // MARK: - Analysis Storage
 
 /// Manages persistence of saved AI analyses using UserDefaults.
 /// Thread-safe and observable for SwiftUI integration.
 @MainActor
-class AnalysisStorage: ObservableObject {
+@Observable
+final class AnalysisStorage {
     
     // MARK: - Properties
     
     /// All saved analyses, sorted by date (newest first)
-    @Published private(set) var savedAnalyses: [SavedAnalysis] = []
+    private(set) var savedAnalyses: [SavedAnalysis] = []
     
     /// Key for UserDefaults storage
     private let storageKey = "com.reefbuddy.savedAnalyses"

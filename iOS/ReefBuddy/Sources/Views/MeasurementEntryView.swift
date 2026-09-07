@@ -12,9 +12,9 @@ struct MeasurementEntryView: View {
 
     // MARK: - State
 
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var storeManager: StoreManager
-    @EnvironmentObject private var analysisStorage: AnalysisStorage
+    @Environment(AppState.self) private var appState
+    @Environment(StoreManager.self) private var storeManager
+    @Environment(AnalysisStorage.self) private var analysisStorage
     @State private var measurement: MeasurementDraft = MeasurementDraft()
     @State private var showingAnalysis = false
     @State private var analysisResult: AnalysisResponse?
@@ -89,7 +89,7 @@ struct MeasurementEntryView: View {
                 onComplete: { showingWaterChangeLog = false },
                 onCancel: { showingWaterChangeLog = false }
             )
-            .environmentObject(appState)
+            .environment(appState)
         }
     }
 
@@ -775,8 +775,8 @@ struct AnalysisResultSheet: View {
     let waterChangeEventId: String?
     
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var analysisStorage: AnalysisStorage
+    @Environment(AppState.self) private var appState
+    @Environment(AnalysisStorage.self) private var analysisStorage
     @State private var showingShareSheet = false
     @State private var showingSavedConfirmation = false
 
@@ -1227,9 +1227,9 @@ struct AnalysisResultSheet: View {
 
 #Preview("Measurement Entry") {
     MeasurementEntryView(tank: Tank.sample)
-        .environmentObject(AppState())
-        .environmentObject(StoreManager())
-        .environmentObject(AnalysisStorage())
+        .environment(AppState())
+        .environment(StoreManager())
+        .environment(AnalysisStorage())
 }
 
 #Preview("Analysis Result") {
@@ -1258,8 +1258,8 @@ struct AnalysisResultSheet: View {
         measurementId: nil,
         waterChangeEventId: nil
     )
-    .environmentObject(AppState())
-    .environmentObject(AnalysisStorage())
+    .environment(AppState())
+    .environment(AnalysisStorage())
 }
 
 #Preview("Loading View") {

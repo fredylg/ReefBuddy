@@ -9,7 +9,7 @@ struct HistoryView: View {
     // MARK: - Properties
 
     let tank: Tank
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var selectedRange: DateRange = .week
     @State private var selectedParameter: ParameterFilter = .all
     @State private var showingChart = false
@@ -560,5 +560,5 @@ extension Array where Element == Double {
 
 #Preview {
     HistoryView(tank: Tank.sample)
-        .environmentObject(AppState())
+        .environment(AppState())
 }

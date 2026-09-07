@@ -14,7 +14,7 @@ struct AnalysisView: View {
 
     // MARK: - Environment
 
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - State
@@ -440,6 +440,6 @@ struct AnalysisView: View {
                 ]
             )
         )
-        .environmentObject(AppState())
+        .environment(AppState())
     }
 }

@@ -26,13 +26,13 @@ struct ReefBuddyApp: App {
     // MARK: - State
 
     @UIApplicationDelegateAdaptor private var appDelegate: AppDelegate
-    @StateObject private var storeManager = StoreManager()
-    @StateObject private var analysisStorage = AnalysisStorage()
-    @StateObject private var scheduleStore = MaintenanceScheduleStore()
-    @StateObject private var appState: AppState
+    @State private var storeManager = StoreManager()
+    @State private var analysisStorage = AnalysisStorage()
+    @State private var scheduleStore = MaintenanceScheduleStore()
+    @State private var appState: AppState
 
     init() {
-        _appState = StateObject(wrappedValue: AppState())
+        _appState = State(initialValue: AppState())
     }
 
     // MARK: - Body
@@ -40,10 +40,10 @@ struct ReefBuddyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(appState)
-                .environmentObject(storeManager)
-                .environmentObject(analysisStorage)
-                .environmentObject(scheduleStore)
+                .environment(appState)
+                .environment(storeManager)
+                .environment(analysisStorage)
+                .environment(scheduleStore)
                 .onAppear {
                     // Cold-start taps arrive in the AppDelegate before any view exists; attaching here
                     // flushes anything buffered (I-19).
@@ -116,42 +116,43 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
 /// Global application state manager
 @MainActor
-final class AppState: ObservableObject {
+@Observable
+final class AppState {
 
     // MARK: - Published Properties
 
     /// All user tanks
-    @Published var tanks: [Tank] = []
+    var tanks: [Tank] = []
 
     /// Currently selected tank
-    @Published var selectedTank: Tank?
+    var selectedTank: Tank?
 
     /// Measurements for the selected tank
-    @Published var measurements: [Measurement] = []
+    var measurements: [Measurement] = []
 
     /// Livestock for the selected tank
-    @Published var livestock: [Livestock] = []
+    var livestock: [Livestock] = []
 
     /// Health logs for livestock
-    @Published var livestockLogs: [LivestockLog] = []
+    var livestockLogs: [LivestockLog] = []
 
     /// Water changes for the selected tank
-    @Published var waterChanges: [WaterChange] = []
+    var waterChanges: [WaterChange] = []
 
     /// Loading state
-    @Published var isLoading: Bool = false
+    var isLoading: Bool = false
 
     /// Error message to display
-    @Published var errorMessage: String?
+    var errorMessage: String?
 
     /// Show purchase credits sheet when user runs out of credits
-    @Published var showPurchaseCredits: Bool = false
+    var showPurchaseCredits: Bool = false
 
     /// Deep link from maintenance reminder notification
-    @Published var maintenanceDeepLink: MaintenanceDeepLink?
+    var maintenanceDeepLink: MaintenanceDeepLink?
 
     /// Latest explicitly logged water change available to link to the next analysis.
-    @Published var pendingWaterChangeContext: AnalysisWaterChangeContext?
+    var pendingWaterChangeContext: AnalysisWaterChangeContext?
 
     // MARK: - Dependencies
 

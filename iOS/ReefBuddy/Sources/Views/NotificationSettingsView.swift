@@ -9,7 +9,7 @@ struct NotificationSettingsView: View {
 
     // MARK: - State
 
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var notificationSettings: [ParameterNotificationSetting] = ParameterNotificationSetting.defaults
     @State private var notificationsEnabled = true
     @State private var showingTestAlert = false
@@ -545,5 +545,5 @@ struct NotificationHistoryItem: Identifiable {
 
 #Preview("Notification Settings") {
     NotificationSettingsView()
-        .environmentObject(AppState())
+        .environment(AppState())
 }

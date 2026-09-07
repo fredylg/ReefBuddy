@@ -9,7 +9,7 @@ struct LivestockDetailView: View {
     // MARK: - State
 
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var livestock: Livestock
     @State private var healthLogs: [LivestockLog] = []
     @State private var isEditing = false
@@ -542,7 +542,7 @@ struct AddHealthLogSheet: View {
 
 #Preview("Livestock Detail") {
     LivestockDetailView(livestock: Livestock.sample)
-        .environmentObject(AppState())
+        .environment(AppState())
 }
 
 #Preview("Add Health Log") {

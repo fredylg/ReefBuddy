@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 // MARK: - Measurement Storage
 
@@ -6,12 +7,13 @@ import Foundation
 /// Provides local storage as fallback when backend is unavailable.
 /// Thread-safe and observable for SwiftUI integration.
 @MainActor
-class MeasurementStorage: ObservableObject {
+@Observable
+final class MeasurementStorage {
     
     // MARK: - Properties
     
     /// All saved measurements, organized by tank ID
-    @Published private(set) var measurements: [UUID: [Measurement]] = [:]
+    private(set) var measurements: [UUID: [Measurement]] = [:]
     
     /// Key for UserDefaults storage
     private let storageKey = "com.reefbuddy.measurements"

@@ -1,10 +1,12 @@
 import Foundation
+import Observation
 
 // MARK: - Maintenance Schedule Store (local-first)
 
 @MainActor
-final class MaintenanceScheduleStore: ObservableObject {
-    @Published private(set) var schedules: [MaintenanceSchedule] = []
+@Observable
+final class MaintenanceScheduleStore {
+    private(set) var schedules: [MaintenanceSchedule] = []
 
     private let storageKey = "com.reefbuddy.maintenance_schedules"
     private let encoder: JSONEncoder
@@ -131,8 +133,9 @@ final class MaintenanceScheduleStore: ObservableObject {
 // MARK: - Water Change Store (local-first)
 
 @MainActor
-final class WaterChangeStorage: ObservableObject {
-    @Published private(set) var waterChangesByTank: [UUID: [WaterChange]] = [:]
+@Observable
+final class WaterChangeStorage {
+    private(set) var waterChangesByTank: [UUID: [WaterChange]] = [:]
 
     private let storageKey = "com.reefbuddy.water_changes"
     private let encoder: JSONEncoder

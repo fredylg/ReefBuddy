@@ -8,8 +8,8 @@ struct SavedAnalysesView: View {
     
     // MARK: - Properties
     
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var analysisStorage: AnalysisStorage
+    @Environment(AppState.self) private var appState
+    @Environment(AnalysisStorage.self) private var analysisStorage
     @State private var selectedTankFilter: String? = nil
     @State private var showingDeleteConfirmation = false
     @State private var analysisToDelete: SavedAnalysis?
@@ -424,6 +424,6 @@ struct SavedAnalysesView: View {
 
 #Preview {
     SavedAnalysesView()
-        .environmentObject(AppState())
-        .environmentObject(AnalysisStorage())
+        .environment(AppState())
+        .environment(AnalysisStorage())
 }

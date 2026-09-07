@@ -12,7 +12,7 @@ struct ExportView: View {
     let tank: Tank
     let measurements: [Measurement]
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var appState: AppState
+    @Environment(AppState.self) private var appState
     @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
     @State private var endDate = Date()
     @State private var isExporting = false
@@ -344,5 +344,5 @@ struct ExportView: View {
 
 #Preview {
     ExportView(tank: Tank.sample, measurements: Measurement.samples)
-        .environmentObject(AppState())
+        .environment(AppState())
 }

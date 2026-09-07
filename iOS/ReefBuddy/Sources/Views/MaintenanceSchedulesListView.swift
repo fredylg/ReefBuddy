@@ -4,8 +4,8 @@ import UserNotifications
 // MARK: - Maintenance Schedules List
 
 struct MaintenanceSchedulesListView: View {
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var scheduleStore: MaintenanceScheduleStore
+    @Environment(AppState.self) private var appState
+    @Environment(MaintenanceScheduleStore.self) private var scheduleStore
 
     @State private var showingEditor = false
     @State private var editingSchedule: MaintenanceSchedule?

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 // MARK: - Livestock Storage
 
@@ -6,15 +7,16 @@ import Foundation
 /// Provides local storage as fallback when backend is unavailable.
 /// Thread-safe and observable for SwiftUI integration.
 @MainActor
-class LivestockStorage: ObservableObject {
+@Observable
+final class LivestockStorage {
     
     // MARK: - Properties
     
     /// All saved livestock
-    @Published private(set) var livestock: [Livestock] = []
+    private(set) var livestock: [Livestock] = []
     
     /// All saved livestock logs
-    @Published private(set) var livestockLogs: [LivestockLog] = []
+    private(set) var livestockLogs: [LivestockLog] = []
     
     /// Key for UserDefaults storage
     private let livestockKey = "com.reefbuddy.livestock"
