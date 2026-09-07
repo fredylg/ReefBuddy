@@ -38,11 +38,16 @@ APPLE_BUNDLE_ID = "au.com.aethers.reefbuddy"
 # Set to "true" only if TestFlight testers must be able to buy credits (Sandbox transactions).
 ALLOW_SANDBOX_PURCHASES = "false"
 
-# AI Gateway (all LLM calls go through it). Flattened to AI_GATEWAY_ID in P3-25.
-[vars.AI_GATEWAY]
-gateway_id = "reefbuddy-ai-gateway"
+# AI Gateway (all LLM calls go through it) and model settings (P3-21, P3-25)
+AI_GATEWAY_ID = "reefbuddy-ai-gateway"
+AI_MODEL = "claude-haiku-4-5"
+AI_MAX_TOKENS = "2048"
 
-# Observability: Workers Logs at 100% sampling. Applies to every environment.
+# Observability: Workers Logs at 100% sampling. Inherited by every environment.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [observability.logs]
 enabled = true
 invocation_logs = true
@@ -81,8 +86,9 @@ CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
 APPLE_BUNDLE_ID = "au.com.aethers.reefbuddy"
 ALLOW_SANDBOX_PURCHASES = "true"
 
-[env.dev.vars.AI_GATEWAY]
-gateway_id = "reefbuddy-ai-gateway"
+AI_GATEWAY_ID = "reefbuddy-ai-gateway"
+AI_MODEL = "claude-haiku-4-5"
+AI_MAX_TOKENS = "2048"
 
 [dev]
 port = 8787

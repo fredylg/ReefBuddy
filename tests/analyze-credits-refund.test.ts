@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { env, SELF } from "cloudflare:test";
-import { gatewayCallCount, installGatewayMock, queueGatewayReply, setDefaultGatewayReply } from "./helpers/mock-gateway";
+import { gatewayCallCount, installGatewayMock, lastGatewayRequestBody, queueGatewayReply, setDefaultGatewayReply } from "./helpers/mock-gateway";
 
 const validRequest = (deviceId: string) => ({
   deviceId,
@@ -15,10 +15,13 @@ const validRequest = (deviceId: string) => ({
   tankVolume: 75,
 });
 
+let ipCounter = 0;
 async function analyze(deviceId: string): Promise<Response> {
+  ipCounter++;
   return SELF.fetch("http://localhost/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    // Unique IP per request: /analyze has a 10/min/IP limiter and storage is shared within this file.
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": `10.8.${(ipCounter >> 8) & 255}.${ipCounter & 255}` },
     body: JSON.stringify(validRequest(deviceId)),
   });
 }
@@ -59,19 +62,75 @@ describe("POST /analyze — AI failures refund the credit (P1-03, P1-04)", () =>
     expect(after.totalAnalyses).toBe(before.totalAnalyses);
   });
 
-  it("upstream 529: responds 503 retryable and refunds", async () => {
+  it("upstream 529: one attempt (retries live in the gateway), 503 retryable, refunded", async () => {
     const deviceId = uid();
-    if (hasKey) {
-      // callAIGateway retries 529 up to 3 times before giving up
-      for (let i = 0; i < 4; i++) mockGateway(529, { error: { type: "overloaded_error" } });
-    }
+    if (hasKey) mockGateway(529, { error: { type: "overloaded_error" } });
     const res = await analyze(deviceId);
     expect(res.status).toBe(503);
     const data = (await res.json()) as { creditsRefunded: boolean; retryable: boolean };
     expect(data.creditsRefunded).toBe(true);
     expect((await balance(deviceId)).freeRemaining).toBe(3);
-    if (hasKey) expect(gatewayCallCount()).toBe(4);
-  }, 30_000);
+    if (hasKey) expect(gatewayCallCount()).toBe(1);
+  });
+
+  it("requests structured JSON output with the configured model and token budget", async () => {
+    const deviceId = uid();
+    if (!hasKey) return;
+    mockGateway(200, { id: "msg", stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] });
+    expect((await analyze(deviceId)).status).toBe(200);
+    const body = lastGatewayRequestBody<{ model: string; max_tokens: number; output_config: { format: { type: string; schema: { required: string[] } } } }>();
+    expect(body?.model).toBe("claude-haiku-4-5");
+    expect(body?.max_tokens).toBe(2048);
+    expect(body?.output_config.format.type).toBe("json_schema");
+    expect(body?.output_config.format.schema.required).toEqual(["summary", "recommendations", "warnings", "dosingAdvice"]);
+  });
+
+  it("a structured reply is returned as-is plus a rendered recommendation string", async () => {
+    const deviceId = uid();
+    if (!hasKey) return;
+    const structured = {
+      summary: "Alkalinity is low; everything else is in range.",
+      recommendations: ["Raise alkalinity by 0.5 dKH per day until 8.5 dKH."],
+      warnings: [],
+      dosingAdvice: [{ product: "Two-part alkalinity supplement", amount: "20 ml", frequency: "daily", reason: "alkalinity 6.5 dKH" }],
+    };
+    mockGateway(200, { id: "msg", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(structured) }] });
+    const res = await analyze(deviceId);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { analysis: typeof structured & { recommendation: string }; truncated?: boolean };
+    expect(data.analysis.summary).toBe(structured.summary);
+    expect(data.analysis.dosingAdvice[0].product).toBe("Two-part alkalinity supplement");
+    expect(data.analysis.recommendation).toContain("Raise alkalinity");
+    expect(data.analysis.recommendation).toContain("Dosing:");
+    expect(data.truncated).toBeUndefined();
+  });
+
+  it("a refusal (stop_reason=refusal) is a 422 and the credit is refunded", async () => {
+    const deviceId = uid();
+    if (!hasKey) return;
+    mockGateway(200, { id: "msg", stop_reason: "refusal", content: [] });
+    const res = await analyze(deviceId);
+    expect(res.status).toBe(422);
+    const data = (await res.json()) as { code: string; creditsRefunded: boolean };
+    expect(data.code).toBe("ANALYSIS_REFUSED");
+    expect(data.creditsRefunded).toBe(true);
+    expect((await balance(deviceId)).freeRemaining).toBe(3);
+  });
+
+  it("a reply cut off by max_tokens is retried once with more room and flagged if still truncated", async () => {
+    const deviceId = uid();
+    if (!hasKey) return;
+    mockGateway(200, { id: "msg", stop_reason: "max_tokens", content: [{ type: "text", text: "Alkalinity is" }] });
+    mockGateway(200, { id: "msg", stop_reason: "max_tokens", content: [{ type: "text", text: "Alkalinity is low and" }] });
+    const res = await analyze(deviceId);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { truncated?: boolean; analysis: { recommendation: string } };
+    expect(gatewayCallCount()).toBe(2);
+    expect(lastGatewayRequestBody<{ max_tokens: number }>()?.max_tokens).toBe(3072);
+    expect(data.truncated).toBe(true);
+    expect(data.analysis.recommendation).toContain("Alkalinity is low");
+    expect((await balance(deviceId)).freeRemaining).toBe(2); // one credit for the whole exchange
+  });
 
   it("a paid credit is refunded to the paid pool, not the free pool", async () => {
     const deviceId = uid();

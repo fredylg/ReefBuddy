@@ -43,6 +43,7 @@ let defaultReply: GatewayReply | null = null;
 const queue: GatewayReply[] = [];
 let calls = 0;
 let installed = false;
+let lastGatewayBody: unknown = null;
 const originHandlers = new Map<string, OriginHandler>();
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -62,6 +63,11 @@ function ensureInstalled(): void {
 
     if (origin === GATEWAY_ORIGIN) {
       calls++;
+      try {
+        lastGatewayBody = await request.clone().json();
+      } catch {
+        lastGatewayBody = null;
+      }
       const next = queue.shift() ?? defaultReply;
       if (!next) throw new Error("No mocked gateway reply available; queue one with queueGatewayReply()");
       return jsonResponse(next.status, next.body);
@@ -100,6 +106,11 @@ export function setDefaultGatewayReply(reply: GatewayReply | null): void {
 /** Gateway calls made during the current test. */
 export function gatewayCallCount(): number {
   return calls;
+}
+
+/** JSON body of the most recent gateway request (model, max_tokens, output_config, ...). */
+export function lastGatewayRequestBody<T = Record<string, unknown>>(): T | null {
+  return lastGatewayBody as T | null;
 }
 
 /** Route every outbound request to `origin` through `handler` (for the rest of the file). */
