@@ -1,230 +1,196 @@
 import Foundation
-import UIKit
 import DeviceCheck
+import os
+
+private let log = Logger(subsystem: "au.com.aethers.reefbuddy", category: "APIClient")
+
+// MARK: - Date handling
+
+/// The Worker emits ISO 8601 with milliseconds (`toISOString()`), D1 defaults emit `YYYY-MM-DD HH:MM:SS`,
+/// and older rows may carry plain ISO without fractions. Foundation's `.iso8601` strategy only accepts
+/// the last of these, which is why every server response used to fail to decode (I-01).
+enum APIDates {
+    static let isoFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+    private static let sqlite: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+    private static let dateOnly: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    static func parse(_ value: String) -> Date? {
+        isoFractional.date(from: value) ?? iso.date(from: value) ?? sqlite.date(from: value) ?? dateOnly.date(from: value)
+    }
+
+    static let decodingStrategy: JSONDecoder.DateDecodingStrategy = .custom { decoder in
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        guard let date = parse(raw) else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unrecognised date: \(raw)")
+        }
+        return date
+    }
+
+    /// Decoder for snake_case server payloads (tanks, measurements, water changes, livestock records).
+    static func snakeCaseDecoder() -> JSONDecoder {
+        let d = JSONDecoder()
+        d.keyDecodingStrategy = .convertFromSnakeCase
+        d.dateDecodingStrategy = decodingStrategy
+        return d
+    }
+
+    /// Decoder for camelCase server payloads (schedules, analyze, credits).
+    static func camelCaseDecoder() -> JSONDecoder {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = decodingStrategy
+        return d
+    }
+}
 
 // MARK: - API Client
 
-/// Network client for communicating with the ReefBuddy Cloudflare Workers backend.
-/// Handles all API requests for tanks, measurements, and AI analysis.
+/// Network client for the ReefBuddy Cloudflare Worker.
+/// Every call goes through `send`, so network failures, HTTP errors (with the Worker's `code`) and
+/// decoding failures surface as typed `APIError`s and are logged, instead of silently falling back.
 actor APIClient {
 
     // MARK: - Configuration
 
-    /// Production API URL (Cloudflare Worker)
-    static let productionURL = "https://reefbuddy.fredylg.workers.dev"
-    
-    /// Local development API URL (for wrangler dev)
+    /// Production API URL (custom domain; the workers.dev host is being retired, C-03)
+    static let productionURL = "https://api.reefbuddy.aethers.com.au"
+
+    /// Local development API URL (for `npm run dev`)
     private static let localDevURL = "http://localhost:8787"
-    
-    /// Check if the app is configured to use production URL
-    /// Returns true if production, false if localhost or other environment
+
+    /// True when the client targets production (release builds, or DEBUG with API_BASE_URL set to it).
     static func isUsingProduction() -> Bool {
         #if DEBUG
-        // In DEBUG builds, check environment variable or default to localhost
-        if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
-           let url = URL(string: envURL) {
-            // Check if the environment URL matches production
+        if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"], let url = URL(string: envURL) {
             return url.absoluteString == productionURL
-        } else {
-            // Default to localhost in DEBUG
-            return false
         }
+        return false
         #else
-        // In RELEASE builds, always production
         return true
         #endif
     }
 
-    /// Base URL for the API (Cloudflare Worker)
     private let baseURL: URL
-
-    /// URL session for network requests
     private let session: URLSession
+    private let deviceId: String
 
-    /// JSON encoder with snake_case conversion
-    private let encoder: JSONEncoder
-
-    /// JSON decoder with snake_case conversion
-    private let decoder: JSONDecoder
+    /// snake_case body encoder for tank/measurement endpoints
+    private let snakeEncoder: JSONEncoder
+    /// camelCase body encoder for schedules, water changes, livestock, credits and analyze
+    private let camelEncoder: JSONEncoder
+    private let snakeDecoder = APIDates.snakeCaseDecoder()
+    private let camelDecoder = APIDates.camelCaseDecoder()
 
     // MARK: - Initialization
 
-    init(baseURL: URL? = nil) {
-        // Priority: 1) Passed URL, 2) Environment variable (only in DEBUG), 3) Debug build uses localhost, 4) Production URL
-        if let baseURL = baseURL {
+    init(baseURL: URL? = nil, deviceId: String = DeviceIdentity.deviceId) {
+        if let baseURL {
             self.baseURL = baseURL
         } else {
             #if DEBUG
-            // In DEBUG builds, allow environment variable override or use localhost
-            if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"],
-               let url = URL(string: envURL) {
+            if let envURL = ProcessInfo.processInfo.environment["API_BASE_URL"], let url = URL(string: envURL) {
                 self.baseURL = url
             } else {
                 self.baseURL = URL(string: Self.localDevURL)!
             }
             #else
-            // In RELEASE builds (Archive/TestFlight), ALWAYS use production URL
-            // Ignore environment variables to prevent accidental localhost in production
             self.baseURL = URL(string: Self.productionURL)!
             #endif
         }
+        self.deviceId = deviceId
 
-        // Configure URL session
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 60
         self.session = URLSession(configuration: config)
 
-        // Configure JSON coding
-        self.encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        encoder.dateEncodingStrategy = .iso8601
+        snakeEncoder = JSONEncoder()
+        snakeEncoder.keyEncodingStrategy = .convertToSnakeCase
+        snakeEncoder.dateEncodingStrategy = .iso8601
 
-        self.decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .iso8601
+        camelEncoder = JSONEncoder()
+        camelEncoder.dateEncodingStrategy = .iso8601
     }
 
     // MARK: - Tank Endpoints
 
-    /// Fetch all tanks for the current user
     func getTanks() async throws -> [Tank] {
-        let url = baseURL.appendingPathComponent("api/tanks")
-        let request = makeRequest(url: url, method: "GET")
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<[Tank]>.self, from: data)
-        return apiResponse.data
+        try await send(request("api/tanks"), as: APIResponse<[Tank]>.self, decoder: snakeDecoder).data
     }
 
-    /// Get a specific tank by ID
     func getTank(id: UUID) async throws -> Tank {
-        let url = baseURL.appendingPathComponent("api/tanks/\(id.uuidString)")
-        let request = makeRequest(url: url, method: "GET")
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<Tank>.self, from: data)
-        return apiResponse.data
+        try await send(request("api/tanks/\(path(id))"), as: APIResponse<Tank>.self, decoder: snakeDecoder).data
     }
 
-    /// Create a new tank
     func createTank(_ tank: Tank) async throws -> Tank {
-        let url = baseURL.appendingPathComponent("api/tanks")
-        var request = makeRequest(url: url, method: "POST")
-        request.httpBody = try encoder.encode(tank)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<Tank>.self, from: data)
-        return apiResponse.data
+        var req = request("api/tanks", method: "POST")
+        req.httpBody = try snakeEncoder.encode(tank)
+        return try await send(req, as: APIResponse<Tank>.self, decoder: snakeDecoder).data
     }
 
-    /// Update an existing tank
     func updateTank(_ tank: Tank) async throws -> Tank {
-        let url = baseURL.appendingPathComponent("api/tanks/\(tank.id.uuidString)")
-        var request = makeRequest(url: url, method: "PUT")
-        request.httpBody = try encoder.encode(tank)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<Tank>.self, from: data)
-        return apiResponse.data
+        var req = request("api/tanks/\(path(tank.id))", method: "PUT")
+        req.httpBody = try snakeEncoder.encode(tank)
+        return try await send(req, as: APIResponse<Tank>.self, decoder: snakeDecoder).data
     }
 
-    /// Delete a tank
     func deleteTank(_ id: UUID) async throws {
-        let url = baseURL.appendingPathComponent("api/tanks/\(id.uuidString)")
-        let request = makeRequest(url: url, method: "DELETE")
-
-        let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try await sendIgnoringBody(request("api/tanks/\(path(id))", method: "DELETE"))
     }
 
     // MARK: - Maintenance Schedules (config sync only)
 
     func createMaintenanceSchedule(_ schedule: MaintenanceSchedule) async throws -> MaintenanceSchedule {
-        let url = baseURL.appendingPathComponent("maintenance/schedules")
-        var request = makeRequest(url: url, method: "POST")
-
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-
-        let body = MaintenanceScheduleUpsertRequest(schedule: schedule, includeId: true)
-        request.httpBody = try encoder.encode(body)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let wrapper = try decoder.decode(MaintenanceScheduleUpsertResponse.self, from: data)
-        return wrapper.schedule
+        var req = request("maintenance/schedules", method: "POST")
+        req.httpBody = try camelEncoder.encode(MaintenanceScheduleUpsertRequest(schedule: schedule, includeId: true))
+        return try await send(req, as: MaintenanceScheduleUpsertResponse.self, decoder: camelDecoder).schedule
     }
 
     func updateMaintenanceSchedule(_ schedule: MaintenanceSchedule) async throws -> MaintenanceSchedule {
-        let url = baseURL.appendingPathComponent("maintenance/schedules/\(schedule.id.uuidString)")
-        var request = makeRequest(url: url, method: "PUT")
-
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-
-        let body = MaintenanceScheduleUpsertRequest(schedule: schedule, includeId: false)
-        request.httpBody = try encoder.encode(body)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let wrapper = try decoder.decode(MaintenanceScheduleUpsertResponse.self, from: data)
-        return wrapper.schedule
+        var req = request("maintenance/schedules/\(path(schedule.id))", method: "PUT")
+        req.httpBody = try camelEncoder.encode(MaintenanceScheduleUpsertRequest(schedule: schedule, includeId: false))
+        return try await send(req, as: MaintenanceScheduleUpsertResponse.self, decoder: camelDecoder).schedule
     }
 
     func deleteMaintenanceSchedule(id: UUID) async throws {
-        let url = baseURL.appendingPathComponent("maintenance/schedules/\(id.uuidString)")
-        let request = makeRequest(url: url, method: "DELETE")
-
-        let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try await sendIgnoringBody(request("maintenance/schedules/\(path(id))", method: "DELETE"))
     }
 
     // MARK: - Water Changes
 
     func createWaterChange(_ waterChange: WaterChange) async throws -> WaterChange {
-        let url = baseURL.appendingPathComponent("api/tanks/\(waterChange.tankId.uuidString)/water-changes")
-        var request = makeRequest(url: url, method: "POST")
-
-        let body = WaterChangeCreateRequest(from: waterChange)
-        let waterChangeEncoder = JSONEncoder()
-        waterChangeEncoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try waterChangeEncoder.encode(body)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<WaterChange>.self, from: data)
-        var created = apiResponse.data
+        var req = request("api/tanks/\(path(waterChange.tankId))/water-changes", method: "POST")
+        req.httpBody = try camelEncoder.encode(WaterChangeCreateRequest(from: waterChange))
+        var created = try await send(req, as: APIResponse<WaterChange>.self, decoder: camelDecoder).data
         created.needsSync = false
         created.isDeleted = false
         return created
     }
 
     func getWaterChanges(for tankId: UUID, limit: Int = 50) async throws -> [WaterChange] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("api/tanks/\(tankId.uuidString)/water-changes"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [URLQueryItem(name: "limit", value: String(limit))]
-
-        let request = makeRequest(url: components.url!, method: "GET")
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<[WaterChange]>.self, from: data)
-        return apiResponse.data.map { item in
+        let req = request("api/tanks/\(path(tankId))/water-changes", query: [URLQueryItem(name: "limit", value: String(limit))])
+        return try await send(req, as: APIResponse<[WaterChange]>.self, decoder: camelDecoder).data.map { item in
             var synced = item
             synced.needsSync = false
             synced.isDeleted = false
@@ -233,63 +199,35 @@ actor APIClient {
     }
 
     func deleteWaterChange(id: UUID) async throws {
-        let url = baseURL.appendingPathComponent("api/water-changes/\(id.uuidString)")
-        let request = makeRequest(url: url, method: "DELETE")
-
-        let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try await sendIgnoringBody(request("api/water-changes/\(path(id))", method: "DELETE"))
     }
 
     // MARK: - Measurement Endpoints
 
-    /// Fetch all measurements for a tank
-    func getMeasurements(for tankId: UUID, limit: Int = 50) async throws -> [Measurement] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("api/measurements"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "tank_id", value: tankId.uuidString),
-            URLQueryItem(name: "limit", value: String(limit))
-        ]
-
-        let request = makeRequest(url: components.url!, method: "GET")
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<[Measurement]>.self, from: data)
-        return apiResponse.data
+    /// Measurements for a tank, newest first. Backed by `GET /tanks/:id/history` (the only server-side
+    /// read of measurements); the default window is the last two years.
+    func getMeasurements(for tankId: UUID, since: Date = Date().addingTimeInterval(-2 * 365 * 24 * 3600)) async throws -> [Measurement] {
+        let req = request("tanks/\(path(tankId))/history", query: [
+            URLQueryItem(name: "start", value: APIDates.iso.string(from: since)),
+            URLQueryItem(name: "end", value: APIDates.iso.string(from: Date().addingTimeInterval(60))),
+        ])
+        return try await send(req, as: HistoryResponse.self, decoder: snakeDecoder).measurements
     }
 
-    /// Create a new measurement
     func createMeasurement(_ measurement: Measurement) async throws -> Measurement {
-        let url = baseURL.appendingPathComponent("api/measurements")
-        var request = makeRequest(url: url, method: "POST")
-
-        let requestBody = CreateMeasurementRequest(from: measurement)
-        request.httpBody = try encoder.encode(requestBody)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(APIResponse<Measurement>.self, from: data)
-        return apiResponse.data
+        var req = request("api/measurements", method: "POST")
+        req.httpBody = try snakeEncoder.encode(CreateMeasurementRequest(from: measurement))
+        return try await send(req, as: APIResponse<Measurement>.self, decoder: snakeDecoder).data
     }
 
     // MARK: - AI Analysis Endpoint
 
-    /// Request AI analysis of water parameters
-    /// This endpoint routes through Cloudflare AI Gateway to Claude
-    /// Requires device credits (3 free, then paid)
-    /// Includes DeviceCheck token for device attestation
+    /// Request AI analysis of water parameters. Uses device credits (3 free, then paid) and a
+    /// DeviceCheck token for device attestation.
     func analyzeParameters(_ measurement: Measurement, tankVolume: Double, deviceId: String, temperatureUnit: String = "F") async throws -> AnalysisResult {
-        let url = baseURL.appendingPathComponent("analyze")
-        var request = makeRequest(url: url, method: "POST")
-
-        // Generate DeviceCheck token for device attestation
-        let deviceToken = await generateDeviceToken()        // Use a plain JSON encoder for this endpoint (Worker expects camelCase, not snake_case)
-        let analysisEncoder = JSONEncoder()
-        analysisEncoder.dateEncodingStrategy = .iso8601
-
-        let requestBody = AnalysisRequest(
+        var req = request("analyze", method: "POST")
+        let deviceToken = await generateDeviceToken()
+        let body = AnalysisRequest(
             measurement: measurement,
             tankVolume: tankVolume,
             deviceId: deviceId,
@@ -297,100 +235,39 @@ actor APIClient {
             isDevelopment: isDebugBuild(),
             temperatureUnit: temperatureUnit
         )
-        
-        // Debug logging: Log the measurement notes before encoding
-        print("📝 Measurement notes: \(measurement.notes ?? "nil")")
-        print("📝 Request body parameters.notes: \(requestBody.parameters.notes ?? "nil")")
-        
-        request.httpBody = try analysisEncoder.encode(requestBody)
-        
-        // Debug logging: Log the encoded JSON
-        if let jsonData = request.httpBody,
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            print("📤 Sending to Cloudflare: \(jsonString)")
+        req.httpBody = try camelEncoder.encode(body)
+
+        let apiResponse = try await send(req, as: AnalyzeAPIResponse.self, decoder: camelDecoder)
+        guard let analysis = apiResponse.analysis else { throw APIError.invalidResponse }
+
+        var creditBalance: CreditBalance?
+        if let freeRemaining = apiResponse.freeRemaining, let paidCredits = apiResponse.paidCredits, let creditsRemaining = apiResponse.creditsRemaining {
+            // totalAnalyses is not part of this response; -1 tells StoreManager to keep its current value.
+            creditBalance = CreditBalance(freeRemaining: freeRemaining, paidCredits: paidCredits, totalCredits: creditsRemaining, totalAnalyses: -1)
         }
-
-        let (data, response) = try await session.data(for: request)
-
-        // Surface Worker validation / bad requests (e.g. parameter range) instead of a generic 400 string
-        if let http = response as? HTTPURLResponse, http.statusCode == 400 {
-            struct AnalyzeErrorPayload: Codable {
-                let error: String?
-                let message: String?
-            }
-            if let parsed = try? JSONDecoder().decode(AnalyzeErrorPayload.self, from: data) {
-                let detail = [parsed.message, parsed.error]
-                    .compactMap { $0 }
-                    .filter { !$0.isEmpty }
-                    .joined(separator: " — ")
-                if !detail.isEmpty {
-                    throw APIError.badRequestDetail(detail)
-                }
-            }
-            throw APIError.badRequest
-        }
-
-        try validateResponse(response)
-
-        // Parse the Worker's response format (also uses camelCase)
-        let analysisDecoder = JSONDecoder()
-        analysisDecoder.dateDecodingStrategy = .iso8601
-        let apiResponse = try analysisDecoder.decode(AnalyzeAPIResponse.self, from: data)
-
-        // Debug log the response
-        print("🔍 API Response - success: \(apiResponse.success), creditsRemaining: \(apiResponse.creditsRemaining ?? -1), freeRemaining: \(apiResponse.freeRemaining ?? -1), paidCredits: \(apiResponse.paidCredits ?? -1)")
-
-        if let analysis = apiResponse.analysis {
-            // Create credit balance if available
-            let creditBalance: CreditBalance?
-            if let freeRemaining = apiResponse.freeRemaining,
-               let paidCredits = apiResponse.paidCredits,
-               let creditsRemaining = apiResponse.creditsRemaining {
-                // Note: totalAnalyses is not provided in analysis response, so we use a placeholder
-                // The StoreManager will merge this with existing data if needed
-                creditBalance = CreditBalance(
-                    freeRemaining: freeRemaining,
-                    paidCredits: paidCredits,
-                    totalCredits: creditsRemaining,
-                    totalAnalyses: -1 // Use -1 to indicate this field should be preserved from existing balance
-                )
-            } else {
-                creditBalance = nil
-            }
-
-            return AnalysisResult(
-                analysis: analysis.toAnalysisResponse(),
-                creditBalance: creditBalance
-            )
-        } else {
-            throw APIError.invalidResponse
-        }
+        return AnalysisResult(analysis: analysis.toAnalysisResponse(), creditBalance: creditBalance, truncated: apiResponse.truncated ?? false)
     }
 
     // MARK: - DeviceCheck
 
-    /// Generate a DeviceCheck token for device attestation
-    /// Returns nil if DeviceCheck is not supported on this device
+    /// DeviceCheck token for device attestation; nil where unsupported (simulator).
     private func generateDeviceToken() async -> String? {
         guard DCDevice.current.isSupported else {
-            print("DeviceCheck not supported on this device")
+            log.notice("DeviceCheck not supported on this device")
             return nil
         }
-
         return await withCheckedContinuation { continuation in
-            DCDevice.current.generateToken { data, error in                if let error = error {
-                    print("DeviceCheck token generation failed: \(error.localizedDescription)")
+            DCDevice.current.generateToken { data, error in
+                if let error {
+                    log.error("DeviceCheck token generation failed: \(error.localizedDescription, privacy: .public)")
                     continuation.resume(returning: nil)
-                } else if let data = data {
-                    continuation.resume(returning: data.base64EncodedString())
                 } else {
-                    continuation.resume(returning: nil)
+                    continuation.resume(returning: data?.base64EncodedString())
                 }
             }
         }
     }
 
-    /// Check if this is a debug/development build
     private func isDebugBuild() -> Bool {
         #if DEBUG
         return true
@@ -401,375 +278,160 @@ actor APIClient {
 
     // MARK: - Livestock Endpoints
 
-    /// Create new livestock for a tank
     func createLivestock(_ livestock: Livestock, for tankId: UUID) async throws -> Livestock {
-        let url = baseURL.appendingPathComponent("api/tanks/\(tankId.uuidString)/livestock")
-        var request = makeRequest(url: url, method: "POST")
-        
-        // Use camelCase for livestock creation (backend expects camelCase, not snake_case)
-        let livestockEncoder = JSONEncoder()
-        livestockEncoder.dateEncodingStrategy = .iso8601
-        // Note: No keyEncodingStrategy set, so it uses camelCase by default
-        
-        let requestBody = CreateLivestockRequest(from: livestock)
-        request.httpBody = try livestockEncoder.encode(requestBody)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        // Parse response - backend returns {success: true, livestock: {...}} with snake_case keys
-        let responseWrapper = try decoder.decode(LivestockCreateResponse.self, from: data)
-        return convertDBRecordToLivestock(responseWrapper.livestock, tankId: tankId)
+        var req = request("api/tanks/\(path(tankId))/livestock", method: "POST")
+        req.httpBody = try camelEncoder.encode(CreateLivestockRequest(from: livestock))
+        let record = try await send(req, as: LivestockEnvelope.self, decoder: snakeDecoder).livestock
+        return record.toLivestock(fallbackTankId: tankId, photoData: livestock.photoData)
     }
 
-    /// Get all livestock for a tank
     func getLivestock(for tankId: UUID) async throws -> [Livestock] {
-        let url = baseURL.appendingPathComponent("api/tanks/\(tankId.uuidString)/livestock")
-        let request = makeRequest(url: url, method: "GET")
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let apiResponse = try decoder.decode(LivestockListResponse.self, from: data)
-        return apiResponse.livestock.map { convertDBRecordToLivestock($0, tankId: tankId) }
+        let list = try await send(request("api/tanks/\(path(tankId))/livestock"), as: LivestockListEnvelope.self, decoder: snakeDecoder)
+        return list.livestock.map { $0.toLivestock(fallbackTankId: tankId, photoData: nil) }
     }
 
-    /// Update existing livestock
     func updateLivestock(_ livestock: Livestock) async throws -> Livestock {
-        let url = baseURL.appendingPathComponent("api/livestock/\(livestock.id.uuidString)")
-        var request = makeRequest(url: url, method: "PUT")
-        
-        // Use camelCase for livestock update
-        let livestockEncoder = JSONEncoder()
-        livestockEncoder.dateEncodingStrategy = .iso8601
-        
-        let requestBody = UpdateLivestockRequest(from: livestock)
-        request.httpBody = try livestockEncoder.encode(requestBody)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        let responseWrapper = try decoder.decode(LivestockUpdateResponse.self, from: data)
-        return convertDBRecordToLivestock(responseWrapper.livestock, tankId: livestock.tankId)
+        var req = request("api/livestock/\(path(livestock.id))", method: "PUT")
+        req.httpBody = try camelEncoder.encode(UpdateLivestockRequest(from: livestock))
+        let record = try await send(req, as: LivestockEnvelope.self, decoder: snakeDecoder).livestock
+        return record.toLivestock(fallbackTankId: livestock.tankId, photoData: livestock.photoData)
     }
-    
-    /// Create a livestock log entry
-    func createLivestockLog(_ log: LivestockLog) async throws -> LivestockLog {
-        let url = baseURL.appendingPathComponent("api/livestock/\(log.livestockId.uuidString)/logs")
-        var request = makeRequest(url: url, method: "POST")
-        
-        // Map iOS healthStatus to backend logType
+
+    func deleteLivestock(_ id: UUID) async throws {
+        try await sendIgnoringBody(request("api/livestock/\(path(id))", method: "DELETE"))
+    }
+
+    func createLivestockLog(_ logEntry: LivestockLog) async throws -> LivestockLog {
+        var req = request("api/livestock/\(path(logEntry.livestockId))/logs", method: "POST")
+
+        // The server records event types; the app records health states. Map one to the other.
         let logType: String
-        switch log.healthStatus {
-        case .deceased:
-            logType = "death"
-        case .critical, .declining:
-            logType = "treatment"
-        case .thriving, .healthy, .stressed:
-            logType = "observation"
+        switch logEntry.healthStatus {
+        case .deceased: logType = "death"
+        case .critical, .declining: logType = "treatment"
+        case .thriving, .healthy, .stressed: logType = "observation"
         }
-        
-        // Convert Date to ISO 8601 string
-        let formatter = ISO8601DateFormatter()
-        let loggedAtString = formatter.string(from: log.loggedAt)
-        
-        // Create request body
-        struct LivestockLogRequest: Codable {
+        struct LivestockLogRequest: Encodable {
             let logType: String
             let description: String?
-            let loggedAt: String
+            let loggedAt: Date
         }
-        
-        let requestBody = LivestockLogRequest(
-            logType: logType,
-            description: log.notes,
-            loggedAt: loggedAtString
-        )
-        
-        let logEncoder = JSONEncoder()
-        logEncoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try logEncoder.encode(requestBody)
+        req.httpBody = try camelEncoder.encode(LivestockLogRequest(logType: logType, description: logEntry.notes, loggedAt: logEntry.loggedAt))
 
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        // Parse response - backend returns {success: true, log: {...}} with snake_case keys
-        struct LivestockLogResponse: Codable {
-            let success: Bool
+        struct LivestockLogResponse: Decodable {
             let log: LogRecord
-            
-            struct LogRecord: Codable {
+            struct LogRecord: Decodable {
                 let id: String
                 let livestockId: String
                 let logType: String
                 let description: String?
-                let loggedAt: String
-                let createdAt: String
+                let loggedAt: Date
             }
         }
-        
-        let logDecoder = JSONDecoder()
-        logDecoder.keyDecodingStrategy = .convertFromSnakeCase
-        logDecoder.dateDecodingStrategy = .iso8601
-        let responseWrapper = try logDecoder.decode(LivestockLogResponse.self, from: data)
-        let logRecord = responseWrapper.log
-        
-        // Convert back to iOS LivestockLog model
-        guard let logId = UUID(uuidString: logRecord.id),
-              let livestockId = UUID(uuidString: logRecord.livestockId),
-              let loggedAt = formatter.date(from: logRecord.loggedAt) else {
-            throw APIError.decodingError(NSError(domain: "LivestockLog", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse log response"]))
+        let record = try await send(req, as: LivestockLogResponse.self, decoder: snakeDecoder).log
+        guard let logId = UUID(uuidString: record.id), let livestockId = UUID(uuidString: record.livestockId) else {
+            throw APIError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Log record ids are not UUIDs")))
         }
-        
-        // Map backend logType back to healthStatus (approximate)
-        let healthStatus: HealthStatus
-        switch logRecord.logType {
-        case "death":
-            healthStatus = .deceased
-        case "treatment":
-            healthStatus = log.healthStatus // Keep original if treatment
-        default:
-            healthStatus = log.healthStatus // Keep original for observation/feeding
-        }
-        
         return LivestockLog(
             id: logId,
             livestockId: livestockId,
-            loggedAt: loggedAt,
-            healthStatus: healthStatus,
-            notes: logRecord.description
+            loggedAt: record.loggedAt,
+            healthStatus: record.logType == "death" ? .deceased : logEntry.healthStatus,
+            notes: record.description
         )
-    }
-    
-    /// Convert backend DB record to iOS Livestock model
-    private func convertDBRecordToLivestock(_ record: LivestockCreateResponse.LivestockDBRecord, tankId: UUID) -> Livestock {
-        return convertDBRecordToLivestockGeneric(
-            id: record.id,
-            tankId: record.tankId,
-            name: record.name,
-            species: record.species,
-            category: record.category,
-            quantity: record.quantity,
-            purchaseDate: record.purchaseDate,
-            purchasePrice: record.purchasePrice,
-            healthStatus: record.healthStatus,
-            notes: record.notes,
-            addedAt: record.addedAt,
-            createdAt: record.createdAt,
-            fallbackTankId: tankId
-        )
-    }
-    
-    /// Convert backend DB record to iOS Livestock model (for list responses)
-    private func convertDBRecordToLivestock(_ record: LivestockListResponse.LivestockDBRecord, tankId: UUID) -> Livestock {
-        return convertDBRecordToLivestockGeneric(
-            id: record.id,
-            tankId: record.tankId,
-            name: record.name,
-            species: record.species,
-            category: record.category,
-            quantity: record.quantity,
-            purchaseDate: record.purchaseDate,
-            purchasePrice: record.purchasePrice,
-            healthStatus: record.healthStatus,
-            notes: record.notes,
-            addedAt: record.addedAt,
-            createdAt: record.createdAt,
-            fallbackTankId: tankId
-        )
-    }
-    
-    /// Convert backend DB record to iOS Livestock model (for update response)
-    private func convertDBRecordToLivestock(_ record: LivestockUpdateResponse.LivestockDBRecord, tankId: UUID) -> Livestock {
-        return convertDBRecordToLivestockGeneric(
-            id: record.id,
-            tankId: record.tankId,
-            name: record.name,
-            species: record.species,
-            category: record.category,
-            quantity: record.quantity,
-            purchaseDate: record.purchaseDate,
-            purchasePrice: record.purchasePrice,
-            healthStatus: record.healthStatus,
-            notes: record.notes,
-            addedAt: record.addedAt,
-            createdAt: record.createdAt,
-            fallbackTankId: tankId
-        )
-    }
-    
-    /// Generic conversion function for all DB record types
-    private func convertDBRecordToLivestockGeneric(
-        id: String,
-        tankId: String,
-        name: String,
-        species: String?,
-        category: String?,
-        quantity: Int,
-        purchaseDate: String?,
-        purchasePrice: Double?,
-        healthStatus: String?,
-        notes: String?,
-        addedAt: String,
-        createdAt: String,
-        fallbackTankId: UUID
-    ) -> Livestock {
-        let formatter = ISO8601DateFormatter()
-        let purchaseDateValue = purchaseDate.flatMap { formatter.date(from: $0) } ?? Date()
-        let createdAtValue = formatter.date(from: createdAt) ?? Date()
-        
-        // Convert backend category (SPS, LPS, Soft, Fish, Invertebrate) to iOS enum
-        let categoryValue: LivestockCategory
-        switch category?.uppercased() {
-        case "SPS":
-            categoryValue = .sps
-        case "LPS":
-            categoryValue = .lps
-        case "SOFT":
-            categoryValue = .softCoral
-        case "FISH":
-            categoryValue = .fish
-        case "INVERTEBRATE":
-            categoryValue = .invertebrate
-        default:
-            categoryValue = .other
-        }
-        
-        // Convert backend health status to iOS enum
-        // Backend: healthy, sick, deceased, quarantine
-        // iOS: thriving, healthy, stressed, declining, critical, deceased
-        let healthStatusValue: HealthStatus
-        switch healthStatus?.lowercased() {
-        case "healthy":
-            healthStatusValue = .healthy
-        case "sick":
-            healthStatusValue = .stressed  // Map "sick" to "stressed" (closest match)
-        case "deceased":
-            healthStatusValue = .deceased
-        case "quarantine":
-            healthStatusValue = .stressed  // Map "quarantine" to "stressed" (closest match)
-        default:
-            healthStatusValue = .healthy
-        }
-        
-        return Livestock(
-            id: UUID(uuidString: id) ?? UUID(),
-            tankId: UUID(uuidString: tankId) ?? fallbackTankId,
-            name: name,
-            scientificName: species,
-            category: categoryValue,
-            healthStatus: healthStatusValue,
-            quantity: quantity,
-            purchaseDate: purchaseDateValue,
-            purchasePrice: purchasePrice,
-            photoData: nil,
-            notes: notes,
-            createdAt: createdAtValue,
-            updatedAt: createdAtValue
-        )
-    }
-
-    /// Delete livestock
-    func deleteLivestock(_ id: UUID) async throws {
-        let url = baseURL.appendingPathComponent("api/livestock/\(id.uuidString)")
-        let request = makeRequest(url: url, method: "DELETE")
-
-        let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
     }
 
     // MARK: - Credits Endpoints
 
-    /// Get the device's credit balance
     func getCreditsBalance(deviceId: String) async throws -> CreditsBalanceResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("credits/balance"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "deviceId", value: deviceId)
-        ]
-
-        let request = makeRequest(url: components.url!, method: "GET")
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        return try decoder.decode(CreditsBalanceResponse.self, from: data)
+        try await send(request("credits/balance", query: [URLQueryItem(name: "deviceId", value: deviceId)]), as: CreditsBalanceResponse.self, decoder: camelDecoder)
     }
 
-    /// Purchase credits using StoreKit 2 JWS transaction
-    func purchaseCredits(
-        deviceId: String,
-        jwsRepresentation: String,
-        transactionId: String,
-        originalTransactionId: String,
-        productId: String
-    ) async throws -> CreditsPurchaseResponse {
-        let url = baseURL.appendingPathComponent("credits/purchase")
-        var request = makeRequest(url: url, method: "POST")
-
-        // Use camelCase for credits purchase (backend expects camelCase, not snake_case)
-        let creditsEncoder = JSONEncoder()
-        creditsEncoder.dateEncodingStrategy = .iso8601
-        // Note: No keyEncodingStrategy set, so it uses camelCase by default
-
-        let requestBody = CreditsPurchaseRequest(
+    /// Validate a StoreKit 2 signed transaction and add its credits.
+    func purchaseCredits(deviceId: String, jwsRepresentation: String, transactionId: String, originalTransactionId: String, productId: String) async throws -> CreditsPurchaseResponse {
+        var req = request("credits/purchase", method: "POST")
+        req.httpBody = try camelEncoder.encode(CreditsPurchaseRequest(
             deviceId: deviceId,
             jwsRepresentation: jwsRepresentation,
             transactionId: transactionId,
             originalTransactionId: originalTransactionId,
             productId: productId
-        )
-        request.httpBody = try creditsEncoder.encode(requestBody)
-
-        let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
-
-        return try decoder.decode(CreditsPurchaseResponse.self, from: data)
+        ))
+        return try await send(req, as: CreditsPurchaseResponse.self, decoder: camelDecoder)
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Request plumbing
 
-    private func makeRequest(url: URL, method: String) -> URLRequest {
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+    /// UUIDs go into paths lowercased; the server stores and matches lowercase (P4-04).
+    private func path(_ id: UUID) -> String { id.uuidString.lowercased() }
 
-        // Add device identifier for tracking (anonymous)
-        if let deviceId = UIDevice.current.identifierForVendor?.uuidString {
-            request.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
+    private func request(_ path: String, method: String = "GET", query: [URLQueryItem]? = nil) -> URLRequest {
+        var url = baseURL.appendingPathComponent(path)
+        if let query {
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+            components.queryItems = query
+            url = components.url!
         }
-
-        return request
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue(deviceId, forHTTPHeaderField: "X-Device-ID")
+        return req
     }
 
-    private func validateResponse(_ response: URLResponse) throws {
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
+    /// Perform, validate and decode. Network and decoding failures are logged and typed (I-10).
+    private func send<T: Decodable>(_ req: URLRequest, as type: T.Type, decoder: JSONDecoder) async throws -> T {
+        let (data, response) = try await perform(req)
+        try validate(response, data: data, for: req)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch let error as DecodingError {
+            log.error("Decoding \(String(describing: T.self), privacy: .public) failed for \(req.httpMethod ?? "", privacy: .public) \(req.url?.path ?? "", privacy: .public): \(String(describing: error), privacy: .public)")
+            throw APIError.decodingError(error)
         }
+    }
 
-        switch httpResponse.statusCode {
-        case 200...299:
-            return
-        case 400:
-            throw APIError.badRequest
-        case 401:
-            throw APIError.unauthorized
-        case 402:
-            throw APIError.noCredits
-        case 403:
-            // Check for specific error code in response body
-            // For now, default to deviceCheckRequired for 403s from analysis endpoints
-            throw APIError.deviceCheckRequired
-        case 404:
-            throw APIError.notFound
-        case 429:
-            throw APIError.rateLimited
-        case 503:
-            throw APIError.serviceUnavailable
-        case 500...599:
-            throw APIError.serverError(httpResponse.statusCode)
-        default:
-            throw APIError.unknown(httpResponse.statusCode)
+    private func sendIgnoringBody(_ req: URLRequest) async throws {
+        let (data, response) = try await perform(req)
+        try validate(response, data: data, for: req)
+    }
+
+    private func perform(_ req: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: req)
+        } catch let error as URLError {
+            log.error("Network error for \(req.url?.path ?? "", privacy: .public): \(error.localizedDescription, privacy: .public)")
+            throw APIError.networkError(error)
+        }
+    }
+
+    private struct ErrorBody: Decodable {
+        let error: String?
+        let message: String?
+        let code: String?
+    }
+
+    private func validate(_ response: URLResponse, data: Data, for req: URLRequest) throws {
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if (200...299).contains(http.statusCode) { return }
+
+        let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
+        let detail = [body?.message, body?.error].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " — ")
+        log.notice("HTTP \(http.statusCode) for \(req.httpMethod ?? "", privacy: .public) \(req.url?.path ?? "", privacy: .public) code=\(body?.code ?? "-", privacy: .public)")
+
+        switch http.statusCode {
+        case 400: throw detail.isEmpty ? APIError.badRequest : APIError.badRequestDetail(detail)
+        case 401: throw APIError.unauthorized
+        case 402: throw APIError.noCredits
+        case 403: throw (body?.code ?? "").hasPrefix("DEVICE_CHECK") ? APIError.deviceCheckRequired : APIError.forbidden(detail)
+        case 404: throw APIError.notFound
+        case 409: throw APIError.conflict(detail)
+        case 422: throw APIError.analysisRefused(detail)
+        case 429: throw APIError.rateLimited
+        case 502, 503: throw APIError.serviceUnavailable
+        case 500...599: throw APIError.serverError(http.statusCode)
+        default: throw APIError.unknown(http.statusCode)
         }
     }
 }
@@ -783,9 +445,14 @@ struct APIResponse<T: Decodable>: Decodable {
     let message: String?
 }
 
+/// `GET /tanks/:id/history`
+private struct HistoryResponse: Decodable {
+    let measurements: [Measurement]
+}
+
 // MARK: - Maintenance Schedule API Models
 
-private struct MaintenanceScheduleUpsertRequest: Codable {
+private struct MaintenanceScheduleUpsertRequest: Encodable {
     var id: String?
     let tankId: String
     let type: String
@@ -798,8 +465,8 @@ private struct MaintenanceScheduleUpsertRequest: Codable {
     let notes: String?
 
     init(schedule: MaintenanceSchedule, includeId: Bool) {
-        self.id = includeId ? schedule.id.uuidString : nil
-        self.tankId = schedule.tankId.uuidString
+        self.id = includeId ? schedule.id.uuidString.lowercased() : nil
+        self.tankId = schedule.tankId.uuidString.lowercased()
         self.type = schedule.type.rawValue
         self.enabled = schedule.enabled
         self.scheduleKind = schedule.scheduleKind.rawValue
@@ -811,12 +478,12 @@ private struct MaintenanceScheduleUpsertRequest: Codable {
     }
 }
 
-private struct MaintenanceScheduleUpsertResponse: Codable {
+private struct MaintenanceScheduleUpsertResponse: Decodable {
     let success: Bool
     let schedule: MaintenanceSchedule
 }
 
-private struct WaterChangeCreateRequest: Codable {
+private struct WaterChangeCreateRequest: Encodable {
     let performedAt: Date
     let percentReplaced: Double?
     let gallonsReplaced: Double?
@@ -828,23 +495,23 @@ private struct WaterChangeCreateRequest: Codable {
         self.percentReplaced = waterChange.percentReplaced
         self.gallonsReplaced = waterChange.gallonsReplaced
         self.notes = waterChange.notes
-        self.sourceScheduleId = waterChange.sourceScheduleId?.uuidString
+        self.sourceScheduleId = waterChange.sourceScheduleId?.uuidString.lowercased()
     }
 }
 
 // MARK: - Credits Models
 
 /// Request body for purchasing credits (StoreKit 2 JWS format)
-struct CreditsPurchaseRequest: Codable {
+struct CreditsPurchaseRequest: Encodable {
     let deviceId: String
-    let jwsRepresentation: String      // StoreKit 2 signed transaction
-    let transactionId: String          // Transaction ID from StoreKit 2
-    let originalTransactionId: String  // Original transaction ID
+    let jwsRepresentation: String
+    let transactionId: String
+    let originalTransactionId: String
     let productId: String
 }
 
 /// Response from credits balance endpoint
-struct CreditsBalanceResponse: Codable {
+struct CreditsBalanceResponse: Decodable {
     let success: Bool
     let deviceId: String
     let freeLimit: Int
@@ -856,12 +523,12 @@ struct CreditsBalanceResponse: Codable {
 }
 
 /// Response from credits purchase endpoint
-struct CreditsPurchaseResponse: Codable {
+struct CreditsPurchaseResponse: Decodable {
     let success: Bool
     let creditsAdded: Int
     let newBalance: NewBalanceInfo
 
-    struct NewBalanceInfo: Codable {
+    struct NewBalanceInfo: Decodable {
         let freeRemaining: Int
         let paidCredits: Int
         let totalCredits: Int
@@ -877,9 +544,7 @@ struct CreditBalance: Codable {
     let totalCredits: Int
     let totalAnalyses: Int
 
-    var hasCredits: Bool {
-        totalCredits > 0
-    }
+    var hasCredits: Bool { totalCredits > 0 }
 }
 
 // MARK: - Analysis Result
@@ -888,6 +553,8 @@ struct CreditBalance: Codable {
 struct AnalysisResult {
     let analysis: AnalysisResponse
     let creditBalance: CreditBalance?
+    /// True when the model's reply was cut off even after a retry with more room.
+    let truncated: Bool
 }
 
 // MARK: - API Errors
@@ -900,9 +567,13 @@ enum APIError: LocalizedError {
     case badRequestDetail(String)
     case unauthorized
     case noCredits
-    case forbidden
+    /// 403 that is not a DeviceCheck failure (e.g. another device's tank)
+    case forbidden(String)
     case deviceCheckRequired
     case notFound
+    case conflict(String)
+    /// 422: the AI declined to analyse the input; the credit was refunded
+    case analysisRefused(String)
     case rateLimited
     case serviceUnavailable
     case serverError(Int)
@@ -912,34 +583,22 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .badRequest:
-            return "Invalid request. Please check your input."
-        case .badRequestDetail(let message):
-            return message
-        case .unauthorized:
-            return "Authentication required"
-        case .noCredits:
-            return "No analysis credits remaining. Purchase more to continue."
-        case .forbidden:
-            return "Access denied"
-        case .deviceCheckRequired:
-            return "Please update to the latest app version to continue."
-        case .notFound:
-            return "Resource not found"
-        case .rateLimited:
-            return "Too many requests. Please wait and try again."
-        case .serviceUnavailable:
-            return "Service temporarily unavailable. Please try again in a moment."
-        case .serverError(let code):
-            return "Server error (\(code)). Please try again later."
-        case .unknown(let code):
-            return "Unexpected error (\(code))"
-        case .decodingError(let error):
-            return "Failed to parse response: \(error.localizedDescription)"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
+        case .invalidResponse: return "Invalid response from server"
+        case .badRequest: return "Invalid request. Please check your input."
+        case .badRequestDetail(let message): return message
+        case .unauthorized: return "Authentication required"
+        case .noCredits: return "No analysis credits remaining. Purchase more to continue."
+        case .forbidden(let message): return message.isEmpty ? "Access denied" : message
+        case .deviceCheckRequired: return "This device could not be verified. Please update to the latest app version and try again."
+        case .notFound: return "Resource not found"
+        case .conflict(let message): return message.isEmpty ? "This item already exists" : message
+        case .analysisRefused(let message): return message.isEmpty ? "The AI declined to analyse this input. Your credit has been refunded." : message
+        case .rateLimited: return "Too many requests. Please wait and try again."
+        case .serviceUnavailable: return "Service temporarily unavailable. Please try again in a moment."
+        case .serverError(let code): return "Server error (\(code)). Please try again later."
+        case .unknown(let code): return "Unexpected error (\(code))"
+        case .decodingError: return "The server sent a response the app could not read. Please update the app."
+        case .networkError(let error): return "Network error: \(error.localizedDescription)"
         }
     }
 }

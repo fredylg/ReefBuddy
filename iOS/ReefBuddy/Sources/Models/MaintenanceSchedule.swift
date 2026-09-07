@@ -89,6 +89,29 @@ struct MaintenanceSchedule: Identifiable, Codable, Equatable {
         self.needsSync = needsSync
         self.isDeleted = isDeleted
     }
+
+    // needsSync / isDeleted are local sync metadata the server never sends (I-02).
+    enum CodingKeys: String, CodingKey {
+        case id, tankId, type, enabled, scheduleKind, intervalDays, weekdays, timeLocal, timezone, notes, createdAt, updatedAt, needsSync, isDeleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        tankId = try c.decode(UUID.self, forKey: .tankId)
+        type = try c.decode(ScheduleType.self, forKey: .type)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        scheduleKind = try c.decode(ScheduleKind.self, forKey: .scheduleKind)
+        intervalDays = try c.decodeIfPresent(Int.self, forKey: .intervalDays)
+        weekdays = try c.decodeIfPresent([Int].self, forKey: .weekdays)
+        timeLocal = try c.decode(String.self, forKey: .timeLocal)
+        timezone = try c.decodeIfPresent(String.self, forKey: .timezone) ?? TimeZone.current.identifier
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        needsSync = try c.decodeIfPresent(Bool.self, forKey: .needsSync) ?? false
+        isDeleted = try c.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
+    }
 }
 
 // MARK: - Water Change
@@ -132,6 +155,25 @@ struct WaterChange: Identifiable, Codable, Equatable {
         self.updatedAt = updatedAt
         self.needsSync = needsSync
         self.isDeleted = isDeleted
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, tankId, performedAt, percentReplaced, gallonsReplaced, notes, sourceScheduleId, createdAt, updatedAt, needsSync, isDeleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        tankId = try c.decode(UUID.self, forKey: .tankId)
+        performedAt = try c.decode(Date.self, forKey: .performedAt)
+        percentReplaced = try c.decodeIfPresent(Double.self, forKey: .percentReplaced)
+        gallonsReplaced = try c.decodeIfPresent(Double.self, forKey: .gallonsReplaced)
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+        sourceScheduleId = try c.decodeIfPresent(UUID.self, forKey: .sourceScheduleId)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        needsSync = try c.decodeIfPresent(Bool.self, forKey: .needsSync) ?? false
+        isDeleted = try c.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
     }
 }
 

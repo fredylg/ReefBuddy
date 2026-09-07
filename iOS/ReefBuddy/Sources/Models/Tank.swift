@@ -47,6 +47,25 @@ struct Tank: Identifiable, Codable, Equatable {
         self.updatedAt = updatedAt
         self.notes = notes
     }
+
+    // MARK: - Codable
+    // The server's tank_type column is nullable and may hold values this enum does not know (I-08).
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, volumeGallons, tankType, createdAt, updatedAt, notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        volumeGallons = try c.decode(Double.self, forKey: .volumeGallons)
+        let rawType = try c.decodeIfPresent(String.self, forKey: .tankType)
+        tankType = rawType.flatMap(TankType.init(rawValue:)) ?? .mixedReef
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+    }
 }
 
 // MARK: - Tank Type

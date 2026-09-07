@@ -1,5 +1,8 @@
 import Foundation
 import StoreKit
+import os
+
+private let log = Logger(subsystem: "au.com.aethers.reefbuddy", category: "Store")
 
 // MARK: - Product Definitions
 
@@ -19,13 +22,6 @@ enum CreditProduct: String, CaseIterable {
         switch self {
         case .credits5: return "5 CREDITS"
         case .credits50: return "50 CREDITS"
-        }
-    }
-    
-    var displayPrice: String {
-        switch self {
-        case .credits5: return "$0.99"
-        case .credits50: return "$4.99"
         }
     }
     
@@ -49,6 +45,8 @@ class StoreManager: ObservableObject {
     @Published private(set) var purchaseInProgress = false
     @Published private(set) var purchaseError: String?
     @Published private(set) var creditBalance: CreditBalance?
+    /// True when no balance could be loaded yet (offline or server error); the analyze button waits.
+    @Published private(set) var balanceUnavailable = false
     
     // MARK: - Private Properties
     
@@ -87,23 +85,24 @@ class StoreManager: ObservableObject {
     
     // MARK: - Device ID
     
-    /// Get the device identifier for credit tracking
-    var deviceId: String {
-        // Use identifierForVendor which persists across app reinstalls
-        // but is unique per device per vendor
-        if let id = UIDevice.current.identifierForVendor?.uuidString {
-            return id
-        }
-        
-        // Fallback to stored UUID if vendor ID unavailable
-        let key = "ReefBuddy.DeviceID"
-        if let storedId = UserDefaults.standard.string(forKey: key) {
-            return storedId
-        }
-        
-        let newId = UUID().uuidString
-        UserDefaults.standard.set(newId, forKey: key)
-        return newId
+    /// Stable anonymous device identifier (Keychain-backed, see DeviceIdentity).
+    var deviceId: String { DeviceIdentity.deviceId }
+
+    /// Clear the last purchase error (bound to the purchase alert).
+    func clearError() {
+        purchaseError = nil
+    }
+
+    /// Storefront price for a pack, from StoreKit (never hardcoded; wrong in most storefronts otherwise).
+    func displayPrice(for creditProduct: CreditProduct) -> String? {
+        products.first(where: { $0.id == creditProduct.rawValue })?.displayPrice
+    }
+
+    /// Per-credit price in the storefront currency, e.g. "$0.10".
+    func perCreditPrice(for creditProduct: CreditProduct) -> String? {
+        guard let product = products.first(where: { $0.id == creditProduct.rawValue }), creditProduct.credits > 0 else { return nil }
+        let each = product.price / Decimal(creditProduct.credits)
+        return each.formatted(product.priceFormatStyle)
     }
     
     // MARK: - Product Loading
@@ -113,9 +112,9 @@ class StoreManager: ObservableObject {
         do {
             products = try await Product.products(for: productIDs)
                 .sorted { $0.price < $1.price }
-            print("Loaded \(products.count) products")
+            log.info("Loaded \(self.products.count) products")
         } catch {
-            print("Failed to load products: \(error)")
+            log.error("Failed to load products: \(error.localizedDescription, privacy: .public)")
         }
     }
     
@@ -204,13 +203,10 @@ class StoreManager: ObservableObject {
         jwsRepresentation: String,
         productId: String
     ) async -> Bool {
-        // Use a unique identifier for this validation attempt
-        // StoreKit 2 transaction IDs might be 0 in sandbox, so we'll use a UUID
-        let transactionId = UUID().uuidString
+        // Informational only: the server takes the authoritative id from the signed payload.
+        let transactionId = String(transaction.id)
         let originalTransactionId = String(transaction.originalID)
-
-        print("📦 Sending JWS to backend for validation (transactionId: \(transactionId), originalId: \(originalTransactionId))")
-        print("🔐 JWS Representation: \(jwsRepresentation)")
+        log.info("Validating transaction \(transactionId, privacy: .private) for \(productId, privacy: .public)")
 
         do {
             let response = try await apiClient.purchaseCredits(
@@ -229,10 +225,10 @@ class StoreManager: ObservableObject {
                 totalAnalyses: creditBalance?.totalAnalyses ?? 0
             )
 
-            print("✅ Purchase validated, credits added: \(response.creditsAdded)")
+            log.info("Purchase validated, credits added: \(response.creditsAdded)")
             return true
         } catch {
-            print("❌ Failed to validate purchase with server: \(error)")
+            log.error("Purchase validation failed: \(error.localizedDescription, privacy: .public)")
             purchaseError = "Server validation failed: \(error.localizedDescription)"
             return false
         }
@@ -240,33 +236,21 @@ class StoreManager: ObservableObject {
     
     // MARK: - Credit Balance
     
-    /// Fetch current credit balance from server
-    /// If fetch fails, initializes with default 3 free credits for offline use
+    /// Fetch the current credit balance. On failure the balance stays as it was (or nil); the UI shows
+    /// "unavailable" rather than inventing free credits (I-16).
     func fetchCreditBalance() async {
         do {
             let balance = try await apiClient.getCreditsBalance(deviceId: deviceId)
-            let newBalance = CreditBalance(
+            creditBalance = CreditBalance(
                 freeRemaining: balance.freeRemaining,
                 paidCredits: balance.paidCredits,
                 totalCredits: balance.totalCredits,
                 totalAnalyses: balance.totalAnalyses
             )
-            print("📡 Fetched credit balance: free=\(newBalance.freeRemaining), paid=\(newBalance.paidCredits), total=\(newBalance.totalCredits)")
-            creditBalance = newBalance
+            balanceUnavailable = false
         } catch {
-            print("❌ Failed to fetch credit balance: \(error)")
-            // Initialize with default 3 free credits for offline/development use
-            // This ensures credit tracking works even without backend connectivity
-            if creditBalance == nil {
-                let defaultBalance = CreditBalance(
-                    freeRemaining: 3,
-                    paidCredits: 0,
-                    totalCredits: 3,
-                    totalAnalyses: 0
-                )
-                print("📱 Initialized default credit balance: 3 free credits")
-                creditBalance = defaultBalance
-            }
+            log.error("Failed to fetch credit balance: \(error.localizedDescription, privacy: .public)")
+            balanceUnavailable = creditBalance == nil
         }
     }
 
@@ -293,82 +277,55 @@ class StoreManager: ObservableObject {
             totalCredits: newBalance.totalCredits,
             totalAnalyses: newBalance.totalAnalyses == -1 ? (creditBalance?.totalAnalyses ?? 0) : newBalance.totalAnalyses
         )
-        print("🔄 Updating credit balance: free=\(mergedBalance.freeRemaining), paid=\(mergedBalance.paidCredits), total=\(mergedBalance.totalCredits)")
         creditBalance = mergedBalance
+        balanceUnavailable = false
     }
 
-
-    /// Decrement local credit balance (for development when backend is unavailable)
-    func decrementLocalCredit() {
-        guard let currentBalance = creditBalance else {
-            print("⚠️ No credit balance to decrement")
-            return
-        }
-
-        // Decrement free credits first, then paid credits
-        let newFreeRemaining: Int
-        let newPaidCredits: Int
-
-        if currentBalance.freeRemaining > 0 {
-            newFreeRemaining = currentBalance.freeRemaining - 1
-            newPaidCredits = currentBalance.paidCredits
-        } else if currentBalance.paidCredits > 0 {
-            newFreeRemaining = currentBalance.freeRemaining
-            newPaidCredits = currentBalance.paidCredits - 1
-        } else {
-            print("⚠️ No credits available to decrement")
-            return
-        }
-
-        let newBalance = CreditBalance(
-            freeRemaining: newFreeRemaining,
-            paidCredits: newPaidCredits,
-            totalCredits: newFreeRemaining + newPaidCredits,
-            totalAnalyses: currentBalance.totalAnalyses + 1
-        )
-
-        print("📱 Decremented local credit: free=\(newBalance.freeRemaining), paid=\(newBalance.paidCredits), total=\(newBalance.totalCredits)")
-        creditBalance = newBalance
-    }
     
     // MARK: - Transaction Listener
     
     /// Listen for transaction updates (renewals, purchases from other devices, etc.)
     private func listenForTransactions() -> Task<Void, Error> {
-        Task.detached {
+        Task { [weak self] in
             for await result in Transaction.updates {
-                switch result {
-                case .verified(let transaction):
-                    // Get JWS from VerificationResult and validate with backend
-                    let jwsRepresentation = result.jwsRepresentation
-                    await self.validateAndAddCredits(
-                        for: transaction,
-                        jwsRepresentation: jwsRepresentation,
-                        productId: transaction.productID
-                    )
-                    await transaction.finish()
-
-                case .unverified(_, let error):
-                    print("Unverified transaction update: \(error)")
-                }
+                guard let self else { return }
+                await self.handle(transactionResult: result)
             }
         }
     }
-    
+
+    /// Validate a transaction with the server and finish it only once credits were granted; an
+    /// unfinished transaction is redelivered by StoreKit, a finished one is gone for good (I-13).
+    private func handle(transactionResult result: VerificationResult<Transaction>) async {
+        switch result {
+        case .verified(let transaction):
+            let granted = await validateAndAddCredits(for: transaction, jwsRepresentation: result.jwsRepresentation, productId: transaction.productID)
+            if granted {
+                await transaction.finish()
+            } else {
+                log.error("Leaving transaction \(String(transaction.id), privacy: .private) unfinished for redelivery")
+            }
+        case .unverified(_, let error):
+            log.error("Unverified transaction update: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     // MARK: - Restore Purchases
     
-    /// Restore previous purchases (for consumables, this syncs any pending transactions)
+    /// Consumables cannot be "restored"; what can be recovered is a purchase that was never granted.
+    /// Replay every unfinished transaction, then refresh the balance (I-18).
     func restorePurchases() async {
         purchaseInProgress = true
         purchaseError = nil
-        
-        do {
-            try await AppStore.sync()
-            await fetchCreditBalance()
-        } catch {
-            purchaseError = "Failed to restore purchases: \(error.localizedDescription)"
+        var replayed = 0
+        for await result in Transaction.unfinished {
+            await handle(transactionResult: result)
+            replayed += 1
         }
-        
+        await fetchCreditBalance()
+        if replayed == 0 {
+            purchaseError = "No pending purchases to restore. Your balance is up to date."
+        }
         purchaseInProgress = false
     }
 }

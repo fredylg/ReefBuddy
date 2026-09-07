@@ -89,6 +89,61 @@ struct Measurement: Identifiable, Codable, Equatable {
         self.nitrite = nitrite
         self.notes = notes
     }
+
+    // MARK: - Codable
+    // The server (and this app from 1.0.7 on) uses the key "ph"; local data written by older versions
+    // used "pH". Decode either, encode "ph" (I-07).
+
+    enum CodingKeys: String, CodingKey {
+        case id, tankId, measuredAt, temperature, salinity, salinityUnit, ph, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia, nitrite, notes
+    }
+
+    private enum LegacyKeys: String, CodingKey {
+        case pH
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        tankId = try c.decode(UUID.self, forKey: .tankId)
+        measuredAt = try c.decode(Date.self, forKey: .measuredAt)
+        temperature = try c.decodeIfPresent(Double.self, forKey: .temperature)
+        salinity = try c.decodeIfPresent(Double.self, forKey: .salinity)
+        salinityUnit = try c.decodeIfPresent(String.self, forKey: .salinityUnit)
+        if let ph = try c.decodeIfPresent(Double.self, forKey: .ph) {
+            pH = ph
+        } else {
+            let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+            pH = try legacy.decodeIfPresent(Double.self, forKey: .pH)
+        }
+        alkalinity = try c.decodeIfPresent(Double.self, forKey: .alkalinity)
+        calcium = try c.decodeIfPresent(Double.self, forKey: .calcium)
+        magnesium = try c.decodeIfPresent(Double.self, forKey: .magnesium)
+        nitrate = try c.decodeIfPresent(Double.self, forKey: .nitrate)
+        phosphate = try c.decodeIfPresent(Double.self, forKey: .phosphate)
+        ammonia = try c.decodeIfPresent(Double.self, forKey: .ammonia)
+        nitrite = try c.decodeIfPresent(Double.self, forKey: .nitrite)
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(tankId, forKey: .tankId)
+        try c.encode(measuredAt, forKey: .measuredAt)
+        try c.encodeIfPresent(temperature, forKey: .temperature)
+        try c.encodeIfPresent(salinity, forKey: .salinity)
+        try c.encodeIfPresent(salinityUnit, forKey: .salinityUnit)
+        try c.encodeIfPresent(pH, forKey: .ph)
+        try c.encodeIfPresent(alkalinity, forKey: .alkalinity)
+        try c.encodeIfPresent(calcium, forKey: .calcium)
+        try c.encodeIfPresent(magnesium, forKey: .magnesium)
+        try c.encodeIfPresent(nitrate, forKey: .nitrate)
+        try c.encodeIfPresent(phosphate, forKey: .phosphate)
+        try c.encodeIfPresent(ammonia, forKey: .ammonia)
+        try c.encodeIfPresent(nitrite, forKey: .nitrite)
+        try c.encodeIfPresent(notes, forKey: .notes)
+    }
 }
 
 // MARK: - Parameter Ranges
@@ -354,6 +409,7 @@ struct AnalysisRequest: Codable {
         let nitrate: Double?
         let phosphate: Double?
         let ammonia: Double?
+        let nitrite: Double?
         let notes: String?
 
         enum CodingKeys: String, CodingKey {
@@ -367,6 +423,7 @@ struct AnalysisRequest: Codable {
             case nitrate
             case phosphate
             case ammonia
+            case nitrite
             case notes
         }
     }
@@ -389,6 +446,7 @@ struct AnalysisRequest: Codable {
             nitrate: measurement.nitrate,
             phosphate: measurement.phosphate,
             ammonia: measurement.ammonia,
+            nitrite: measurement.nitrite,
             notes: measurement.notes
         )
     }
@@ -403,6 +461,8 @@ struct AnalyzeAPIResponse: Codable {
     let creditsRemaining: Int?
     let freeRemaining: Int?
     let paidCredits: Int?
+    /// Set when the model's reply was cut off even after a retry with more room
+    let truncated: Bool?
 
     /// The analysis content - could be structured or just a recommendation string
     struct AnalysisContent: Codable {

@@ -1,6 +1,9 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import os
+
+let appLog = Logger(subsystem: "au.com.aethers.reefbuddy", category: "App")
 
 // MARK: - ReefBuddy App
 
@@ -128,19 +131,8 @@ final class AppState: ObservableObject {
 
     // MARK: - Device ID
 
-    /// Get the device identifier for credit tracking
-    var deviceId: String {
-        if let id = UIDevice.current.identifierForVendor?.uuidString {
-            return id
-        }
-        let key = "ReefBuddy.DeviceID"
-        if let storedId = UserDefaults.standard.string(forKey: key) {
-            return storedId
-        }
-        let newId = UUID().uuidString
-        UserDefaults.standard.set(newId, forKey: key)
-        return newId
-    }
+    /// Stable anonymous device identifier (Keychain-backed, see DeviceIdentity).
+    var deviceId: String { DeviceIdentity.deviceId }
 
     // MARK: - Initialization
 
@@ -215,19 +207,18 @@ final class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            // Try to fetch from backend
             let backendTanks = try await apiClient.getTanks()
-            tanks = backendTanks
-            // Save to local storage
+            // Merge by id: the server wins for tanks it knows; tanks that only exist locally are kept.
+            let serverIds = Set(backendTanks.map(\.id))
+            let localOnly = tankStorage.tanks.filter { !serverIds.contains($0.id) }
+            tanks = backendTanks + localOnly
             tankStorage.save(tanks)
-            
+
             if selectedTank == nil, let first = tanks.first {
                 selectTank(first)
             }
         } catch {
-            // If API fails, use local storage
-            print("⚠️ Failed to fetch tanks from backend: \(error.localizedDescription)")
-            print("📦 Using local storage instead")
+            appLog.error("Fetch tanks failed, using local storage: \(error.localizedDescription, privacy: .public)")
             tanks = tankStorage.tanks
 
             if selectedTank == nil, let first = tanks.first {
@@ -282,10 +273,21 @@ final class AppState: ObservableObject {
             print("⚠️ API delete failed, using local deletion: \(error.localizedDescription)")
         }
 
-        // Remove from local state (always works offline)
+        // Remove from local state and cascade to everything stored for this tank (I-12)
         tanks.removeAll { $0.id == tank.id }
-        // Remove from local storage
         tankStorage.delete(tank.id)
+        measurementStorage.deleteAll(for: tank.id)
+        for item in livestockStorage.livestock(for: tank.id) {
+            imageStorage.deleteImage(for: item.id)
+            livestockStorage.deleteLivestock(item.id)
+        }
+        waterChangeStorage.replace([], for: tank.id)
+        if selectedTank?.id == tank.id {
+            measurements = []
+            livestock = []
+            livestockLogs = []
+            waterChanges = []
+        }
         
         if selectedTank?.id == tank.id {
             selectedTank = tanks.first
@@ -431,13 +433,19 @@ final class AppState: ObservableObject {
                 print("💰 Analysis completed, updating credit balance: free=\(creditBalance.freeRemaining), paid=\(creditBalance.paidCredits)")
                 storeManager.updateCreditBalance(creditBalance)
             } else {
-                print("⚠️ Analysis completed but no credit balance in response - decrementing local balance")
-                // For development: decrement local credit balance when backend doesn't provide it
-                storeManager.decrementLocalCredit()
+                appLog.error("Analysis response carried no credit balance; refreshing from the server")
+                await storeManager.fetchCreditBalance()
             }
 
+            if result.truncated {
+                errorMessage = "The analysis was longer than expected and may be incomplete."
+            }
             isLoading = false
             return result.analysis
+        } catch APIError.analysisRefused(let message) {
+            isLoading = false
+            errorMessage = message
+            return nil
         } catch APIError.noCredits {
             // Show purchase credits sheet
             isLoading = false

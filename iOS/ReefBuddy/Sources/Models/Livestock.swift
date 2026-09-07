@@ -321,29 +321,13 @@ struct CreateLivestockRequest: Codable {
         self.id = livestock.id.uuidString // Send local ID for retroactive compatibility
         self.name = livestock.name
         self.species = livestock.scientificName
-        // Convert iOS category to backend format (SPS, LPS, Soft, Fish, Invertebrate)
-        switch livestock.category {
-        case .sps:
-            self.category = "SPS"
-        case .lps:
-            self.category = "LPS"
-        case .softCoral:
-            self.category = "Soft"
-        case .fish:
-            self.category = "Fish"
-        case .invertebrate:
-            self.category = "Invertebrate"
-        case .anemone:
-            self.category = "Invertebrate" // Map anemone to Invertebrate for backend
-        case .other:
-            self.category = "Invertebrate" // Map other to Invertebrate for backend
-        }
+        self.category = livestock.category.apiValue
         self.quantity = livestock.quantity
         // Convert Date to ISO 8601 string
         let formatter = ISO8601DateFormatter()
         self.purchaseDate = formatter.string(from: livestock.purchaseDate)
         self.purchasePrice = livestock.purchasePrice
-        self.healthStatus = livestock.healthStatus.rawValue
+        self.healthStatus = livestock.healthStatus.apiValue
         self.notes = livestock.notes
         self.imageUrl = nil // Image upload handled separately if needed
     }
@@ -364,95 +348,110 @@ struct UpdateLivestockRequest: Codable {
     init(from livestock: Livestock) {
         self.name = livestock.name
         self.species = livestock.scientificName
-        // Convert iOS category to backend format (SPS, LPS, Soft, Fish, Invertebrate)
-        switch livestock.category {
-        case .sps:
-            self.category = "SPS"
-        case .lps:
-            self.category = "LPS"
-        case .softCoral:
-            self.category = "Soft"
-        case .fish:
-            self.category = "Fish"
-        case .invertebrate:
-            self.category = "Invertebrate"
-        case .anemone:
-            self.category = "Invertebrate" // Map anemone to Invertebrate for backend
-        case .other:
-            self.category = "Invertebrate" // Map other to Invertebrate for backend
-        }
+        self.category = livestock.category.apiValue
         self.quantity = livestock.quantity
         let formatter = ISO8601DateFormatter()
         self.purchaseDate = formatter.string(from: livestock.purchaseDate)
         self.purchasePrice = livestock.purchasePrice
-        self.healthStatus = livestock.healthStatus.rawValue
+        self.healthStatus = livestock.healthStatus.apiValue
         self.notes = livestock.notes
         self.imageUrl = nil
     }
 }
 
-/// Response from livestock creation endpoint
-struct LivestockCreateResponse: Codable {
-    let success: Bool
-    let livestock: LivestockDBRecord
-    
-    struct LivestockDBRecord: Codable {
-        let id: String
-        let tankId: String
-        let name: String
-        let species: String?
-        let category: String
-        let quantity: Int
-        let purchaseDate: String?
-        let purchasePrice: Double?
-        let healthStatus: String?
-        let notes: String?
-        let imageUrl: String?
-        let addedAt: String
-        let createdAt: String
+/// One livestock row as the server returns it (snake_case keys, decoded with convertFromSnakeCase).
+/// Used for create, list and update responses alike; `createdAt` is not sent by the server (I-05).
+struct LivestockRecordDTO: Decodable {
+    let id: String
+    let tankId: String
+    let name: String?
+    let commonName: String?
+    let species: String?
+    let category: String?
+    let quantity: Int
+    let purchaseDate: String?
+    let purchasePrice: Double?
+    let healthStatus: String?
+    let notes: String?
+    let imageUrl: String?
+    let addedAt: String?
+    let createdAt: String?
+
+    func toLivestock(fallbackTankId: UUID, photoData: Data?) -> Livestock {
+        let added = addedAt.flatMap(APIDates.parse) ?? Date()
+        let created = createdAt.flatMap(APIDates.parse) ?? added
+        return Livestock(
+            id: UUID(uuidString: id) ?? UUID(),
+            tankId: UUID(uuidString: tankId) ?? fallbackTankId,
+            name: name ?? commonName ?? "",
+            scientificName: species,
+            category: LivestockCategory(apiValue: category),
+            healthStatus: HealthStatus(apiValue: healthStatus),
+            quantity: quantity,
+            purchaseDate: purchaseDate.flatMap(APIDates.parse) ?? added,
+            purchasePrice: purchasePrice,
+            photoData: photoData,
+            notes: notes,
+            createdAt: created,
+            updatedAt: created
+        )
     }
 }
 
-/// Response from livestock list endpoint
-struct LivestockListResponse: Codable {
+/// `{ success, livestock: {...} }` (create, update)
+struct LivestockEnvelope: Decodable {
     let success: Bool
-    let livestock: [LivestockDBRecord]
-    
-    struct LivestockDBRecord: Codable {
-        let id: String
-        let tankId: String
-        let name: String
-        let species: String?
-        let category: String?
-        let quantity: Int
-        let purchaseDate: String?
-        let purchasePrice: Double?
-        let healthStatus: String?
-        let notes: String?
-        let imageUrl: String?
-        let addedAt: String
-        let createdAt: String
+    let livestock: LivestockRecordDTO
+}
+
+/// `{ success, tank_id, tank_name, livestock: [...] }` (list)
+struct LivestockListEnvelope: Decodable {
+    let success: Bool
+    let livestock: [LivestockRecordDTO]
+}
+
+// MARK: - Server value mapping
+
+extension LivestockCategory {
+    /// Server enum: SPS, LPS, Soft, Fish, Invertebrate, Anemone, Other
+    var apiValue: String {
+        switch self {
+        case .sps: return "SPS"
+        case .lps: return "LPS"
+        case .softCoral: return "Soft"
+        case .fish: return "Fish"
+        case .invertebrate: return "Invertebrate"
+        case .anemone: return "Anemone"
+        case .other: return "Other"
+        }
+    }
+
+    init(apiValue: String?) {
+        switch apiValue?.uppercased() {
+        case "SPS": self = .sps
+        case "LPS": self = .lps
+        case "SOFT": self = .softCoral
+        case "FISH": self = .fish
+        case "INVERTEBRATE": self = .invertebrate
+        case "ANEMONE": self = .anemone
+        default: self = .other
+        }
     }
 }
 
-/// Response from livestock update endpoint
-struct LivestockUpdateResponse: Codable {
-    let success: Bool
-    let livestock: LivestockDBRecord
-    
-    struct LivestockDBRecord: Codable {
-        let id: String
-        let tankId: String
-        let name: String
-        let species: String?
-        let category: String?
-        let quantity: Int
-        let purchaseDate: String?
-        let purchasePrice: Double?
-        let healthStatus: String?
-        let notes: String?
-        let imageUrl: String?
-        let addedAt: String
-        let createdAt: String
+extension HealthStatus {
+    /// The server accepts every app value since migration 0016; `sick`/`quarantine` exist only server-side.
+    var apiValue: String { rawValue }
+
+    init(apiValue: String?) {
+        switch apiValue?.lowercased() {
+        case "thriving": self = .thriving
+        case "healthy": self = .healthy
+        case "stressed", "sick", "quarantine": self = .stressed
+        case "declining": self = .declining
+        case "critical": self = .critical
+        case "deceased": self = .deceased
+        default: self = .healthy
+        }
     }
 }

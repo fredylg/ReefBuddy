@@ -48,10 +48,14 @@ struct PurchaseCreditsView: View {
                     }
                 }
             }
-            .alert("Purchase Error", isPresented: .constant(storeManager.purchaseError != nil)) {
-                Button("OK") {
-                    // Clear error handled by StoreManager
-                }
+            .alert(
+                "Purchase Error",
+                isPresented: Binding(
+                    get: { storeManager.purchaseError != nil },
+                    set: { if !$0 { storeManager.clearError() } }
+                )
+            ) {
+                Button("OK") { storeManager.clearError() }
             } message: {
                 Text(storeManager.purchaseError ?? "")
             }
@@ -93,6 +97,12 @@ struct PurchaseCreditsView: View {
                 .font(BrutalistTheme.Typography.caption)
                 .fontWeight(.bold)
                 .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+
+            if storeManager.balanceUnavailable {
+                Text("Balance unavailable. Check your connection and try again.")
+                    .font(BrutalistTheme.Typography.caption)
+                    .foregroundColor(BrutalistTheme.Colors.warning)
+            }
             
             HStack(spacing: BrutalistTheme.Spacing.lg) {
                 balanceItem(
@@ -185,19 +195,16 @@ struct PurchaseCreditsView: View {
                     
                     // Price
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(creditProduct.displayPrice)
+                        // Prices come from StoreKit in the user's storefront currency; never hardcoded.
+                        Text(storeManager.displayPrice(for: creditProduct) ?? "—")
                             .font(.system(size: 28, weight: .black))
                             .foregroundColor(BrutalistTheme.Colors.text)
-                        
-                        if creditProduct == .credits50 {
-                            Text("$0.10/each")
+
+                        if let each = storeManager.perCreditPrice(for: creditProduct) {
+                            Text("\(each)/each")
                                 .font(BrutalistTheme.Typography.caption)
-                                .foregroundColor(BrutalistTheme.Colors.action)
-                                .fontWeight(.bold)
-                        } else {
-                            Text("$0.20/each")
-                                .font(BrutalistTheme.Typography.caption)
-                                .foregroundColor(BrutalistTheme.Colors.text.opacity(0.6))
+                                .foregroundColor(creditProduct == .credits50 ? BrutalistTheme.Colors.action : BrutalistTheme.Colors.text.opacity(0.6))
+                                .fontWeight(creditProduct == .credits50 ? .bold : .regular)
                         }
                     }
                 }
