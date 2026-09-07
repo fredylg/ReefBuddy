@@ -1,0 +1,34 @@
+# Baseline 2026-09-07 (before Phase 1), branch maint/p1-hotfix, HEAD ac5abe0
+
+## tsc --noEmit
+errors: 99
+  68 tests/db.test.ts
+  12 src/index.ts
+  10 tests/tanks-backward-compat.test.ts
+   3 tests/security-stage2.test.ts
+   3 tests/livestock-notifications.test.ts
+   1 tests/devicecheck-security.test.ts
+   1 tests/devicecheck-production.test.ts
+   1 tests/apply-d1-migrations.ts
+
+## npm audit
+13 vulnerabilities (12 high, 1 critical)
+
+## vitest (run 09:58 this morning, real gateway)
+Test Files 8 passed | 1 skipped (9); Tests 211 passed | 12 skipped (223); 84.68s
+
+## deps
+wrangler 4.59.1
+vitest 3.2.4
+@cloudflare/vitest-pool-workers 0.12.3
+@cloudflare/workers-types 4.20260115.0
+typescript 5.9.3
+jose 5.10.0
+zod 4.3.5
+bcryptjs 2.4.3
+
+## bundle
+788 KiB / gzip 129.55 KiB (wrangler deploy --dry-run)
+
+## prod
+{"status":"healthy","service":"ReefBuddy API","version":"1.0.6","environment":"production","timestamp":"2026-09-07T01:24:15.769Z"}
