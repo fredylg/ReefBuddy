@@ -628,9 +628,10 @@ describe("POST /analyze - HTTP Response Format", () => {
     expect(data.details).toBeDefined();
   });
 
-  it("should return CORS headers", async () => {
+  it("sends no CORS origin header to the native app (no Origin header) but does send a request id", async () => {
     const response = await postAnalyze(validAnalysisRequest);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    expect(response.headers.get("X-Request-Id")).toBeTruthy();
   });
 });
 
@@ -642,13 +643,23 @@ describe("OPTIONS /analyze - CORS Preflight", () => {
     expect(response.status).toBe(204);
   });
 
-  it("should return correct CORS headers", async () => {
+  it("echoes an allow-listed Origin and varies on it", async () => {
     const response = await SELF.fetch("http://localhost/analyze", {
       method: "OPTIONS",
+      headers: { Origin: "http://localhost:3000" },
     });
 
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3000");
+    expect(response.headers.get("Vary")).toContain("Origin");
     expect(response.headers.get("Access-Control-Allow-Methods")).toContain("POST");
+  });
+
+  it("sends no Access-Control-Allow-Origin for unknown origins or when Origin is absent", async () => {
+    const unknown = await SELF.fetch("http://localhost/health", { headers: { Origin: "https://evil.example" } });
+    expect(unknown.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    const native = await SELF.fetch("http://localhost/health");
+    expect(native.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    expect(native.headers.get("X-Request-Id")).toBeTruthy();
   });
 });
 

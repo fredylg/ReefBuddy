@@ -34,6 +34,7 @@ id = "b971329ac04e4171a65cfb907da0b08f"
 ENVIRONMENT = "production"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
+APPLE_BUNDLE_ID = "au.com.aethers.reefbuddy"
 # Set to "true" only if TestFlight testers must be able to buy credits (Sandbox transactions).
 ALLOW_SANDBOX_PURCHASES = "false"
 
@@ -77,6 +78,7 @@ id = "b971329ac04e4171a65cfb907da0b08f"
 ENVIRONMENT = "development"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
+APPLE_BUNDLE_ID = "au.com.aethers.reefbuddy"
 ALLOW_SANDBOX_PURCHASES = "true"
 
 [env.dev.vars.AI_GATEWAY]
