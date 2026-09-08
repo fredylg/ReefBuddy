@@ -1,24 +1,20 @@
 import { z } from 'zod';
 import { checkIPRateLimit, internalError, jsonResponse, readJson } from '../http';
 import {
+  AI_TRUNCATION_RETRY_EXTRA_TOKENS,
+  AnalysisOutput,
+  aiMaxTokens,
+  callAIGateway,
+  parseStructuredAnalysis,
+  renderAnalysisText,
   sanitizeAnalysisStringsDeep,
   sanitizeModelOutput,
   sanitizeNumericInput,
   sanitizeTextInput,
 } from '../ai/gateway';
-import {
-  AI_TRUNCATION_RETRY_EXTRA_TOKENS,
-  AnalysisOutput,
-  aiMaxTokens,
-  callAIGateway,
-  isDeviceCheckConfigured,
-  markDeviceFreeTierConsumed,
-  parseStructuredAnalysis,
-  renderAnalysisText,
-  validateDeviceToken,
-} from '../auth/devicecheck';
+import { isDeviceCheckConfigured, markDeviceFreeTierConsumed, validateDeviceToken } from '../auth/devicecheck';
 import { checkDeviceCredits, consumeDeviceCredit, refundDeviceCredit } from '../credits/store';
-import { DEVICE_ID_PATTERN, Env } from '../env';
+import { API_VERSION, DEVICE_ID_PATTERN, Env } from '../env';
 import { LowercaseUuid, WaterParametersSchema } from '../schemas';
 
 // =============================================================================
@@ -375,7 +371,7 @@ export function handleHealth(env: Env): Response {
   return jsonResponse({
     status: 'healthy',
     service: 'ReefBuddy API',
-    version: '1.0.8',
+    version: API_VERSION,
     environment: env.ENVIRONMENT || 'unknown',
     timestamp: new Date().toISOString(),
   });
