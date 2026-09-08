@@ -10,7 +10,7 @@
 import 'reflect-metadata';
 import { authenticateRequest, resolveActor } from './auth/session';
 import { handleCreditsPurchase } from './credits/storekit';
-import { AuthenticatedContext, Env, isValidDeviceId } from './env';
+import { API_VERSION, AuthenticatedContext, Env, isValidDeviceId } from './env';
 import {
   ALLOWED_ORIGINS,
   CORS_HEADERS,
@@ -340,7 +340,7 @@ function handleRoot(): Response {
   }
   return jsonResponse({
     service: 'ReefBuddy API',
-    version: '1.0.8',
+    version: API_VERSION,
     description: 'Water chemistry analysis for saltwater aquariums',
     endpoints,
   });

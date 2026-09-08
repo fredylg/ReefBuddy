@@ -62,3 +62,6 @@ export interface AuthenticatedContext {
 
 export const SESSION_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 1 week in seconds
 export const BCRYPT_SALT_ROUNDS = 10;
+
+/** Reported by `/` and `/health`; keep in step with the iOS marketing version and package.json. */
+export const API_VERSION = '1.0.8';
