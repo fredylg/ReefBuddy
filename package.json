@@ -16,7 +16,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply reef-db --remote",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "deploy:web": "wrangler pages deploy web --project-name reefbuddy-web",
+    "deploy:web": "wrangler pages deploy web --project-name reefbuddy-web --branch main --commit-dirty=true",
     "lint:migrations": "./scripts/lint-migrations.sh"
   },
   "keywords": [
