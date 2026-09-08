@@ -21,7 +21,6 @@
 		8A1B2C3D0000000B /* TankListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001B /* TankListView.swift */; };
 		8A1B2C3D0000000C /* MeasurementEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001C /* MeasurementEntryView.swift */; };
 		8A1B2C3D0000000E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001E /* Assets.xcassets */; };
-		8A1B2C3D000000AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */; };
 		8A1B2C3D0000000F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000001F /* HistoryView.swift */; };
 		8A1B2C3D00000021 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000022 /* ChartView.swift */; };
 		8A1B2C3D00000025 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D00000026 /* ExportView.swift */; };
@@ -42,14 +41,15 @@
 		8A1B2C3D0000009A /* MeasurementStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009B /* MeasurementStorage.swift */; };
 		8A1B2C3D0000009C /* ImageStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009D /* ImageStorage.swift */; };
 		8A1B2C3D0000009E /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D0000009F /* KeychainManager.swift */; };
-		8A1B2C3D000000AA /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AB /* DeviceIdentity.swift */; };
-		8A1B2C3D000000AE /* APIDates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AF /* APIDates.swift */; };
-		8A1B2C3D000000B0 /* JSONFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000B1 /* JSONFileStore.swift */; };
 		8A1B2C3D000000A0 /* MaintenanceSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A1 /* MaintenanceSchedule.swift */; };
 		8A1B2C3D000000A2 /* MaintenanceScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A3 /* MaintenanceScheduleStore.swift */; };
 		8A1B2C3D000000A4 /* MaintenanceNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A5 /* MaintenanceNotificationService.swift */; };
 		8A1B2C3D000000A6 /* MaintenanceSchedulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A7 /* MaintenanceSchedulesListView.swift */; };
 		8A1B2C3D000000A8 /* MaintenanceScheduleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000A9 /* MaintenanceScheduleEditorView.swift */; };
+		8A1B2C3D000000AA /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AB /* DeviceIdentity.swift */; };
+		8A1B2C3D000000AC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */; };
+		8A1B2C3D000000AE /* APIDates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000AF /* APIDates.swift */; };
+		8A1B2C3D000000B0 /* JSONFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D000000B1 /* JSONFileStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,7 +69,6 @@
 		8A1B2C3D0000001B /* TankListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TankListView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001C /* MeasurementEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementEntryView.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000001E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8A1B2C3D0000001F /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000022 /* ChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartView.swift; sourceTree = "<group>"; };
 		8A1B2C3D00000026 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
@@ -90,14 +89,15 @@
 		8A1B2C3D0000009B /* MeasurementStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementStorage.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000009D /* ImageStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStorage.swift; sourceTree = "<group>"; };
 		8A1B2C3D0000009F /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
-		8A1B2C3D000000AB /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
-		8A1B2C3D000000AF /* APIDates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIDates.swift; sourceTree = "<group>"; };
-		8A1B2C3D000000B1 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A1 /* MaintenanceSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceSchedule.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A3 /* MaintenanceScheduleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceScheduleStore.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A5 /* MaintenanceNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceNotificationService.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A7 /* MaintenanceSchedulesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceSchedulesListView.swift; sourceTree = "<group>"; };
 		8A1B2C3D000000A9 /* MaintenanceScheduleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceScheduleEditorView.swift; sourceTree = "<group>"; };
+		8A1B2C3D000000AB /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
+		8A1B2C3D000000AD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		8A1B2C3D000000AF /* APIDates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIDates.swift; sourceTree = "<group>"; };
+		8A1B2C3D000000B1 /* JSONFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONFileStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -380,6 +380,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = UAUBPV3Q4Z;
@@ -398,6 +399,7 @@
 				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = au.com.aethers.reefbuddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -409,6 +411,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = UAUBPV3Q4Z;
@@ -427,6 +430,7 @@
 				MARKETING_VERSION = 1.0.8;
 				PRODUCT_BUNDLE_IDENTIFIER = au.com.aethers.reefbuddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
