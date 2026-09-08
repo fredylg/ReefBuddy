@@ -7,16 +7,19 @@ happen before 4.
 
 ## 1. Ship iOS 1.0.8 (build 7) through TestFlight
 
-- [ ] Open `iOS/ReefBuddy.xcodeproj`, scheme ReefBuddy, and archive it (Product, Archive). The
+Done on 8 September 2026 up to the device test: the TestFlight build ran on your phone and one analysis
+went through production (balance 11 → 10, 63 analyses total). Only the App Store submission is left.
+
+- [x] Open `iOS/ReefBuddy.xcodeproj`, scheme ReefBuddy, and archive it (Product, Archive). The
       version is already 1.0.8 build 7 in the project; this one archive covers the Phase 4 sync fixes
       and the Phase 6 Swift 6 work, so the old "archive 1.0.7" task is gone.
-- [ ] Upload to TestFlight and install it on your phone.
-- [ ] Run through the app against production. The parts worth checking by hand: the tank list loads
+- [x] Upload to TestFlight and install it on your phone.
+- [x] Run through the app against production. The parts worth checking by hand: the tank list loads
       your existing tanks, a new measurement saves and shows in History, the chart opens, livestock and
       photos still load, a maintenance reminder fires, and one AI analysis completes. That analysis
       should take your balance from 11 credits to 10. It is the only step curl could not cover, because
       production insists on a DeviceCheck token.
-- [ ] Watch the first launch on your phone: the app moves your saved data out of UserDefaults into
+- [x] Watch the first launch on your phone: the app moves your saved data out of UserDefaults into
       JSON files in Application Support. If anything looks missing after that first launch, tell Claude
       before you reinstall, because the migration only runs once.
 - [ ] Submit to App Store review.

@@ -51,8 +51,7 @@ live, set `workers_dev = false` in `wrangler.toml` so only `api.reefbuddy.aether
 
 | Item | Owner | Detail |
 |---|---|---|
-| Real-device `/analyze` check (DeviceCheck token needed; curl cannot) | you, during the TestFlight run | one credit; balance should drop 11 → 10 |
-| TestFlight 1.0.8 build 7, device test, App Store | you | covers Phases 4 and 6 |
+| App Store submission of 1.0.8 build 7 | you | TestFlight device test passed 8 Sep 2026 (analysis OK, balance 11 → 10) |
 | Confirm `privacy@` / `support@reefbuddy.app` mailboxes | you | policy and site reference them |
 | Free-plan WAF rate rule on `aethers.com.au` | you | expression in plan task P7-14 |
 
