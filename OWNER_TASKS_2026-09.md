@@ -29,9 +29,8 @@ went through production (balance 11 → 10, 63 analyses total). Only the App Sto
 You do not own reefbuddy.app, so the site, privacy policy and terms now use addresses on your own domain:
 `privacy-reefbuddy@aethers.com.au`, `support-reefbuddy@aethers.com.au` and `legal-reefbuddy@aethers.com.au`.
 
-- [ ] Create the three as mailboxes or forwarding aliases on aethers.com.au (or tell Claude a single
-      address to use for all three). Checked 8 Sep 2026: the domain's catch-all is disabled (mail to
-      unknown addresses is dropped), so rules are needed. Claude can add them once you say where they go.
+- [x] Routing rules created 8 Sep 2026: the three addresses go to the `aethersmail-email-handler` worker,
+      the same path as `fredy@aethers.com.au`.
 - [ ] Send a test email to each and make sure it lands somewhere you read.
 - [ ] App Store Connect, App Information: make the support URL and privacy policy URL point at
       https://reefbuddy.aethers.com.au and check the support email there matches.
