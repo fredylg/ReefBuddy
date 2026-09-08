@@ -24,12 +24,16 @@ went through production (balance 11 → 10, 63 analyses total). Only the App Sto
       before you reinstall, because the migration only runs once.
 - [ ] Submit to App Store review.
 
-## 2. Confirm the two mailboxes exist
+## 2. Set up the mailboxes on aethers.com.au
 
-The website, privacy policy and terms point at `privacy@reefbuddy.app` and `support@reefbuddy.app`.
+You do not own reefbuddy.app, so the site, privacy policy and terms now use addresses on your own domain:
+`privacy-reefbuddy@aethers.com.au`, `support-reefbuddy@aethers.com.au` and `legal-reefbuddy@aethers.com.au`.
 
+- [ ] Create the three as mailboxes or forwarding aliases on aethers.com.au (or tell Claude a single
+      address to use for all three).
 - [ ] Send a test email to each and make sure it lands somewhere you read.
-- [ ] If either does not exist, either create it or tell Claude which address to put on the site instead.
+- [ ] App Store Connect, App Information: make the support URL and privacy policy URL point at
+      https://reefbuddy.aethers.com.au and check the support email there matches.
 
 ## 3. Add the free-plan rate limiting rule in Cloudflare
 
