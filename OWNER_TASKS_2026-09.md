@@ -35,21 +35,14 @@ You do not own reefbuddy.app, so the site, privacy policy and terms now use addr
 - [ ] App Store Connect, App Information: make the support URL and privacy policy URL point at
       https://reefbuddy.aethers.com.au and check the support email there matches.
 
-## 3. Add the free-plan rate limiting rule in Cloudflare
+## 3. Free-plan rate limiting rule in Cloudflare
 
-The zone is on the Free plan, so there is no WAF, but one rate limiting rule is allowed. It protects
-the two endpoints that matter most against brute force and purchase spam.
+Done by Claude on 8 September 2026 through the API: rule `reefbuddy-auth-purchase` on `aethers.com.au`
+blocks an IP for 10 seconds after 10 requests in 10 seconds to `/credits/purchase*` or `/auth/*` on
+`api.reefbuddy.aethers.com.au`. Probed from outside: requests 11 to 13 returned Cloudflare's 429 (error 1015).
 
-- [ ] Cloudflare dashboard, zone `aethers.com.au`, Security, WAF, Rate limiting rules, Create rule.
-- [ ] Name it `reefbuddy-auth-purchase`.
-- [ ] Use the custom expression editor and paste:
-
-```
-(http.host eq "api.reefbuddy.aethers.com.au" and (starts_with(http.request.uri.path, "/credits/purchase") or starts_with(http.request.uri.path, "/auth/")))
-```
-
-- [ ] Characteristics: IP. Rate: 10 requests per 10 seconds. Action: Block, for 10 seconds.
-- [ ] Tell Claude once it is saved and it will probe the rule from outside.
+- [ ] Revoke the temporary API token you created for this (My Profile, API Tokens). It was pasted in
+      chat, so treat it as burned.
 
 ## 4. Turn off the workers.dev hostname once 1.0.8 is live
 

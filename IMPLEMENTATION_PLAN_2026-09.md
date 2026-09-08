@@ -21,7 +21,7 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
 | 5 | Backend structure | 4 | 4 | done (branch `maint/p5-structure`, live `e667dee4`) |
 | 6 | iOS modernisation | 8 | 7 | code complete (branch `maint/p6-ios`); **P6-08 TestFlight 1.0.8 is yours** |
-| 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 14 | done except **P7-05 mailboxes and P7-14 WAF rule (yours)** |
+| 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 16 | done |
 | 8 | Final verification and handover | 5 | 5 | done; live version `12176692` |
 | 9 | Deferred / declined (no work) | — | — | — |
 
@@ -248,7 +248,7 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 - [x] **P7-11** (T-06) Rewrite `tests/README.md`.
 - [x] **P7-12** (CF-04) ⛔ `wrangler kv namespace delete` for `SESSIONS` and `SESSIONS_preview` — exact commands: `npx wrangler kv namespace delete --namespace-id cc91d53bedea428587120defc94926f2` (SESSIONS) and `npx wrangler kv namespace delete --namespace-id a8af95c0bda64bca81f016e2899b1c5f` (SESSIONS_preview). Neither is bound in `wrangler.toml` (the Worker uses `REEF_KV`).
 - [x] **P7-13** (CF-05) ⛔ `npx wrangler pages project delete reefbuddy-site` — orphan; the live site is project `reefbuddy-web` (reefbuddy.aethers.com.au). Also delete the stale probe row `device_credits` `8b629a9b-9907-4d5b-80f9-dc18e3ff3587` (lowercase id, created by my P5-04 smoke test; 0 analyses, 0 credits) with the same go-ahead.
-- [!] **P7-14** (CF-10 follow-up) 🧑 Create the single Free-plan rate-limiting rule on `aethers.com.au` (Security → WAF → Rate limiting rules → Create): name `reefbuddy-auth-purchase`; **expression** `(http.host eq "api.reefbuddy.aethers.com.au" and (starts_with(http.request.uri.path, "/credits/purchase") or starts_with(http.request.uri.path, "/auth/")))`; characteristics: IP; rate 10 requests per 10 seconds; action Block, duration 10 seconds. Tell me when it is in and I will probe it.
+- [x] **P7-14** (CF-10 follow-up) Free-plan rate limiting rule created 2026-09-08 via the rulesets API (zone `f5f3440b…`, ruleset `7ea0e3da…`, rule `5e613e44…`): `reefbuddy-auth-purchase`, block 10 s after 10 req / 10 s per IP on `/credits/purchase*` and `/auth/*` of `api.reefbuddy.aethers.com.au`; probe showed 10 × 401 then 429 (error 1015).
 - [x] **P7-15** (CF-09 follow-up) Recorded in the review (CF-09 notes) on 2026-09-07.
 - [x] **P7-16** (X-01) Regenerate the iOS file tree and endpoint table one last time after Phases 5–6.
 
@@ -349,3 +349,5 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-08 · P7-05 · website deployed (`reefbuddy-web`, production branch `main`; a first deploy from the maint branch only produced a preview, so `deploy:web` now passes `--branch main`): Maintenance Reminders copy, September 2026 policy, aethers.com.au contact addresses live · 8e6642f
 - 2026-09-08 · P7-05 · **Email Routing on aethers.com.au checked with wrangler: catch-all is DISABLED (action: drop).** Only `fredy@` and `ray@` have rules (→ worker `aethersmail-email-handler`). The three new addresses currently bounce/drop until rules exist — proposal in chat, needs the owner's go-ahead.
 - 2026-09-08 · P7-05 · Email Routing rules `reefbuddy privacy/support/legal` created on aethers.com.au (literal `to:` match → worker `aethersmail-email-handler`, same as `fredy@`); catch-all left disabled · (Cloudflare change)
+- 2026-09-08 · P7-14 · rate limiting rule created and probed (see task line); owner's temporary WAF token to be revoked · (Cloudflare change)
+- 2026-09-08 · **Phase 7 complete.** Left for the owner: App Store submission, `workers_dev = false` after release, merge decision.
