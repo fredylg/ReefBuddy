@@ -1,14 +1,17 @@
 # Your tasks to close out the September 2026 maintenance pass
 
 Everything Claude could do on its own is done and recorded in `IMPLEMENTATION_PLAN_2026-09.md`.
-The five jobs below need your Apple account, your Cloudflare dashboard login or a decision only you
-can make. Tick them off as you go; none of them is urgent enough to do out of order, but 1 should
-happen before 4.
+The jobs below need your Apple account or a decision only you can make. Tick them off as you go.
+The order that matters: 1 (review) before 4 (workers.dev off) before 6 (the follow-up build).
 
 ## 1. Ship iOS 1.0.8 (build 7) through TestFlight
 
-Done on 8 September 2026 up to the device test: the TestFlight build ran on your phone and one analysis
-went through production (balance 11 → 10, 63 analyses total). Only the App Store submission is left.
+Done on 8 September 2026: the TestFlight build ran on your phone, one analysis went through production
+(balance 11 → 10, 63 analyses total) and the build was submitted for review the same day.
+
+- [ ] Wait for Apple. When the app shows as Ready for Sale, tell Claude, then do 4 and 6 in that order.
+- [ ] If Apple rejects it, paste the reviewer's note into the chat. The dosing card fix from section 6
+      gets folded into the resubmission in that case.
 
 - [x] Open `iOS/ReefBuddy.xcodeproj`, scheme ReefBuddy, and archive it (Product, Archive). The
       version is already 1.0.8 build 7 in the project; this one archive covers the Phase 4 sync fixes
@@ -51,21 +54,34 @@ the version people actually have installed.
 
 - [ ] In `wrangler.toml`, change the production `workers_dev = true` (near the top of the file) to
       `false`. Leave the one under `[env.dev]` alone so `reefbuddy-dev` stays reachable.
-- [ ] Run `npm run deploy`. That also ships the small fix that makes `/health` report 1.0.8 instead
-      of 1.0.6.
+- [ ] Run `npm run deploy` (or ask Claude). The `/health` version fix already shipped on 8 September.
 - [ ] Check that `https://api.reefbuddy.aethers.com.au/health` still answers and the workers.dev
       address no longer does.
 
-## 5. Decide how the branches get merged
+## 5. Branches merged
 
-Nothing has been pushed or merged. The work sits on `maint/p1-hotfix`, `maint/p2-toolchain`,
-`maint/p3-hardening`, `maint/p4-ios`, `maint/p5-structure`, `maint/p6-ios` and `maint/p7-hygiene`,
-41 commits ahead of `main`, each branch building on the previous one.
+Done 8 September 2026: `main` was fast-forwarded to the maintenance work, tagged `1.0.8` and pushed.
+The `maint/*` branches can be deleted whenever you like; they are all contained in `main`.
 
-- [ ] Choose: one merge commit per phase (keeps the phase history readable) or a single squash onto
-      `main` (one commit, simpler log). Tell Claude and it will do the merge and the push.
-- [ ] After the merge, run `./scripts/setup-hooks.sh` once on each clone so the pre-commit check on
-      the Xcode project file keeps running from the new `.githooks/` location.
+- [ ] Run `./scripts/setup-hooks.sh` once on each clone so the pre-commit check on the Xcode project
+      file keeps running from the new `.githooks/` location.
+
+## 6. Follow-up build 1.0.9 (build 8), after the release is live
+
+A user screenshot on 8 September showed the dosing card printing a whole sentence at 28 point in
+aquamarine. Two fixes went in the same day:
+
+- Backend (already deployed, version `cb97ba87`): the model is now asked for the dose and the cadence
+  as short phrases, with the explanation in the reason field. The build under review benefits from this
+  without an update.
+- iOS (commit 8048bf0, on `main`, not yet in any build): the card itself now handles long text, black on
+  white, so a stray long answer can never look like that again.
+
+There is no need to resubmit now; pulling the build would restart the review queue. Once 1.0.8 is
+live and section 4 is done:
+
+- [ ] Tell Claude to bump the app to 1.0.9 build 8 and archive it, the same way as build 7.
+- [ ] Upload with Transporter or Xcode, run it once on your phone, submit. No hurry on this one.
 
 ## Later, when you feel like it
 
