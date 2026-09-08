@@ -23,7 +23,7 @@ Worker and Claude.
 | Web | Static site in `web/` on Cloudflare Pages (`reefbuddy-web`, https://reefbuddy.aethers.com.au) |
 
 Production API: `https://api.reefbuddy.aethers.com.au` (Worker `reefbuddy`). Bundle id
-`au.com.aethers.reefbuddy`, current version 1.0.8.
+`au.com.aethers.reefbuddy`, current version 1.0.9.
 
 ## Quick start
 
