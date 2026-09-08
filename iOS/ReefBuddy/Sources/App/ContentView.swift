@@ -602,33 +602,21 @@ struct SettingsView: View {
 
     @Environment(AppState.self) private var appState
     @Environment(AnalysisStorage.self) private var analysisStorage
-    @State private var showingNotificationSettings = false
-    @State private var showingSubscription = false
+    @State private var showingCredits = false
     @State private var showingExport = false
     @State private var showingSavedAnalyses = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: BrutalistTheme.Spacing.md) {
-                // Notifications Section - Hidden for now
-                // settingsSection(title: "ALERTS", icon: "bell.fill") {
-                //     settingsRow(
-                //         icon: "bell.badge.fill",
-                //         title: "Notification Settings",
-                //         subtitle: "Configure parameter alerts"
-                //     ) {
-                //         showingNotificationSettings = true
-                //     }
-                // }
-
-                // Account Section
-                settingsSection(title: "ACCOUNT", icon: "person.fill") {
+                // Credits Section (consumable credit packs, no subscription or account)
+                settingsSection(title: "CREDITS", icon: "creditcard.fill") {
                     settingsRow(
-                        icon: "crown.fill",
-                        title: "Subscription",
-                        subtitle: "Manage your plan"
+                        icon: "sparkles",
+                        title: "Analysis Credits",
+                        subtitle: "Balance and credit packs"
                     ) {
-                        showingSubscription = true
+                        showingCredits = true
                     }
                 }
 
@@ -695,23 +683,7 @@ struct SettingsView: View {
             .padding(BrutalistTheme.Spacing.lg)
         }
         .background(BrutalistTheme.Colors.background)
-        .sheet(isPresented: $showingNotificationSettings) {
-            NavigationStack {
-                NotificationSettingsView()
-                    .navigationTitle("NOTIFICATIONS")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Done") {
-                                showingNotificationSettings = false
-                            }
-                            .font(BrutalistTheme.Typography.button)
-                            .foregroundStyle(BrutalistTheme.Colors.text)
-                        }
-                    }
-            }
-        }
-        .sheet(isPresented: $showingSubscription) {
+        .sheet(isPresented: $showingCredits) {
             PurchaseCreditsView()
         }
         .sheet(isPresented: $showingExport) {

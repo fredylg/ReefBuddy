@@ -381,7 +381,6 @@ struct DosingRecommendation: Codable, Identifiable {
 struct AnalysisRequest: Codable {
     let deviceId: String
     let deviceToken: String?
-    let isDevelopment: Bool
     let tankId: String
     let parameters: WaterParameters
     let tankVolume: Double
@@ -391,7 +390,6 @@ struct AnalysisRequest: Codable {
     enum CodingKeys: String, CodingKey {
         case deviceId
         case deviceToken
-        case isDevelopment
         case tankId
         case parameters
         case tankVolume
@@ -428,10 +426,9 @@ struct AnalysisRequest: Codable {
         }
     }
 
-    init(measurement: Measurement, tankVolume: Double, deviceId: String, deviceToken: String? = nil, isDevelopment: Bool = false, temperatureUnit: String = "F") {
+    init(measurement: Measurement, tankVolume: Double, deviceId: String, deviceToken: String? = nil, temperatureUnit: String = "F") {
         self.deviceId = deviceId
         self.deviceToken = deviceToken
-        self.isDevelopment = isDevelopment
         self.tankId = measurement.tankId.uuidString
         self.tankVolume = tankVolume
         self.temperatureUnit = temperatureUnit

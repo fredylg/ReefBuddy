@@ -16,8 +16,10 @@ actor APIClient {
     /// Production API URL (custom domain; the workers.dev host is being retired, C-03)
     static let productionURL = "https://api.reefbuddy.aethers.com.au"
 
-    /// Local development API URL (for `npm run dev`)
+    #if DEBUG
+    /// Local development API URL (for `npm run dev`); not present in release binaries.
     private static let localDevURL = "http://localhost:8787"
+    #endif
 
     /// True when the client targets production (release builds, or DEBUG with API_BASE_URL set to it).
     static func isUsingProduction() -> Bool {
@@ -172,7 +174,6 @@ actor APIClient {
             tankVolume: tankVolume,
             deviceId: deviceId,
             deviceToken: deviceToken,
-            isDevelopment: isDebugBuild(),
             temperatureUnit: temperatureUnit
         )
         req.httpBody = try camelEncoder.encode(body)
@@ -206,14 +207,6 @@ actor APIClient {
                 }
             }
         }
-    }
-
-    private func isDebugBuild() -> Bool {
-        #if DEBUG
-        return true
-        #else
-        return false
-        #endif
     }
 
     // MARK: - Livestock Endpoints

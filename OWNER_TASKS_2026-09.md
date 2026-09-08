@@ -85,7 +85,8 @@ live and section 4 is done:
 
 ## Later, when you feel like it
 
-Push notifications were deferred on purpose. The settings screen is still in the code but
-unreachable, and the backend alert pipeline is untouched. Ask Claude for `PUSH_NOTIFICATIONS_PLAN.md`
+Push notifications were deferred on purpose. The unreachable settings screen and the unused
+account models were removed from the app in 1.0.9 (App Review 2.3.1, September 2026); the backend
+alert and account routes are untouched. Ask Claude for `PUSH_NOTIFICATIONS_PLAN.md`
 when you want to pick that up. The suggested next maintenance window is December 2026; the checklist
 for it is at the end of `docs/maintenance/2026-09-handover.md`.

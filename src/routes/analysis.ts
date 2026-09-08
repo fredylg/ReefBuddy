@@ -34,7 +34,7 @@ export const AnalysisRequestWithDeviceSchema = z.object({
     .boolean()
     .nullish()
     .transform((v) => v ?? false)
-    .describe('Use DeviceCheck sandbox environment'),
+    .describe('Use the DeviceCheck development endpoint. Sent by 1.0.8 and earlier debug builds only; 1.0.9+ omits it'),
   tankId: LowercaseUuid,
   parameters: WaterParametersSchema,
   tankVolume: z.coerce.number().positive().describe('Tank volume in gallons'),

@@ -120,7 +120,7 @@ Every app route accepts either a Bearer session (accounts, kept for a future log
 | GET, POST | `/api/tanks` | actor | list / create tanks |
 | GET, PUT, DELETE | `/api/tanks/:id` | actor | one tank |
 | POST | `/api/measurements` | actor | save a measurement |
-| POST | `/analyze` | device id in body | AI analysis (credits, 10/min/IP) |
+| POST | `/analyze` | device id in body | AI analysis (credits, 10/min/IP); `isDevelopment` accepted for 1.0.8 clients only |
 | GET | `/credits/balance?deviceId=` | none (60/min) | credit balance |
 | POST | `/credits/purchase` | none (60/min) | StoreKit 2 JWS → credits |
 | GET | `/tanks/:id/history`, `/trends`, `/averages` | actor | history data |
@@ -142,19 +142,18 @@ Every app route accepts either a Bearer session (accounts, kept for a future log
 
 ---
 
-## iOS Source Files (39)
+## iOS Source Files (37)
 
 ```
 iOS/ReefBuddy/Sources/
 ├── App/           ReefBuddyApp (AppDelegate, AppState), ContentView
 ├── Theme/         BrutalistTheme
 ├── Components/    BrutalistButton, BrutalistTextField, BrutalistLoadingView, ShareSheet
-├── Models/        Tank, Measurement, User, Livestock, SavedAnalysis, MaintenanceSchedule
+├── Models/        Tank, Measurement, Livestock, SavedAnalysis, MaintenanceSchedule
 ├── Views/         TankListView, MeasurementEntryView, HistoryView, ChartView,
 │                  PurchaseCreditsView, SavedAnalysesView, ExportView,
 │                  LivestockListView, LivestockDetailView, AddLivestockView,
-│                  MaintenanceSchedulesListView, MaintenanceScheduleEditorView,
-│                  NotificationSettingsView
+│                  MaintenanceSchedulesListView, MaintenanceScheduleEditorView
 ├── Store/         StoreManager (StoreKit 2), JSONFileStore, TankStorage, MeasurementStorage,
 │                  LivestockStorage, AnalysisStorage, MaintenanceScheduleStore (+WaterChangeStorage),
 │                  MaintenanceNotificationService, ImageStorage, DeviceIdentity, KeychainManager
