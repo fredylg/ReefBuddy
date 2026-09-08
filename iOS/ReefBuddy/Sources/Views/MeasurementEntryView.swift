@@ -1069,22 +1069,10 @@ struct AnalysisResultSheet: View {
                             .font(.system(size: 12, weight: .black))
                             .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.6))
 
-                        // Amount & Frequency
-                        HStack(alignment: .firstTextBaseline, spacing: BrutalistTheme.Spacing.md) {
-                            Text(advice.amount)
-                                .font(.system(size: 28, weight: .black))
-                                .foregroundStyle(BrutalistTheme.Colors.action)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("FREQUENCY")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
-
-                                Text(advice.frequency.uppercased())
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(BrutalistTheme.Colors.text)
-                            }
-                        }
+                        // Amount & Frequency. The model sometimes answers with a sentence rather than
+                        // "5 mL", so the headline treatment is reserved for short values; long ones are
+                        // laid out as labelled text, always in black on white for contrast.
+                        dosingAmountAndFrequency(advice)
 
                         // Reason
                         Text(advice.reason)
@@ -1097,6 +1085,61 @@ struct AnalysisResultSheet: View {
                     .brutalistCard()
                 }
             }
+        }
+    }
+
+    private func dosingAmountAndFrequency(_ advice: DosingRecommendation) -> some View {
+        let amount = advice.amount.trimmingCharacters(in: .whitespacesAndNewlines)
+        let frequency = advice.frequency.trimmingCharacters(in: .whitespacesAndNewlines)
+        let compactAmount = amount.count <= 14
+        let compactFrequency = frequency.count <= 28
+
+        return Group {
+            if compactAmount {
+                HStack(alignment: .firstTextBaseline, spacing: BrutalistTheme.Spacing.md) {
+                    Text(amount)
+                        .font(.system(size: 28, weight: .black))
+                        .foregroundStyle(BrutalistTheme.Colors.text)
+                        .padding(.horizontal, BrutalistTheme.Spacing.xs)
+                        .background(BrutalistTheme.Colors.action)
+
+                    dosingFrequency(frequency, compact: compactFrequency)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: BrutalistTheme.Spacing.sm) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("AMOUNT")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
+
+                        Text(amount)
+                            .font(BrutalistTheme.Typography.bodyBold)
+                            .foregroundStyle(BrutalistTheme.Colors.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, BrutalistTheme.Spacing.sm)
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(BrutalistTheme.Colors.action)
+                            .frame(width: 4)
+                    }
+
+                    dosingFrequency(frequency, compact: compactFrequency)
+                }
+            }
+        }
+    }
+
+    private func dosingFrequency(_ frequency: String, compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("FREQUENCY")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(BrutalistTheme.Colors.text.opacity(0.4))
+
+            Text(compact ? frequency.uppercased() : frequency)
+                .font(compact ? .system(size: 14, weight: .bold) : BrutalistTheme.Typography.body)
+                .foregroundStyle(BrutalistTheme.Colors.text)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
