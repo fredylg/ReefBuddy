@@ -22,7 +22,7 @@ went through production (balance 11 → 10, 63 analyses total). Only the App Sto
 - [x] Watch the first launch on your phone: the app moves your saved data out of UserDefaults into
       JSON files in Application Support. If anything looks missing after that first launch, tell Claude
       before you reinstall, because the migration only runs once.
-- [ ] Submit to App Store review.
+- [x] Submit to App Store review. (Submitted 8 September 2026.)
 
 ## 2. Set up the mailboxes on aethers.com.au
 

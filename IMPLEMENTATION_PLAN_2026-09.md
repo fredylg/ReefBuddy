@@ -351,3 +351,4 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-08 · P7-05 · Email Routing rules `reefbuddy privacy/support/legal` created on aethers.com.au (literal `to:` match → worker `aethersmail-email-handler`, same as `fredy@`); catch-all left disabled · (Cloudflare change)
 - 2026-09-08 · P7-14 · rate limiting rule created and probed (see task line); owner's temporary WAF token to be revoked · (Cloudflare change)
 - 2026-09-08 · **Phase 7 complete.** Left for the owner: App Store submission, `workers_dev = false` after release, merge decision.
+- 2026-09-08 · P4-28 · **1.0.8 build 7 submitted for App Store review.** After it is live: `workers_dev = false` + deploy (C-03 tail), then the branch merge.
