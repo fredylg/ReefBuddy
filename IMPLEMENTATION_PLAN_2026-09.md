@@ -352,3 +352,4 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-08 · P7-14 · rate limiting rule created and probed (see task line); owner's temporary WAF token to be revoked · (Cloudflare change)
 - 2026-09-08 · **Phase 7 complete.** Left for the owner: App Store submission, `workers_dev = false` after release, merge decision.
 - 2026-09-08 · P4-28 · **1.0.8 build 7 submitted for App Store review.** After it is live: `workers_dev = false` + deploy (C-03 tail), then the branch merge.
+- 2026-09-08 · post-release fix · dosing card unreadable for long model answers (owner screenshot): iOS card restyled (8048bf0, ships with the next build); schema/prompt ask for short `amount`/`frequency` (538d8bb); AI gateway code moved from `auth/devicecheck.ts` to `ai/gateway.ts`; `API_VERSION` constant (e2c338d). `npm run deploy` → version `cb97ba87-6eb8-4117-b637-dc4fbfa6b68d` (tsc 0, 243 tests); both hosts report 1.0.8, owner tanks/balance OK · (deploy)
