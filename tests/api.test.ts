@@ -80,32 +80,11 @@ async function postAnalyzeWithClientIp(body: Record<string, unknown>, clientIp: 
   });
 }
 
-function uniqueEmail(prefix = 'user'): string {
-  // Avoid collisions across tests since the D1 DB persists in the test runtime.
-  return `${prefix}.${crypto.randomUUID()}@example.com`.toLowerCase();
-}
-
 async function signupAndGetToken(): Promise<{ email: string; token: string; userId: string }> {
-  const email = uniqueEmail('maint');
-  const password = 'TestPassword123!';
-
-  const res = await SELF.fetch('http://localhost/auth/signup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-
-  expect(res.status).toBe(201);
-  const data = (await res.json()) as {
-    success: boolean;
-    user: { id: string; email: string };
-    session_token: string;
-  };
-
-  expect(data.success).toBe(true);
-  expect(data.session_token).toBeTruthy();
-
-  return { email: data.user.email, token: data.session_token, userId: data.user.id };
+  // Accounts were removed from the API (App Review 5.6, Sept 2026): every actor route takes X-Device-ID.
+  // The "token" returned here is a device id so the helpers below read the same as before.
+  const deviceId = `TEST-${crypto.randomUUID().toUpperCase()}`;
+  return { email: '', token: deviceId, userId: deviceId };
 }
 
 async function createTankForUser(token: string, name = 'Test Tank'): Promise<string> {
@@ -113,7 +92,7 @@ async function createTankForUser(token: string, name = 'Test Tank'): Promise<str
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      'X-Device-ID': token,
     },
     body: JSON.stringify({
       name,
@@ -134,7 +113,7 @@ async function postMaintenanceSchedule(token: string | null, body: Record<string
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { 'X-Device-ID': token } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -148,7 +127,7 @@ async function listMaintenanceSchedules(token: string, tankId?: string): Promise
   return SELF.fetch(url, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${token}`,
+      'X-Device-ID': token,
     },
   });
 }
@@ -158,7 +137,7 @@ async function postWaterChange(token: string | null, tankId: string, body: Recor
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { 'X-Device-ID': token } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -167,14 +146,14 @@ async function postWaterChange(token: string | null, tankId: string, body: Recor
 async function listWaterChanges(token: string, tankId: string): Promise<Response> {
   return SELF.fetch(`http://localhost/api/tanks/${tankId}/water-changes`, {
     method: 'GET',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { 'X-Device-ID': token },
   });
 }
 
 async function deleteWaterChange(token: string, waterChangeId: string): Promise<Response> {
   return SELF.fetch(`http://localhost/api/water-changes/${waterChangeId}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { 'X-Device-ID': token },
   });
 }
 
@@ -814,14 +793,13 @@ describe('/maintenance/schedules', () => {
 
   beforeAll(async () => {
     // These endpoints depend on D1 migrations and KV bindings.
-    // If the test runtime doesn't have the required tables/bindings, skip the auth/tank-dependent tests.
+    // If the test runtime doesn't have the required tables/bindings, skip the tank-dependent tests.
     try {
-      const res = await SELF.fetch('http://localhost/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: uniqueEmail('preflight'), password: 'TestPassword123!' }),
+      const res = await SELF.fetch('http://localhost/api/tanks', {
+        method: 'GET',
+        headers: { 'X-Device-ID': `TEST-${crypto.randomUUID().toUpperCase()}` },
       });
-      authAndDbReady = res.status === 201;
+      authAndDbReady = res.status === 200;
     } catch {
       authAndDbReady = false;
     }

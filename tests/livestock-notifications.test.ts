@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { env, SELF } from 'cloudflare:test';
+import { SELF } from 'cloudflare:test';
 
 // =============================================================================
 // TEST UTILITIES
@@ -35,7 +35,7 @@ function generateUUID(): string {
 function authHeaders(token: string): Record<string, string> {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
+    'X-Device-ID': token,
   };
 }
 
@@ -80,73 +80,25 @@ let testState: TestState = {
 // =============================================================================
 
 beforeAll(async () => {
-  // Create first test user
-  const email1 = `test1_${Date.now()}@reefbuddy.test`;
-  const signup1Response = await SELF.fetch('http://localhost/auth/signup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: email1,
-      password: 'TestPassword123!',
-    }),
-  });
+  // Accounts were removed from the API (App Review 5.6, Sept 2026). Actors are devices: the "tokens"
+  // below are device ids, and tanks are created through the API so the device users exist.
+  testState.user1Token = `TEST-${generateUUID().toUpperCase()}`;
+  testState.user2Token = `TEST-${generateUUID().toUpperCase()}`;
 
-  if (signup1Response.status === 201) {
-    const signup1Data = (await signup1Response.json()) as {
-      session_token: string;
-      user: { id: string };
-    };
-    testState.user1Token = signup1Data.session_token;
-    testState.user1Id = signup1Data.user.id;
-
-    // Create a tank for user 1
-    const tankId = generateUUID();
-    try {
-      await env.DB.prepare(
-        `INSERT INTO tanks (id, user_id, name, volume, type, created_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'))`
-      )
-        .bind(tankId, testState.user1Id, 'Test Reef Tank', 75, 'reef')
-        .run();
-      testState.tankId = tankId;
-    } catch (e) {
-      console.log('Tank creation error:', e);
+  const createTank = async (deviceId: string, name: string, volume: number): Promise<string> => {
+    const res = await authenticatedFetch('http://localhost/api/tanks', deviceId, {
+      method: 'POST',
+      body: JSON.stringify({ name, volume_gallons: volume, tank_type: 'reef' }),
+    });
+    if (res.status !== 201) {
+      console.log('Tank creation error:', res.status, await res.text());
+      return '';
     }
-  }
-
-  // Create second test user for access control tests
-  const email2 = `test2_${Date.now()}@reefbuddy.test`;
-  const signup2Response = await SELF.fetch('http://localhost/auth/signup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: email2,
-      password: 'TestPassword456!',
-    }),
-  });
-
-  if (signup2Response.status === 201) {
-    const signup2Data = (await signup2Response.json()) as {
-      session_token: string;
-      user: { id: string };
-    };
-    testState.user2Token = signup2Data.session_token;
-    testState.user2Id = signup2Data.user.id;
-
-    // Create a tank for user 2
-    const tank2Id = generateUUID();
-    try {
-      await env.DB.prepare(
-        `INSERT INTO tanks (id, user_id, name, volume, type, created_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'))`
-      )
-        .bind(tank2Id, testState.user2Id, 'User 2 Tank', 50, 'reef')
-        .run();
-      testState.tank2Id = tank2Id;
-    } catch (e) {
-      console.log('Tank 2 creation error:', e);
-    }
-  }
+    const data = (await res.json()) as { data: { id: string; user_id: string } };
+    return data.data.id;
+  };
+  testState.tankId = await createTank(testState.user1Token, 'Test Reef Tank', 75);
+  testState.tank2Id = await createTank(testState.user2Token, 'User 2 Tank', 50);
 });
 
 // =============================================================================
@@ -498,7 +450,7 @@ describe('Livestock API', () => {
       expect(response.status).toBe(404);
     });
 
-    it("should return 404 when user2 tries to update user1's livestock (403 manifests as 404)", async () => {
+    it("should return 403 when user2 tries to update user1's livestock", async () => {
       if (!testState.user2Token || !testState.livestockId) {
         return;
       }
@@ -512,8 +464,8 @@ describe('Livestock API', () => {
         }
       );
 
-      // Returns 404 because verifyLivestockOwnership checks user ownership
-      expect(response.status).toBe(404);
+      // verifyLivestockOwnership: the record exists but belongs to another device user
+      expect(response.status).toBe(403);
     });
   });
 
@@ -704,7 +656,7 @@ describe('Livestock API', () => {
       expect(response.status).toBe(404);
     });
 
-    it("should return 404 when user2 tries to log for user1's livestock", async () => {
+    it("should return 403 when user2 tries to log for user1's livestock", async () => {
       if (!testState.user2Token || !testState.livestockId) {
         return;
       }
@@ -721,7 +673,7 @@ describe('Livestock API', () => {
         }
       );
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(403);
     });
   });
 
@@ -776,7 +728,7 @@ describe('Livestock API', () => {
       expect(response.status).toBe(404);
     });
 
-    it("should return 404 when user2 tries to get user1's livestock logs", async () => {
+    it("should return 403 when user2 tries to get user1's livestock logs", async () => {
       if (!testState.user2Token || !testState.livestockId) {
         return;
       }
@@ -787,7 +739,7 @@ describe('Livestock API', () => {
         { method: 'GET' }
       );
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(403);
     });
   });
 
@@ -875,7 +827,7 @@ describe('Livestock API', () => {
       expect(response.status).toBe(404);
     });
 
-    it("should return 404 when user2 tries to delete user1's livestock", async () => {
+    it("should return 403 when user2 tries to delete user1's livestock", async () => {
       if (!testState.user2Token || !testState.livestockId) {
         return;
       }
@@ -886,7 +838,7 @@ describe('Livestock API', () => {
         { method: 'DELETE' }
       );
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(403);
     });
   });
 });
@@ -895,634 +847,7 @@ describe('Livestock API', () => {
 // NOTIFICATIONS API TESTS
 // =============================================================================
 
-describe('Notifications API', () => {
-  describe('POST /notifications/token - Register Push Token', () => {
-    it('should register push token successfully (201)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: `test_apns_token_${Date.now()}`,
-          platform: 'ios',
-          deviceName: 'iPhone 15 Pro',
-        }),
-      });
-
-      expect(response.status).toBe(201);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        token: { id: string; platform: string; device_name: string };
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.token.platform).toBe('ios');
-      expect(data.token.device_name).toBe('iPhone 15 Pro');
-    });
-
-    it('should register android token (201)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: `test_fcm_token_${Date.now()}`,
-          platform: 'android',
-          deviceName: 'Pixel 8',
-        }),
-      });
-
-      expect(response.status).toBe(201);
-
-      const data = (await response.json()) as {
-        token: { platform: string };
-      };
-      expect(data.token.platform).toBe('android');
-    });
-
-    it('should register token without device name (201)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: `test_token_no_name_${Date.now()}`,
-          platform: 'ios',
-        }),
-      });
-
-      expect(response.status).toBe(201);
-    });
-
-    it('should return 401 without authentication', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: 'unauthorized_token',
-          platform: 'ios',
-        }),
-      });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 400 for invalid platform', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: 'test_token',
-          platform: 'windows',
-        }),
-      });
-
-      expect(response.status).toBe(400);
-    });
-
-    it('should return 400 for missing token', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          platform: 'ios',
-        }),
-      });
-
-      expect(response.status).toBe(400);
-    });
-
-    it('should return 400 for empty token', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: '',
-          platform: 'ios',
-        }),
-      });
-
-      expect(response.status).toBe(400);
-    });
-  });
-
-  describe('DELETE /notifications/token - Unregister Push Token', () => {
-    let tokenToDelete: string;
-
-    beforeAll(async () => {
-      // Register a token to delete
-      if (!testState.user1Token) return;
-
-      tokenToDelete = `delete_me_token_${Date.now()}`;
-      await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: tokenToDelete,
-          platform: 'ios',
-        }),
-      });
-    });
-
-    it('should unregister push token successfully (200)', async () => {
-      if (!testState.user1Token || !tokenToDelete) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'DELETE',
-        body: JSON.stringify({
-          token: tokenToDelete,
-        }),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        message: string;
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.message).toContain('unregistered');
-    });
-
-    it('should return 401 without authentication', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/token', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: 'some_token',
-        }),
-      });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 404 for non-existent token', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'DELETE',
-        body: JSON.stringify({
-          token: 'non_existent_token_xyz',
-        }),
-      });
-
-      expect(response.status).toBe(404);
-    });
-
-    it("should return 404 when user2 tries to delete user1's token", async () => {
-      if (!testState.user1Token || !testState.user2Token) {
-        return;
-      }
-
-      // Register a token for user1
-      const user1Token = `user1_protected_token_${Date.now()}`;
-      await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          token: user1Token,
-          platform: 'ios',
-        }),
-      });
-
-      // Try to delete it as user2
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user2Token, {
-        method: 'DELETE',
-        body: JSON.stringify({
-          token: user1Token,
-        }),
-      });
-
-      expect(response.status).toBe(404);
-    });
-
-    it('should return 400 for missing token in body', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/token', testState.user1Token, {
-        method: 'DELETE',
-        body: JSON.stringify({}),
-      });
-
-      expect(response.status).toBe(400);
-    });
-  });
-
-  describe('GET /notifications/settings - Get Notification Settings', () => {
-    it('should get notification settings (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user1Token, {
-        method: 'GET',
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        settings: Record<
-          string,
-          {
-            minThreshold: number | null;
-            maxThreshold: number | null;
-            enabled: boolean;
-          }
-        >;
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.settings).toBeDefined();
-
-      // Check that default parameters are present
-      expect(data.settings.ph).toBeDefined();
-      expect(data.settings.alkalinity).toBeDefined();
-      expect(data.settings.calcium).toBeDefined();
-      expect(data.settings.magnesium).toBeDefined();
-    });
-
-    it('should initialize defaults for new user (200)', async () => {
-      if (!testState.user2Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user2Token, {
-        method: 'GET',
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        settings: Record<string, { enabled: boolean }>;
-      };
-
-      // All parameters should be enabled by default
-      Object.values(data.settings).forEach((setting) => {
-        expect(setting.enabled).toBe(true);
-      });
-    });
-
-    it('should return 401 without authentication', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/settings', { method: 'GET' });
-
-      expect(response.status).toBe(401);
-    });
-  });
-
-  describe('PUT /notifications/settings - Update Notification Settings', () => {
-    it('should update notification settings (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user1Token, {
-        method: 'PUT',
-        body: JSON.stringify({
-          settings: [
-            {
-              parameter: 'ph',
-              minThreshold: 8.0,
-              maxThreshold: 8.3,
-              enabled: true,
-            },
-            {
-              parameter: 'alkalinity',
-              minThreshold: 8,
-              maxThreshold: 10,
-              enabled: true,
-            },
-          ],
-        }),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        message: string;
-        settings: Array<{
-          parameter: string;
-          minThreshold: number;
-          maxThreshold: number;
-        }>;
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.message).toContain('Updated');
-      expect(data.settings.length).toBe(2);
-    });
-
-    it('should disable a parameter alert (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user1Token, {
-        method: 'PUT',
-        body: JSON.stringify({
-          settings: [
-            {
-              parameter: 'phosphate',
-              enabled: false,
-            },
-          ],
-        }),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        settings: Array<{ parameter: string; enabled: boolean }>;
-      };
-
-      const phosphateSetting = data.settings.find((s) => s.parameter === 'phosphate');
-      expect(phosphateSetting?.enabled).toBe(false);
-    });
-
-    it('should return 401 without authentication', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settings: [{ parameter: 'ph', enabled: false }],
-        }),
-      });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 400 for invalid parameter name', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user1Token, {
-        method: 'PUT',
-        body: JSON.stringify({
-          settings: [
-            {
-              parameter: 'invalid_parameter',
-              enabled: true,
-            },
-          ],
-        }),
-      });
-
-      expect(response.status).toBe(400);
-    });
-
-    it('should return 400 for invalid settings format', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user1Token, {
-        method: 'PUT',
-        body: JSON.stringify({
-          settings: 'not an array',
-        }),
-      });
-
-      expect(response.status).toBe(400);
-    });
-  });
-
-  describe('GET /notifications/history - Get Notification History', () => {
-    it('should get notification history (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/history', testState.user1Token, {
-        method: 'GET',
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        total: number;
-        limit: number;
-        offset: number;
-        notifications: Array<{ id: string; type: string }>;
-      };
-
-      expect(data.success).toBe(true);
-      expect(typeof data.total).toBe('number');
-      expect(data.limit).toBe(50); // Default limit
-      expect(data.offset).toBe(0); // Default offset
-      expect(Array.isArray(data.notifications)).toBe(true);
-    });
-
-    it('should respect pagination parameters (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch(
-        'http://localhost/notifications/history?limit=10&offset=0',
-        testState.user1Token,
-        { method: 'GET' }
-      );
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        limit: number;
-        offset: number;
-      };
-
-      expect(data.limit).toBe(10);
-      expect(data.offset).toBe(0);
-    });
-
-    it('should filter by unread only (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch(
-        'http://localhost/notifications/history?unreadOnly=true',
-        testState.user1Token,
-        { method: 'GET' }
-      );
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        notifications: Array<{ readAt: string | null }>;
-      };
-
-      expect(data.success).toBe(true);
-      // All notifications should have null readAt
-      data.notifications.forEach((n) => {
-        expect(n.readAt).toBeNull();
-      });
-    });
-
-    it('should return 401 without authentication', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/history', { method: 'GET' });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 400 for invalid limit', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch(
-        'http://localhost/notifications/history?limit=500',
-        testState.user1Token,
-        { method: 'GET' }
-      );
-
-      expect(response.status).toBe(400);
-    });
-  });
-
-  describe('POST /notifications/read - Mark Notifications as Read', () => {
-    it('should mark all notifications as read (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/read', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        message: string;
-        markedCount: number;
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.message).toContain('all');
-      expect(typeof data.markedCount).toBe('number');
-    });
-
-    it('should mark specific notifications as read (200)', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      // First, create some notifications by inserting directly
-      const notificationId = generateUUID();
-      try {
-        await env.DB.prepare(
-          `INSERT INTO notification_history (id, user_id, type, title, body, sent_at)
-           VALUES (?, ?, ?, ?, ?, datetime('now'))`
-        )
-          .bind(notificationId, testState.user1Id, 'parameter_alert', 'Test Alert', 'This is a test notification')
-          .run();
-      } catch (e) {
-        console.log('Could not insert test notification:', e);
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/read', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          notificationIds: [notificationId],
-        }),
-      });
-
-      expect(response.status).toBe(200);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        markedCount: number;
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.markedCount).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should return 401 without authentication', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 400 for invalid notification ID format', async () => {
-      if (!testState.user1Token) {
-        return;
-      }
-
-      const response = await authenticatedFetch('http://localhost/notifications/read', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          notificationIds: ['not-a-uuid', 'also-not-valid'],
-        }),
-      });
-
-      expect(response.status).toBe(400);
-    });
-  });
-});
-
-// =============================================================================
-// EDGE CASES AND ERROR HANDLING
-// =============================================================================
-
 describe('Edge Cases and Error Handling', () => {
-  describe('Invalid Session Handling', () => {
-    it('should return 401 for expired/invalid session token', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/settings', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer invalid_session_token_12345',
-        },
-      });
-
-      expect(response.status).toBe(401);
-    });
-
-    it('should return 401 for malformed Authorization header', async () => {
-      const response = await SELF.fetch('http://localhost/notifications/settings', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Basic dXNlcjpwYXNz',
-        },
-      });
-
-      expect(response.status).toBe(401);
-    });
-  });
-
   describe('Malformed Request Bodies', () => {
     it('should handle empty request body gracefully for livestock creation', async () => {
       if (!testState.user1Token || !testState.tankId) {
@@ -1576,42 +901,6 @@ describe('Edge Cases and Error Handling', () => {
         );
 
         expect(response.status).toBe(201);
-      });
-    });
-  });
-
-  describe('Notification Parameter Validation', () => {
-    const validParameters = [
-      'ph',
-      'alkalinity',
-      'calcium',
-      'magnesium',
-      'ammonia',
-      'nitrate',
-      'phosphate',
-      'salinity',
-      'temperature',
-    ];
-
-    validParameters.forEach((param) => {
-      it(`should accept valid parameter: ${param}`, async () => {
-        if (!testState.user1Token) {
-          return;
-        }
-
-        const response = await authenticatedFetch('http://localhost/notifications/settings', testState.user1Token, {
-          method: 'PUT',
-          body: JSON.stringify({
-            settings: [
-              {
-                parameter: param,
-                enabled: true,
-              },
-            ],
-          }),
-        });
-
-        expect(response.status).toBe(200);
       });
     });
   });

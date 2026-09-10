@@ -35,8 +35,6 @@ ENVIRONMENT = "production"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
 APPLE_BUNDLE_ID = "au.com.aethers.reefbuddy"
-# Set to "true" only if TestFlight testers must be able to buy credits (Sandbox transactions).
-ALLOW_SANDBOX_PURCHASES = "false"
 
 # AI Gateway (all LLM calls go through it) and model settings (P3-21, P3-25)
 AI_GATEWAY_ID = "reefbuddy-ai-gateway"
@@ -84,7 +82,6 @@ ENVIRONMENT = "development"
 FREE_ANALYSIS_LIMIT = "3"
 CF_ACCOUNT_ID = "34fe73a21dc07a799a1ded7cc1763895"
 APPLE_BUNDLE_ID = "au.com.aethers.reefbuddy"
-ALLOW_SANDBOX_PURCHASES = "true"
 
 AI_GATEWAY_ID = "reefbuddy-ai-gateway"
 AI_MODEL = "claude-haiku-4-5"

@@ -42,29 +42,6 @@ async function initializeTestDb(): Promise<void> {
 // =============================================================================
 
 /**
- * Create authenticated request headers
- */
-function authHeaders(token: string): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
-}
-
-/**
- * Helper to make authenticated requests
- */
-async function authenticatedFetch(url: string, token: string, options: RequestInit = {}): Promise<Response> {
-  return SELF.fetch(url, {
-    ...options,
-    headers: {
-      ...authHeaders(token),
-      ...(options.headers || {}),
-    },
-  });
-}
-
-/**
  * Helper to make device-based requests (no auth)
  */
 async function deviceBasedFetch(url: string, deviceId: string, options: RequestInit = {}): Promise<Response> {
@@ -111,105 +88,6 @@ describe('Tank Creation Backward Compatibility', () => {
     } catch (e) {
       // Ignore cleanup errors
     }
-
-    // Create test user for authenticated requests
-    testState.user1Email = `test.backward.${Date.now()}@example.com`;
-    const signupResponse = await SELF.fetch('http://localhost/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: testState.user1Email,
-        password: 'TestPassword123!',
-      }),
-    });
-
-    if (signupResponse.ok) {
-      const signupData = (await signupResponse.json()) as {
-        success: boolean;
-        user: { id: string; email: string };
-        session_token: string;
-      };
-      testState.user1Token = signupData.session_token;
-      testState.user1Id = signupData.user.id;
-    }
-  });
-
-  describe('Authenticated Requests (v1.0.1+ compatibility)', () => {
-    it('should create tank with authenticated request', async () => {
-      if (!testState.user1Token) {
-        console.log('Skipping: Could not create test user');
-        return;
-      }
-
-      const tankData = {
-        name: 'Test Tank Authenticated',
-        volume_gallons: 75,
-        tank_type: 'reef',
-      };
-
-      const response = await authenticatedFetch('http://localhost/api/tanks', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify(tankData),
-      });
-
-      expect(response.status).toBe(201);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        data: {
-          id: string;
-          user_id: string;
-          name: string;
-          volume_gallons: number;
-          tank_type: string | null;
-        };
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.data.name).toBe(tankData.name);
-      expect(data.data.volume_gallons).toBe(tankData.volume_gallons);
-      expect(data.data.user_id).toBe(testState.user1Id);
-      expect(data.data.id).toBeDefined();
-    });
-
-    it('should list tanks for authenticated user', async () => {
-      if (!testState.user1Token) {
-        console.log('Skipping: Could not create test user');
-        return;
-      }
-
-      // Create a tank first
-      const createResponse = await authenticatedFetch('http://localhost/api/tanks', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'Test Tank List',
-          volume_gallons: 50,
-        }),
-      });
-
-      expect(createResponse.status).toBe(201);
-
-      // List tanks
-      const listResponse = await authenticatedFetch('http://localhost/api/tanks', testState.user1Token, {
-        method: 'GET',
-      });
-
-      expect(listResponse.status).toBe(200);
-
-      const data = (await listResponse.json()) as {
-        success: boolean;
-        data: Array<{
-          id: string;
-          user_id: string;
-          name: string;
-        }>;
-      };
-
-      expect(data.success).toBe(true);
-      expect(data.data.length).toBeGreaterThan(0);
-      expect(data.data.some((t) => t.name === 'Test Tank List')).toBe(true);
-      expect(data.data.every((t) => t.user_id === testState.user1Id)).toBe(true);
-    });
   });
 
   describe('Device-Based Requests (v1.0.2+)', () => {
@@ -323,39 +201,6 @@ describe('Tank Creation Backward Compatibility', () => {
   });
 
   describe('Backward Compatibility Scenarios', () => {
-    it('should prioritize authenticated requests over device ID', async () => {
-      if (!testState.user1Token) {
-        console.log('Skipping: Could not create test user');
-        return;
-      }
-
-      const tankData = {
-        name: 'Test Tank Priority',
-        volume_gallons: 80,
-      };
-
-      // Create tank with both auth token and device ID
-      const response = await SELF.fetch('http://localhost/api/tanks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${testState.user1Token}`,
-          'X-Device-ID': testState.deviceId,
-        },
-        body: JSON.stringify(tankData),
-      });
-
-      expect(response.status).toBe(201);
-
-      const data = (await response.json()) as {
-        success: boolean;
-        data: { user_id: string };
-      };
-
-      // Should use authenticated user, not device user
-      expect(data.data.user_id).toBe(testState.user1Id);
-    });
-
     it('should return 401 if neither auth nor device ID provided', async () => {
       const response = await SELF.fetch('http://localhost/api/tanks', {
         method: 'POST',
@@ -377,31 +222,6 @@ describe('Tank Creation Backward Compatibility', () => {
 
       expect(data.error).toBe('Unauthorized');
       expect(data.message).toContain('authentication token or device ID');
-    });
-
-    it('should work with authenticated GET request (v1.0.1+)', async () => {
-      if (!testState.user1Token) {
-        console.log('Skipping: Could not create test user');
-        return;
-      }
-
-      // Create tank first
-      await authenticatedFetch('http://localhost/api/tanks', testState.user1Token, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'Test Tank GET',
-          volume_gallons: 55,
-        }),
-      });
-
-      // List tanks with auth
-      const response = await authenticatedFetch('http://localhost/api/tanks', testState.user1Token, {
-        method: 'GET',
-      });
-
-      expect(response.status).toBe(200);
-      const data = (await response.json()) as { success: boolean; data: unknown[] };
-      expect(data.success).toBe(true);
     });
 
     it('should work with device-based GET request (v1.0.2+)', async () => {

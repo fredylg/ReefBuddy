@@ -101,13 +101,15 @@ The Xcode project file is maintained by hand. This is the single source of these
 - 3 free analyses per device, enforced with DeviceCheck two-bit state (bit0 = free tier consumed).
 - Paid credits via IAP (`com.reefbuddy.credits5`, `com.reefbuddy.credits50`).
 - `POST /credits/purchase` verifies the StoreKit 2 JWS: signature, then the `x5c` chain up to the pinned
-  Apple Root CA G3 with the App Store receipt OIDs. Xcode-signed transactions are accepted only outside
-  production (`ALLOW_SANDBOX_PURCHASES`).
+  Apple Root CA G3 with the App Store receipt OIDs. Production accepts Apple-signed Production **and
+  Sandbox** transactions (App Review and TestFlight buy through the sandbox); Xcode-signed transactions
+  are accepted only outside production.
 - Credits and audit rows live in D1 (`device_credits`, `purchase_history`); refunds on failed analyses.
 
 ### Auth
-Every app route accepts either a Bearer session (accounts, kept for a future login feature) or the
-`X-Device-ID` header (`resolveActor`). Notification routes are session-only. Device ids are bounded by
+There are no accounts. Every app route identifies the caller by the `X-Device-ID` header
+(`resolveActor`); `src/auth/session.ts` still parses a Bearer session but nothing issues one, and the
+`/auth/*` and `/notifications/*` routes were removed in 1.0.10 (App Review 5.6). Device ids are bounded by
 `DEVICE_ID_PATTERN`; request bodies are validated with Zod; paths are lowercased before matching.
 
 ### API endpoints (from `ROUTES` in `src/index.ts`)
@@ -115,8 +117,6 @@ Every app route accepts either a Bearer session (accounts, kept for a future log
 |--------|------|------|---------|
 | GET | `/` | none | route table |
 | GET | `/health` | none | health/version |
-| POST | `/auth/signup`, `/auth/login` | none (10/min/IP) | accounts |
-| POST | `/auth/logout` | none | end session |
 | GET, POST | `/api/tanks` | actor | list / create tanks |
 | GET, PUT, DELETE | `/api/tanks/:id` | actor | one tank |
 | POST | `/api/measurements` | actor | save a measurement |
@@ -132,12 +132,8 @@ Every app route accepts either a Bearer session (accounts, kept for a future log
 | GET, POST | `/api/tanks/:id/livestock` | actor | livestock per tank |
 | PUT, DELETE | `/api/livestock/:id` | actor | one livestock record |
 | GET, POST | `/api/livestock/:id/logs` | actor | health logs |
-| POST, DELETE | `/notifications/token` | session | push token (push not shipped, P-02) |
-| GET, PUT | `/notifications/settings` | session | alert thresholds |
-| GET | `/notifications/history` | session | notification history |
-| POST | `/notifications/read` | session | mark read |
 
-"actor" = session or `X-Device-ID`, rate-limited 60/min per device. Every response carries
+"actor" = `X-Device-ID`, rate-limited 60/min per device. Every response carries
 `X-Request-Id`, HSTS and the security headers from `src/http.ts`; CORS is allow-list only.
 
 ---

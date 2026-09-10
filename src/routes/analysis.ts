@@ -125,7 +125,7 @@ export async function handleAnalysis(request: Request, env: Env): Promise<Respon
           return jsonResponse(
             {
               error: 'Device verification required',
-              message: 'Please update to the latest app version (1.0.6 or later) to continue using this service.',
+              message: 'This device could not be verified. Check your connection and try again.',
               code: 'DEVICE_CHECK_REQUIRED',
             },
             403

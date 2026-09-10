@@ -97,7 +97,7 @@ describe('DeviceCheck Security Tests', () => {
       expect(response.status).toBe(403);
       expect(data.error).toBe('Device verification required');
       expect(data.code).toBe('DEVICE_CHECK_REQUIRED');
-      expect(data.message).toContain('update to the latest app version');
+      expect(data.message).toContain('could not be verified');
     });
 
     it('should reject requests with invalid DeviceCheck token', async () => {

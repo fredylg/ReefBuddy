@@ -16,7 +16,7 @@ import xcodeJws from './fixtures/xcode-transaction.jws?raw';
 const BUNDLE_ID = 'au.com.aethers.reefbuddy';
 const PRODUCT_5 = 'com.reefbuddy.credits5';
 const SANDBOX_FIXTURE_TX = '2000001105493644';
-const PRODUCTION: Partial<Env> = { ENVIRONMENT: 'production', ALLOW_SANDBOX_PURCHASES: 'false' };
+const PRODUCTION: Partial<Env> = { ENVIRONMENT: 'production' };
 
 function b64url(bytes: Uint8Array | string): string {
   const bin = typeof bytes === 'string' ? bytes : String.fromCharCode(...bytes);
@@ -253,24 +253,22 @@ describe('POST /credits/purchase — certificate chain (P3-10)', () => {
 });
 
 describe('POST /credits/purchase — environment policy', () => {
-  it('in production, a genuine Sandbox transaction is refused (SANDBOX_NOT_ALLOWED) and grants nothing', async () => {
+  it('in production, a genuine Apple-signed Sandbox transaction is accepted (App Review and TestFlight buy through the sandbox)', async () => {
     await forgetFixtureTransaction();
     const deviceId = uid('dev');
     const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws }, PRODUCTION);
-    expect(res.status).toBe(403);
-    expect(((await res.json()) as { code: string }).code).toBe('SANDBOX_NOT_ALLOWED');
-    expect((await balance(deviceId)).paidCredits).toBe(0);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { environment: string }).environment).toBe('Sandbox');
+    expect((await balance(deviceId)).paidCredits).toBe(5);
   });
 
-  it('in production with ALLOW_SANDBOX_PURCHASES=true, a genuine Sandbox transaction is accepted (TestFlight)', async () => {
-    await forgetFixtureTransaction();
+  it('in production, an Xcode StoreKit-configuration transaction is refused and grants nothing', async () => {
     const deviceId = uid('dev');
-    const res = await purchase(
-      { deviceId, productId: PRODUCT_5, jwsRepresentation: appleSandboxJws },
-      { ENVIRONMENT: 'production', ALLOW_SANDBOX_PURCHASES: 'true' }
-    );
-    expect(res.status).toBe(200);
-    expect((await balance(deviceId)).paidCredits).toBe(5);
+    const jws = await selfSignedJWS(payloadFor({ transactionId: uid('tx'), environment: 'Xcode' }));
+    const res = await purchase({ deviceId, productId: PRODUCT_5, jwsRepresentation: jws }, PRODUCTION);
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+    expect((await balance(deviceId)).paidCredits).toBe(0);
   });
 });
 

@@ -23,7 +23,6 @@ import {
   setDebugLogging,
 } from './http';
 import { handleAnalysis, handleHealth } from './routes/analysis';
-import { handleLogin, handleLogout, handleSignup } from './routes/auth';
 import { handleGetCreditsBalance } from './routes/credits';
 import { handleExportCSV, handleGetAverages, handleGetHistory, handleGetTrends } from './routes/history';
 import {
@@ -41,14 +40,6 @@ import {
   handleUpdateMaintenanceSchedule,
 } from './routes/maintenance';
 import { handleCreateMeasurement } from './routes/measurements';
-import {
-  handleGetNotificationHistory,
-  handleGetNotificationSettings,
-  handleMarkNotificationsRead,
-  handleRegisterPushToken,
-  handleUnregisterPushToken,
-  handleUpdateNotificationSettings,
-} from './routes/notifications';
 import { handleCreateTank, handleDeleteTank, handleGetTank, handleListTanks, handleUpdateTank } from './routes/tanks';
 import { handleCreateWaterChange, handleDeleteWaterChange, handleListWaterChanges } from './routes/water-changes';
 
@@ -94,9 +85,6 @@ const ROUTES: Route[] = [
   { method: 'GET', path: '/health', auth: 'none', handler: (c) => handleHealth(c.env) },
 
   // Accounts (kept for a future login feature, P-01 b)
-  { method: 'POST', path: '/auth/signup', auth: 'none', rate: 'auth', handler: (c) => handleSignup(c.request, c.env) },
-  { method: 'POST', path: '/auth/login', auth: 'none', rate: 'auth', handler: (c) => handleLogin(c.request, c.env) },
-  { method: 'POST', path: '/auth/logout', auth: 'none', handler: (c) => handleLogout(c.request, c.env) },
 
   // Tanks
   {
@@ -284,44 +272,6 @@ const ROUTES: Route[] = [
     auth: 'actor',
     rate: 'device',
     handler: (c) => handleGetLivestockLogs(c.env, c.auth!, c.params[0]),
-  },
-
-  // Notifications (session only; push is a separate plan, P-02)
-  {
-    method: 'POST',
-    path: '/notifications/token',
-    auth: 'session',
-    handler: (c) => handleRegisterPushToken(c.request, c.env, c.auth!),
-  },
-  {
-    method: 'DELETE',
-    path: '/notifications/token',
-    auth: 'session',
-    handler: (c) => handleUnregisterPushToken(c.request, c.env, c.auth!),
-  },
-  {
-    method: 'GET',
-    path: '/notifications/settings',
-    auth: 'session',
-    handler: (c) => handleGetNotificationSettings(c.env, c.auth!),
-  },
-  {
-    method: 'PUT',
-    path: '/notifications/settings',
-    auth: 'session',
-    handler: (c) => handleUpdateNotificationSettings(c.request, c.env, c.auth!),
-  },
-  {
-    method: 'GET',
-    path: '/notifications/history',
-    auth: 'session',
-    handler: (c) => handleGetNotificationHistory(c.request, c.env, c.auth!),
-  },
-  {
-    method: 'POST',
-    path: '/notifications/read',
-    auth: 'session',
-    handler: (c) => handleMarkNotificationsRead(c.request, c.env, c.auth!),
   },
 ];
 

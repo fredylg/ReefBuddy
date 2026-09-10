@@ -25,7 +25,7 @@ npx vitest run -t "refund"       # by name
 | `ai-gateway.test.ts` | gateway request shape, structured output parsing, retries, error mapping |
 | `devicecheck-bits.test.ts` | two-bit free-tier state machine |
 | `devicecheck-security.test.ts` | DeviceCheck enforcement and dev/production gating |
-| `livestock-notifications.test.ts` | `/api/tanks/:id/livestock`, logs, notification settings/history |
+| `livestock-notifications.test.ts` | `/api/tanks/:id/livestock` and logs (the notification routes it once covered were removed in 1.0.10) |
 | `e2e/devicecheck-production.test.ts` | real DeviceCheck call; excluded from `npm test` (needs `.dev.vars`) |
 
 Helpers: `helpers/mock-gateway.ts` (`installGatewayMock`, `queueGatewayReply`, `lastGatewayRequestBody`),

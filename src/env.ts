@@ -28,10 +28,9 @@ export function isValidDeviceId(value: string | null | undefined): value is stri
  */
 export interface Env extends Omit<
   Cloudflare.Env,
-  'ALLOW_SANDBOX_PURCHASES' | 'CF_AI_GATEWAY_TOKEN' | 'APPLE_KEY_ID' | 'APPLE_PRIVATE_KEY' | 'APPLE_TEAM_ID'
+  'CF_AI_GATEWAY_TOKEN' | 'APPLE_KEY_ID' | 'APPLE_PRIVATE_KEY' | 'APPLE_TEAM_ID'
 > {
   /** Set to 'true' to accept Sandbox/Xcode StoreKit transactions in production (TestFlight). Default: Production only. */
-  ALLOW_SANDBOX_PURCHASES?: string;
   /** Optional: AI Gateway authentication token */
   CF_AI_GATEWAY_TOKEN?: string;
   /** Apple DeviceCheck secrets (optional; DeviceCheck is skipped when unset outside production) */

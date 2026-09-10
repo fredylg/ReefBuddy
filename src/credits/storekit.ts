@@ -420,16 +420,16 @@ export async function handleJWSPurchase(env: Env, data: z.infer<typeof CreditPur
     );
   }
 
-  // Environment policy: production accepts App Store (Production) transactions only, unless
-  // ALLOW_SANDBOX_PURCHASES=true is set (TestFlight). Dev/test accept Sandbox and Xcode.
-  const allowSandbox = env.ALLOW_SANDBOX_PURCHASES === 'true';
-  if (payload.environment !== 'Production' && isProduction && !allowSandbox) {
-    console.warn('Rejected ' + payload.environment + ' transaction in production for device ' + deviceId);
+  // Environment policy: production accepts Apple-signed App Store transactions from both the Production
+  // and the Sandbox environment (App Review and TestFlight purchase through the sandbox), and rejects
+  // Xcode StoreKit-configuration transactions. Outside production Xcode transactions are accepted too.
+  if (payload.environment === 'Xcode' && isProduction) {
+    console.warn('Rejected Xcode transaction in production for device ' + deviceId);
     return jsonResponse(
       {
         error: 'Transaction environment not accepted',
         message: 'Only App Store purchases are accepted by this server',
-        code: 'SANDBOX_NOT_ALLOWED',
+        code: 'XCODE_NOT_ALLOWED',
         environment: payload.environment,
       },
       403
