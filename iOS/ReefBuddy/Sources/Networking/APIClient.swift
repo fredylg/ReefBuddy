@@ -522,7 +522,7 @@ enum APIError: LocalizedError {
         case .unauthorized: return "Authentication required"
         case .noCredits: return "No analysis credits remaining. Purchase more to continue."
         case .forbidden(let message): return message.isEmpty ? "Access denied" : message
-        case .deviceCheckRequired: return "This device could not be verified. Please update to the latest app version and try again."
+        case .deviceCheckRequired: return "This device could not be verified. Check your connection and try again."
         case .notFound: return "Resource not found"
         case .conflict(let message): return message.isEmpty ? "This item already exists" : message
         case .analysisRefused(let message): return message.isEmpty ? "The AI declined to analyse this input. Your credit has been refunded." : message
