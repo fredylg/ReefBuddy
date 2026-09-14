@@ -18,9 +18,9 @@ Source: `MAINTENANCE_REVIEW_2026-09.md` (your marked decisions as of 2026-09-07 
 | 1 | Stop the bleeding (backend hotfix + deploy) | 16 | 16 | **done** 2026-09-07 |
 | 2 | Toolchain and hermetic tests | 12 | 12 | **done** 2026-09-07 |
 | 3 | Backend correctness and hardening | 30 | 30 | **done** 2026-09-07 (live version 572828b5) |
-| 4 | iOS sync fixes and 1.0.7 release | 28 | 27 | code complete; **P4-28 (archive/TestFlight) is yours** |
+| 4 | iOS sync fixes and 1.0.7 release | 28 | 28 | **done** 2026-09-12 (shipped as 1.0.10) |
 | 5 | Backend structure | 4 | 4 | done (branch `maint/p5-structure`, live `e667dee4`) |
-| 6 | iOS modernisation | 8 | 7 | code complete (branch `maint/p6-ios`); **P6-08 TestFlight 1.0.8 is yours** |
+| 6 | iOS modernisation | 8 | 8 | **done** 2026-09-12 (shipped as 1.0.10) |
 | 7 | Database, docs, hygiene, Cloudflare cleanup | 16 | 16 | done |
 | 8 | Final verification and handover | 5 | 5 | done; live version `12176692` |
 | 9 | Deferred / declined (no work) | — | — | — |
@@ -197,7 +197,7 @@ Compliance and project
 - [x] **P4-25** (I-36) Small-bugs bundle: throwing `requestAnalysis` with typed errors; `hasAnyValue` includes ammonia/nitrite; remove stale double PUT in `LivestockDetailView`; `if let` volume; real `updatedAt`; RFC 4180 CSV; dead state removed; previews fixed; `Tab.logWaterChange` removed in favour of the modal.
 - [x] **P4-26** (I-37) Photos to Application Support with one-time migration from Documents.
 - [x] **P4-27** Build + simulator run of: tank create/edit/delete, measurement save, analysis, purchase (StoreKit config), livestock add, schedule create, reminder tap. Confirm server rows appear via D1 (dev worker).
-- [!] **P4-28** 🧑 (waiting on you: archive → TestFlight → device test → App Store) Archive, upload to TestFlight, run on a physical device against production; then App Store submission. After the release is live: set `workers_dev = false` (C-03 tail). **2026-09-07:** the project is now at 1.0.8 build 7 (Phase 6 included) — archive that instead of 1.0.7; see P6-08.
+- [x] **P4-28** 🧑 Archive → TestFlight → device test → App Store. **Done 2026-09-12: 1.0.10 build 10 approved** (after 1.0.8/1.0.9 were rejected under 2.3.1 then 5.6; see `APP_REVIEW_5.6_PLAN.md`). The `workers_dev = false` tail is **deliberately not done** — see C-03 tail below.
 
 **Exit:** a fresh install on the simulator creates exactly one server row per tank/measurement/livestock/schedule save; no decode errors in the log; privacy manifest accepted by App Store Connect.
 
@@ -227,7 +227,7 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 - [x] **P6-05** (I-33) Stores become actors persisting JSON files in Application Support; one-time migration from UserDefaults; measurement history no longer in UserDefaults.
 - [x] **P6-06** (I-34) Swift Charts replaces hand-drawn paths in `ChartView`/`HistoryView`.
 - [x] **P6-07** (I-35, adjusted for P-01 b) Delete `AnalysisView.swift`, `BrutalistPicker`, `BrutalistIconButton`; move `AppIconGenerator.swift` out of the app target (keep in repo under `tools/`); **keep** `User.swift` and `KeychainManager.swift`.
-- [!] **P6-08** Simulator regression done 2026-09-07 (see log); 🧑 **TestFlight 1.0.8 build 7 is yours** — it supersedes the 1.0.7 archive in P4-28 (one archive covers Phases 4 and 6).
+- [x] **P6-08** Simulator regression done 2026-09-07 (see log); TestFlight and App Store done 2026-09-12 via 1.0.10 build 10 (one release covers Phases 4 and 6).
 
 **Exit:** Swift 6 build with zero warnings in the concurrency category; regression list passes.
 
@@ -276,6 +276,26 @@ Goal: Swift 6, `@Observable`, Charts, sane storage. No user-visible change excep
 | M-01 | N/A | Already applied. |
 
 ---
+
+## C-03 tail — `workers_dev = false` (open, do not do yet)
+
+**2026-09-12.** The instruction in P4-28 said "after the release is live, set `workers_dev = false`". That
+condition is not sufficient and following it now would break real users. Evidence:
+
+| Version | Production URL it calls | Shipped to users? |
+|---|---|---|
+| 1.0.4 (`d2fd640`, Apr) | `https://reefbuddy.fredylg.workers.dev` | yes |
+| 1.0.5 (not in git; predates the Sept work) | same workers.dev host | **yes — this was the live version until 12 Sep** |
+| 1.0.6 (`50bf5e0`, 7 Sep) onward | `https://api.reefbuddy.aethers.com.au` | 1.0.6–1.0.9 never shipped (rejected) |
+| 1.0.10 (`b8fe206`) | custom domain | **first released version on the custom domain** |
+
+So every user who has not yet updated from 1.0.5 is still calling `reefbuddy.fredylg.workers.dev`, which
+answers 200 today. Disabling it strands them on a dead API until they update.
+
+**Correct condition:** wait until App Store Connect → App Analytics shows the overwhelming majority of
+active installs on 1.0.10 (weeks, not days), then set `workers_dev = false` in the production block of
+`wrangler.toml`, redeploy, and confirm `api.reefbuddy.aethers.com.au/health` still answers while the
+workers.dev host does not.
 
 ## Progress log
 
@@ -352,4 +372,7 @@ _(appended as tasks complete: `YYYY-MM-DD · task-id · summary · commit`)_
 - 2026-09-08 · P7-14 · rate limiting rule created and probed (see task line); owner's temporary WAF token to be revoked · (Cloudflare change)
 - 2026-09-08 · **Phase 7 complete.** Left for the owner: App Store submission, `workers_dev = false` after release, merge decision.
 - 2026-09-08 · P4-28 · **1.0.8 build 7 submitted for App Store review.** After it is live: `workers_dev = false` + deploy (C-03 tail), then the branch merge.
+- 2026-09-09 · P4-28 · 1.0.8 build 7 **rejected** (Guideline 2.3.1, hidden features). Cleanup shipped as 1.0.9 build 8 on `fix/app-review-2.3.1`.
+- 2026-09-11 · P4-28 · 1.0.9 build 8 **rejected** (Guideline 5.6, Developer Code of Conduct). Audit found the real causes (production refused App Store Sandbox receipts so only reviewers' purchases failed; `ReefBuddy.storekit` in the bundle; misleading DeviceCheck copy; unused `/auth/*` and `/notifications/*` routes; screenshots and description advertising removed features). All fixed on `fix/app-review-5.6`; backend deployed (`ff0dd7cd`); TestFlight sandbox purchase verified (Apple tx 2000001234618618). See `APP_REVIEW_5.6_PLAN.md`.
+- 2026-09-12 · P4-28 / P6-08 · **1.0.10 build 10 approved by App Review.** Phases 4 and 6 now complete. Remaining from this plan: the C-03 tail (`workers_dev = false`), which is deliberately deferred — see the section above.
 - 2026-09-08 · post-release fix · dosing card unreadable for long model answers (owner screenshot): iOS card restyled (8048bf0, ships with the next build); schema/prompt ask for short `amount`/`frequency` (538d8bb); AI gateway code moved from `auth/devicecheck.ts` to `ai/gateway.ts`; `API_VERSION` constant (e2c338d). `npm run deploy` → version `cb97ba87-6eb8-4117-b637-dc4fbfa6b68d` (tsc 0, 243 tests); both hosts report 1.0.8, owner tanks/balance OK · (deploy)
