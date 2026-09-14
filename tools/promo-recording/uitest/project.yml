@@ -1,0 +1,39 @@
+name: ReefBuddyPromo
+options:
+  bundleIdPrefix: au.com.aethers.promo
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGNING_ALLOWED: NO
+targets:
+  PromoHost:
+    type: application
+    platform: iOS
+    sources: [PromoHost]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.aethers.promo.host
+  ReefBuddyPromoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [ReefBuddyPromoUITests]
+    dependencies:
+      - target: PromoHost
+    settings:
+      base:
+        TEST_TARGET_NAME: PromoHost
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.aethers.promo.uitests
+schemes:
+  Promo:
+    build:
+      targets:
+        PromoHost: all
+        ReefBuddyPromoUITests: [test]
+    test:
+      targets: [ReefBuddyPromoUITests]

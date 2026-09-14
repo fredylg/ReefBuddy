@@ -51,3 +51,12 @@ AuthKey_*.p8
 
 # Local D1 exports (never commit)
 backups/
+
+# Promo assets: videos and images stay out of git (tools/promo-recording regenerates them,
+# originals are in the owner's ~/Documents backup). The scripts and text library are tracked.
+docs/marketing/stories/
+docs/marketing/app-store-screenshots/
+docs/marketing/library/posts/*/images/
+tools/promo-recording/uitest/ReefBuddyPromo.xcodeproj/
+tools/promo-recording/photos/*.jpg
+tools/promo-recording/seed-ids.json

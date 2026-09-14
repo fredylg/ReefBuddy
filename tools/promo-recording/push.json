@@ -1,0 +1,2 @@
+{"Simulator Target Bundle": "au.com.aethers.reefbuddy",
+ "aps": {"alert": {"title": "WATER CHANGE", "subtitle": "Display Tank", "body": "Time for your 15% water change (13.5 gal). Salt mixed last night?"}, "sound": "default"}}
