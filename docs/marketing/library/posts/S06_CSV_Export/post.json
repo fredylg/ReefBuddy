@@ -1,0 +1,109 @@
+{
+  "id": "S06_CSV_Export",
+  "story_number": 6,
+  "title": "Your data, exported",
+  "hook": "Your data should be yours.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Your tank data should be yours. 📤\n\nEvery test you've ever logged, in one list. Pick a date range, preview the CSV and send it anywhere: spreadsheet, email, your local fish store.\nAn aquarium log with no lock-in. Ever.\n\nFree on iOS. Link in bio.\n\nSpreadsheet reefers, where are you? 👇",
+  "caption_with_hashtags": "Your tank data should be yours. 📤\n\nEvery test you've ever logged, in one list. Pick a date range, preview the CSV and send it anywhere: spreadsheet, email, your local fish store.\nAn aquarium log with no lock-in. Ever.\n\nFree on iOS. Link in bio.\n\nSpreadsheet reefers, where are you? 👇\n\n#reefdata #aquariumlog #saltwateraquarium #reeflife #reefbuddyapp",
+  "hashtags": [
+    "#reefdata",
+    "#aquariumlog",
+    "#saltwateraquarium",
+    "#reeflife",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy export screen with a date range selector, a CSV preview and an Export CSV button.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S06_CSV_Export_reel.mp4",
+    "reel_voice_only": "../../stories/social/S06_CSV_Export_reel_voice-only.mp4",
+    "script": "../../stories/social/S06_CSV_Export_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S06_CSV_Export/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 26.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S06_CSV_Export/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S06_CSV_Export/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S06_CSV_Export/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "*CSV* TO ANYWHERE",
+      "file": "posts/S06_CSV_Export/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S06_CSV_Export/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 10.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "EVERY TEST\nYOU'VE *LOGGED*",
+      "file": "posts/S06_CSV_Export/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S06_CSV_Export/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 30.5
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "NO _LOCK-IN_",
+      "file": "posts/S06_CSV_Export/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S06_CSV_Export/images/post_4x5.png"
+}

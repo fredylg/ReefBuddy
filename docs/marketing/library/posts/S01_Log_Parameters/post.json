@@ -1,0 +1,109 @@
+{
+  "id": "S01_Log_Parameters",
+  "story_number": 1,
+  "title": "Log 10 parameters in seconds",
+  "hook": "Still writing your test results in a notebook?",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Still writing test results in a notebook? 📓\n\nReefBuddy is a reef tank parameter log that fits all ten on one screen: temperature, salinity, pH, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia and nitrite.\nType the numbers, save, done. Or tap Analyze and let the AI read them for you.\n\nFree on iOS, no subscription. Link in bio.\n\nWhat's your alkalinity target? 👇",
+  "caption_with_hashtags": "Still writing test results in a notebook? 📓\n\nReefBuddy is a reef tank parameter log that fits all ten on one screen: temperature, salinity, pH, alkalinity, calcium, magnesium, nitrate, phosphate, ammonia and nitrite.\nType the numbers, save, done. Or tap Analyze and let the AI read them for you.\n\nFree on iOS, no subscription. Link in bio.\n\nWhat's your alkalinity target? 👇\n\n#waterchemistry #reefparameters #reeftank #reefkeeping #reefbuddyapp",
+  "hashtags": [
+    "#waterchemistry",
+    "#reefparameters",
+    "#reeftank",
+    "#reefkeeping",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy measurement screen with alkalinity, calcium and magnesium fields filled in, each showing its healthy target range.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S01_Log_Parameters_reel.mp4",
+    "reel_voice_only": "../../stories/social/S01_Log_Parameters_reel_voice-only.mp4",
+    "script": "../../stories/social/S01_Log_Parameters_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S01_Log_Parameters/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 32.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S01_Log_Parameters/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S01_Log_Parameters/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S01_Log_Parameters/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "*10* PARAMETERS\nONE SCREEN",
+      "file": "posts/S01_Log_Parameters/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S01_Log_Parameters/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 64.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "SAVE OR *ANALYZE*",
+      "file": "posts/S01_Log_Parameters/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S01_Log_Parameters/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 6.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "LOG IN *SECONDS*",
+      "file": "posts/S01_Log_Parameters/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S01_Log_Parameters/images/post_4x5.png"
+}

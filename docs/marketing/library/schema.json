@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReefBuddy social post",
+  "type": "object",
+  "required": ["id", "story_number", "title", "hook", "status", "caption", "hashtags", "alt_text", "cta", "video", "images", "primary_image"],
+  "properties": {
+    "id": {"type": "string", "description": "Stable post id, also the folder name, e.g. S03_AI_Analysis"},
+    "story_number": {"type": "integer", "minimum": 1, "maximum": 14},
+    "title": {"type": "string"},
+    "hook": {"type": "string", "description": "First line / first three seconds"},
+    "status": {"type": "string", "enum": ["draft", "approved", "scheduled", "published"]},
+    "platforms": {"type": "array", "items": {"type": "string"}},
+    "caption": {"type": "string", "description": "Post text without hashtags"},
+    "caption_with_hashtags": {"type": "string"},
+    "hashtags": {"type": "array", "items": {"type": "string", "pattern": "^#"}},
+    "alt_text": {"type": "string"},
+    "cta": {"type": "string"},
+    "video": {
+      "type": "object",
+      "properties": {
+        "reel": {"type": "string", "description": "Relative path to the reel with voice and music"},
+        "reel_voice_only": {"type": "string"},
+        "script": {"type": "string"},
+        "music_credit_required": {"type": "boolean"}
+      }
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "file", "width", "height"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["post", "still_clean", "still_raw", "carousel"]},
+          "aspect": {"type": "string", "enum": ["4:5", "1:1"]},
+          "slide": {"type": "integer"},
+          "headline": {"type": "string"},
+          "file": {"type": "string"},
+          "width": {"type": "integer"},
+          "height": {"type": "integer"},
+          "source_time_s": {"type": "number", "description": "Timestamp in the raw clip the frame came from"}
+        }
+      }
+    },
+    "primary_image": {"type": "string"}
+  }
+}

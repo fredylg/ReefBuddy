@@ -1,0 +1,109 @@
+{
+  "id": "S02_Target_Ranges",
+  "story_number": 2,
+  "title": "Healthy range under every field",
+  "hook": "Is 7.2 dKH ok? Don't Google it.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Is 7.2 dKH okay? 🤔\n\nDon't Google it. Every field in ReefBuddy shows the healthy range right underneath as you type, so you know before you hit save.\nCelsius or Fahrenheit, SG or ppt. Your units, your call.\n\nFree on iOS. Link in bio.\n\nWhich number do you second-guess most? 👇",
+  "caption_with_hashtags": "Is 7.2 dKH okay? 🤔\n\nDon't Google it. Every field in ReefBuddy shows the healthy range right underneath as you type, so you know before you hit save.\nCelsius or Fahrenheit, SG or ppt. Your units, your call.\n\nFree on iOS. Link in bio.\n\nWhich number do you second-guess most? 👇\n\n#alkalinity #dkh #saltwateraquarium #reefaquarium #reefbuddyapp",
+  "hashtags": [
+    "#alkalinity",
+    "#dkh",
+    "#saltwateraquarium",
+    "#reefaquarium",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "Alkalinity field in ReefBuddy showing a reading of 7.2 dKH with the target range 7.0 to 11.0 printed under it.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S02_Target_Ranges_reel.mp4",
+    "reel_voice_only": "../../stories/social/S02_Target_Ranges_reel_voice-only.mp4",
+    "script": "../../stories/social/S02_Target_Ranges_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S02_Target_Ranges/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 12.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S02_Target_Ranges/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S02_Target_Ranges/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S02_Target_Ranges/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "HEALTHY RANGE\nUNDER *EVERY* FIELD",
+      "file": "posts/S02_Target_Ranges/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S02_Target_Ranges/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 30.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "*°C* OR *°F*",
+      "file": "posts/S02_Target_Ranges/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S02_Target_Ranges/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 34.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "*SG* OR *PPT*",
+      "file": "posts/S02_Target_Ranges/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S02_Target_Ranges/images/post_4x5.png"
+}

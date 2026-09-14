@@ -1,0 +1,159 @@
+{
+  "schema": "reefbuddy-post-library/1",
+  "generated_at": "2026-09-10T14:12:24",
+  "brand": {
+    "name": "ReefBuddy",
+    "handle": "@reefbuddyapp",
+    "colors": {
+      "background": "#FFFFFF",
+      "text": "#000000",
+      "action": "#00FFD1",
+      "warning": "#FF3D00"
+    },
+    "cta": "Free on iOS. Link in bio. | Follow @reefbuddyapp for more tips",
+    "music_credit": "Music: Cipher by Kevin MacLeod (incompetech.com), CC BY 4.0",
+    "hashtag_rule": "Max 5 per post (Instagram limit since Dec 2025): 2 topic + 2 community + #reefbuddyapp"
+  },
+  "posts": [
+    {
+      "id": "S01_Log_Parameters",
+      "story_number": 1,
+      "title": "Log 10 parameters in seconds",
+      "hook": "Still writing your test results in a notebook?",
+      "status": "draft",
+      "primary_image": "posts/S01_Log_Parameters/images/post_4x5.png",
+      "post_json": "posts/S01_Log_Parameters/post.json",
+      "reel": "../../stories/social/S01_Log_Parameters_reel.mp4"
+    },
+    {
+      "id": "S02_Target_Ranges",
+      "story_number": 2,
+      "title": "Healthy range under every field",
+      "hook": "Is 7.2 dKH ok? Don't Google it.",
+      "status": "draft",
+      "primary_image": "posts/S02_Target_Ranges/images/post_4x5.png",
+      "post_json": "posts/S02_Target_Ranges/post.json",
+      "reel": "../../stories/social/S02_Target_Ranges_reel.mp4"
+    },
+    {
+      "id": "S03_AI_Analysis",
+      "story_number": 3,
+      "title": "AI analysis with exact dosing",
+      "hook": "Still guessing your dosing?",
+      "status": "draft",
+      "primary_image": "posts/S03_AI_Analysis/images/post_4x5.png",
+      "post_json": "posts/S03_AI_Analysis/post.json",
+      "reel": "../../stories/social/S03_AI_Analysis_reel.mp4"
+    },
+    {
+      "id": "S04_Warnings_First",
+      "story_number": 4,
+      "title": "Warnings first",
+      "hook": "Ammonia 0.5 ppm. Would you catch it in time?",
+      "status": "draft",
+      "primary_image": "posts/S04_Warnings_First/images/post_4x5.png",
+      "post_json": "posts/S04_Warnings_First/post.json",
+      "reel": "../../stories/social/S04_Warnings_First_reel.mp4"
+    },
+    {
+      "id": "S05_Trend_Charts",
+      "story_number": 5,
+      "title": "See the drift",
+      "hook": "Stop guessing your tank trends.",
+      "status": "draft",
+      "primary_image": "posts/S05_Trend_Charts/images/post_4x5.png",
+      "post_json": "posts/S05_Trend_Charts/post.json",
+      "reel": "../../stories/social/S05_Trend_Charts_reel.mp4"
+    },
+    {
+      "id": "S06_CSV_Export",
+      "story_number": 6,
+      "title": "Your data, exported",
+      "hook": "Your data should be yours.",
+      "status": "draft",
+      "primary_image": "posts/S06_CSV_Export/images/post_4x5.png",
+      "post_json": "posts/S06_CSV_Export/post.json",
+      "reel": "../../stories/social/S06_CSV_Export_reel.mp4"
+    },
+    {
+      "id": "S07_Reminders",
+      "story_number": 7,
+      "title": "Maintenance reminders",
+      "hook": "When was your last water change? Exactly.",
+      "status": "draft",
+      "primary_image": "posts/S07_Reminders/images/post_4x5.png",
+      "post_json": "posts/S07_Reminders/post.json",
+      "reel": "../../stories/social/S07_Reminders_reel.mp4"
+    },
+    {
+      "id": "S08_Water_Change",
+      "story_number": 8,
+      "title": "Log a water change",
+      "hook": "Water change done? Log it in two taps.",
+      "status": "draft",
+      "primary_image": "posts/S08_Water_Change/images/post_4x5.png",
+      "post_json": "posts/S08_Water_Change/post.json",
+      "reel": "../../stories/social/S08_Water_Change_reel.mp4"
+    },
+    {
+      "id": "S09_Livestock",
+      "story_number": 9,
+      "title": "Livestock catalogue",
+      "hook": "How many frags do you actually own?",
+      "status": "draft",
+      "primary_image": "posts/S09_Livestock/images/post_4x5.png",
+      "post_json": "posts/S09_Livestock/post.json",
+      "reel": "../../stories/social/S09_Livestock_reel.mp4"
+    },
+    {
+      "id": "S10_Health_Log",
+      "story_number": 10,
+      "title": "Health log timeline",
+      "hook": "That coral looks off. Now what?",
+      "status": "draft",
+      "primary_image": "posts/S10_Health_Log/images/post_4x5.png",
+      "post_json": "posts/S10_Health_Log/post.json",
+      "reel": "../../stories/social/S10_Health_Log_reel.mp4"
+    },
+    {
+      "id": "S11_Multiple_Tanks",
+      "story_number": 11,
+      "title": "Every tank, its own history",
+      "hook": "One tank is never enough.",
+      "status": "draft",
+      "primary_image": "posts/S11_Multiple_Tanks/images/post_4x5.png",
+      "post_json": "posts/S11_Multiple_Tanks/post.json",
+      "reel": "../../stories/social/S11_Multiple_Tanks_reel.mp4"
+    },
+    {
+      "id": "S12_Saved_Analyses",
+      "story_number": 12,
+      "title": "Saved analyses",
+      "hook": "What did the AI say last month?",
+      "status": "draft",
+      "primary_image": "posts/S12_Saved_Analyses/images/post_4x5.png",
+      "post_json": "posts/S12_Saved_Analyses/post.json",
+      "reel": "../../stories/social/S12_Saved_Analyses_reel.mp4"
+    },
+    {
+      "id": "S13_Free_Credits",
+      "story_number": 13,
+      "title": "No subscription",
+      "hook": "No subscription. Three free analyses.",
+      "status": "draft",
+      "primary_image": "posts/S13_Free_Credits/images/post_4x5.png",
+      "post_json": "posts/S13_Free_Credits/post.json",
+      "reel": "../../stories/social/S13_Free_Credits_reel.mp4"
+    },
+    {
+      "id": "S14_Design",
+      "story_number": 14,
+      "title": "An app that isn't beige",
+      "hook": "An aquarium app that isn't beige.",
+      "status": "draft",
+      "primary_image": "posts/S14_Design/images/post_4x5.png",
+      "post_json": "posts/S14_Design/post.json",
+      "reel": "../../stories/social/S14_Design_reel.mp4"
+    }
+  ]
+}

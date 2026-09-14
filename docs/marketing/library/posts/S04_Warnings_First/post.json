@@ -1,0 +1,109 @@
+{
+  "id": "S04_Warnings_First",
+  "story_number": 4,
+  "title": "Warnings first",
+  "hook": "Ammonia 0.5 ppm. Would you catch it in time?",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Ammonia at 0.5 ppm. Would you catch it? ⚠️\n\nReefBuddy puts the dangerous readings at the top, in orange, before anything else. Then it tells you exactly what to do today: water change, test daily, cut feeding.\nWater quality warnings first, so you act before you lose a fish. Not after.\n\nFree on iOS. Link in bio.\n\nWhat was your closest call? 👇",
+  "caption_with_hashtags": "Ammonia at 0.5 ppm. Would you catch it? ⚠️\n\nReefBuddy puts the dangerous readings at the top, in orange, before anything else. Then it tells you exactly what to do today: water change, test daily, cut feeding.\nWater quality warnings first, so you act before you lose a fish. Not after.\n\nFree on iOS. Link in bio.\n\nWhat was your closest call? 👇\n\n#ammonia #waterquality #reefkeeping #coralreeftank #reefbuddyapp",
+  "hashtags": [
+    "#ammonia",
+    "#waterquality",
+    "#reefkeeping",
+    "#coralreeftank",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy analysis showing an orange warning box about ammonia and nitrite above a list of recommendations.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S04_Warnings_First_reel.mp4",
+    "reel_voice_only": "../../stories/social/S04_Warnings_First_reel_voice-only.mp4",
+    "script": "../../stories/social/S04_Warnings_First_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S04_Warnings_First/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 79.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S04_Warnings_First/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S04_Warnings_First/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S04_Warnings_First/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "_WARNINGS_ FIRST",
+      "file": "posts/S04_Warnings_First/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S04_Warnings_First/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 82.5
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "WHAT TO DO *TODAY*",
+      "file": "posts/S04_Warnings_First/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S04_Warnings_First/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 56.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "THE NUMBERS THAT\n_KILL FISH_",
+      "file": "posts/S04_Warnings_First/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S04_Warnings_First/images/post_4x5.png"
+}

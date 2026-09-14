@@ -1,0 +1,109 @@
+{
+  "id": "S09_Livestock",
+  "story_number": 9,
+  "title": "Livestock catalogue",
+  "hook": "How many frags do you actually own?",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "How many frags do you actually own? 🪸\n\nCatalogue every coral, fish and invert: photo, species, health status, and what you paid. Seven categories from SPS to anemones, in one reef livestock tracker.\nMaybe don't show your partner the total.\n\nFree on iOS. Link in bio.\n\nFrag count. Be honest 👇",
+  "caption_with_hashtags": "How many frags do you actually own? 🪸\n\nCatalogue every coral, fish and invert: photo, species, health status, and what you paid. Seven categories from SPS to anemones, in one reef livestock tracker.\nMaybe don't show your partner the total.\n\nFree on iOS. Link in bio.\n\nFrag count. Be honest 👇\n\n#coralcollection #fragtank #reefaquarium #reeflife #reefbuddyapp",
+  "hashtags": [
+    "#coralcollection",
+    "#fragtank",
+    "#reefaquarium",
+    "#reeflife",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy livestock list with photos of a clownfish, blue tang, torch coral and acropora, each with a health status badge.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S09_Livestock_reel.mp4",
+    "reel_voice_only": "../../stories/social/S09_Livestock_reel_voice-only.mp4",
+    "script": "../../stories/social/S09_Livestock_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S09_Livestock/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 6.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S09_Livestock/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S09_Livestock/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S09_Livestock/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "EVERY CORAL\nEVERY *FISH*",
+      "file": "posts/S09_Livestock/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S09_Livestock/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 33.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "PHOTO · SPECIES · *HEALTH*",
+      "file": "posts/S09_Livestock/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S09_Livestock/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 25.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "*7* CATEGORIES",
+      "file": "posts/S09_Livestock/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S09_Livestock/images/post_4x5.png"
+}

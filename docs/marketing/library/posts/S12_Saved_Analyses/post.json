@@ -1,0 +1,109 @@
+{
+  "id": "S12_Saved_Analyses",
+  "story_number": 12,
+  "title": "Saved analyses",
+  "hook": "What did the AI say last month?",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "What did the AI say last month? 📚\n\nEvery analysis is saved and filtered by tank, with warning badges on the bad months. Open one and the summary, warnings, dosing and the exact numbers you tested that day are all still there.\nA reef journal that remembers for you.\n\nFree on iOS. Link in bio.\n\nDo you keep a tank journal? Paper, app or memory? 👇",
+  "caption_with_hashtags": "What did the AI say last month? 📚\n\nEvery analysis is saved and filtered by tank, with warning badges on the bad months. Open one and the summary, warnings, dosing and the exact numbers you tested that day are all still there.\nA reef journal that remembers for you.\n\nFree on iOS. Link in bio.\n\nDo you keep a tank journal? Paper, app or memory? 👇\n\n#reefjournal #reefdata #reefaquarium #marineaquarium #reefbuddyapp",
+  "hashtags": [
+    "#reefjournal",
+    "#reefdata",
+    "#reefaquarium",
+    "#marineaquarium",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy saved analyses list with dated entries per tank, some carrying an orange warning badge.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S12_Saved_Analyses_reel.mp4",
+    "reel_voice_only": "../../stories/social/S12_Saved_Analyses_reel_voice-only.mp4",
+    "script": "../../stories/social/S12_Saved_Analyses_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S12_Saved_Analyses/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 10.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S12_Saved_Analyses/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S12_Saved_Analyses/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S12_Saved_Analyses/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "_WARNING_ BADGES",
+      "file": "posts/S12_Saved_Analyses/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S12_Saved_Analyses/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 15.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "SUMMARY · WARNINGS · *DOSING*",
+      "file": "posts/S12_Saved_Analyses/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S12_Saved_Analyses/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 22.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "THE *NUMBERS*\nTHAT DAY",
+      "file": "posts/S12_Saved_Analyses/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S12_Saved_Analyses/images/post_4x5.png"
+}

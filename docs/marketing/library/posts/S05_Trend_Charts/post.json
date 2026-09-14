@@ -1,0 +1,109 @@
+{
+  "id": "S05_Trend_Charts",
+  "story_number": 5,
+  "title": "See the drift",
+  "hook": "Stop guessing your tank trends.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Stop guessing your tank trends. 📉\n\nCorals don't crash overnight. They drift. ReefBuddy charts every parameter against its healthy range so you see the slide weeks before the corals show it.\nReef tank trend charts from 7 days to a year, alkalinity to salinity.\n\nFree on iOS. Link in bio.\n\nWhich parameter drifts on you most? 👇",
+  "caption_with_hashtags": "Stop guessing your tank trends. 📉\n\nCorals don't crash overnight. They drift. ReefBuddy charts every parameter against its healthy range so you see the slide weeks before the corals show it.\nReef tank trend charts from 7 days to a year, alkalinity to salinity.\n\nFree on iOS. Link in bio.\n\nWhich parameter drifts on you most? 👇\n\n#reefparameters #coralgrowth #reefaquarium #aquariumhobby #reefbuddyapp",
+  "hashtags": [
+    "#reefparameters",
+    "#coralgrowth",
+    "#reefaquarium",
+    "#aquariumhobby",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "Full-screen alkalinity trend chart in ReefBuddy with a shaded optimal range band and a line drifting downward over three months.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S05_Trend_Charts_reel.mp4",
+    "reel_voice_only": "../../stories/social/S05_Trend_Charts_reel_voice-only.mp4",
+    "script": "../../stories/social/S05_Trend_Charts_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S05_Trend_Charts/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 14.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S05_Trend_Charts/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S05_Trend_Charts/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S05_Trend_Charts/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "SEE THE *DRIFT*",
+      "file": "posts/S05_Trend_Charts/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S05_Trend_Charts/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 11.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "*90 DAYS* · ALKALINITY",
+      "file": "posts/S05_Trend_Charts/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S05_Trend_Charts/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 23.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "EVERY PARAMETER\nITS OWN *RANGE*",
+      "file": "posts/S05_Trend_Charts/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S05_Trend_Charts/images/post_4x5.png"
+}

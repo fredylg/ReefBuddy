@@ -1,0 +1,109 @@
+{
+  "id": "S14_Design",
+  "story_number": 14,
+  "title": "An app that isn't beige",
+  "hook": "An aquarium app that isn't beige.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "An aquarium app that isn't beige. ⬛⬜\n\nBlack. White. Aquamarine. Zero rounded corners. Built to be read at arm's length with wet hands.\nReefBuddy, a reef tank app designed like a test kit label, not a spreadsheet.\n\nFree on iOS. Link in bio.\n\nLove it or hate it? 👇",
+  "caption_with_hashtags": "An aquarium app that isn't beige. ⬛⬜\n\nBlack. White. Aquamarine. Zero rounded corners. Built to be read at arm's length with wet hands.\nReefBuddy, a reef tank app designed like a test kit label, not a spreadsheet.\n\nFree on iOS. Link in bio.\n\nLove it or hate it? 👇\n\n#brutalism #appdesign #reefkeeping #coralreeftank #reefbuddyapp",
+  "hashtags": [
+    "#brutalism",
+    "#appdesign",
+    "#reefkeeping",
+    "#coralreeftank",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "Three ReefBuddy screens in black, white and aquamarine: measurement form, livestock list and trend chart.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S14_Design_reel.mp4",
+    "reel_voice_only": "../../stories/social/S14_Design_reel_voice-only.mp4",
+    "script": "../../stories/social/S14_Design_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S14_Design/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 3.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S14_Design/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S14_Design/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S14_Design/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "AN AQUARIUM APP\nTHAT ISN'T _BEIGE_",
+      "file": "posts/S14_Design/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S14_Design/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 5.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "BLACK · WHITE\n*AQUAMARINE*",
+      "file": "posts/S14_Design/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S14_Design/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 10.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "ZERO ROUNDED\nCORNERS",
+      "file": "posts/S14_Design/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S14_Design/images/post_4x5.png"
+}

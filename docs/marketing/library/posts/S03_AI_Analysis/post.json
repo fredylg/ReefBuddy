@@ -1,0 +1,109 @@
+{
+  "id": "S03_AI_Analysis",
+  "story_number": 3,
+  "title": "AI analysis with exact dosing",
+  "hook": "Still guessing your dosing?",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Still guessing how much to dose? 🧪\n\nTap Analyze and ReefBuddy's AI dosing calculator reads your numbers against your tank's size, type and history. You get a plain-English summary, specific recommendations and dosing amounts worked out for YOUR volume.\nNot \"add some buffer\". Exact amounts.\n\n3 analyses free on iOS, no subscription. Link in bio.\n\nTwo-part, all-in-one or kalk? Tell us your method 👇",
+  "caption_with_hashtags": "Still guessing how much to dose? 🧪\n\nTap Analyze and ReefBuddy's AI dosing calculator reads your numbers against your tank's size, type and history. You get a plain-English summary, specific recommendations and dosing amounts worked out for YOUR volume.\nNot \"add some buffer\". Exact amounts.\n\n3 analyses free on iOS, no subscription. Link in bio.\n\nTwo-part, all-in-one or kalk? Tell us your method 👇\n\n#dosing #reefchemistry #reeftank #marineaquarium #reefbuddyapp",
+  "hashtags": [
+    "#dosing",
+    "#reefchemistry",
+    "#reeftank",
+    "#marineaquarium",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy AI analysis result screen with a green Complete banner, a written summary and numbered recommendations.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S03_AI_Analysis_reel.mp4",
+    "reel_voice_only": "../../stories/social/S03_AI_Analysis_reel_voice-only.mp4",
+    "script": "../../stories/social/S03_AI_Analysis_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S03_AI_Analysis/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 73.6
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S03_AI_Analysis/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S03_AI_Analysis/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S03_AI_Analysis/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "AI ANALYSIS\n*COMPLETE*",
+      "file": "posts/S03_AI_Analysis/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S03_AI_Analysis/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 80.5
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "*EXACT* DOSING\nFOR YOUR VOLUME",
+      "file": "posts/S03_AI_Analysis/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S03_AI_Analysis/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 76.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "SPECIFIC\n*RECOMMENDATIONS*",
+      "file": "posts/S03_AI_Analysis/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S03_AI_Analysis/images/post_4x5.png"
+}

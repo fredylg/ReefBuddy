@@ -1,0 +1,109 @@
+{
+  "id": "S10_Health_Log",
+  "story_number": 10,
+  "title": "Health log timeline",
+  "hook": "That coral looks off. Now what?",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "That coral looks off. Now what? 🔍\n\nLog a health entry in ReefBuddy: thriving, healthy, stressed, declining. Write down what changed. Then watch the recovery on a timeline, entry by entry.\nTrack coral health and recovery, not just losses.\n\nFree on iOS. Link in bio.\n\nWhat's the best comeback a coral has made in your tank? 👇",
+  "caption_with_hashtags": "That coral looks off. Now what? 🔍\n\nLog a health entry in ReefBuddy: thriving, healthy, stressed, declining. Write down what changed. Then watch the recovery on a timeline, entry by entry.\nTrack coral health and recovery, not just losses.\n\nFree on iOS. Link in bio.\n\nWhat's the best comeback a coral has made in your tank? 👇\n\n#coralhealth #coralcare #reeftank #aquariumhobby #reefbuddyapp",
+  "hashtags": [
+    "#coralhealth",
+    "#coralcare",
+    "#reeftank",
+    "#aquariumhobby",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "Health log timeline for a Montipora coral in ReefBuddy moving from stressed to healthy to thriving over six weeks.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S10_Health_Log_reel.mp4",
+    "reel_voice_only": "../../stories/social/S10_Health_Log_reel_voice-only.mp4",
+    "script": "../../stories/social/S10_Health_Log_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S10_Health_Log/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 58.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S10_Health_Log/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S10_Health_Log/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S10_Health_Log/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "WATCH IT *RECOVER*",
+      "file": "posts/S10_Health_Log/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S10_Health_Log/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 16.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "THRIVING → _STRESSED_",
+      "file": "posts/S10_Health_Log/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S10_Health_Log/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 42.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "ON A *TIMELINE*",
+      "file": "posts/S10_Health_Log/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S10_Health_Log/images/post_4x5.png"
+}

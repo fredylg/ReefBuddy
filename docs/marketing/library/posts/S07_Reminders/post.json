@@ -1,0 +1,109 @@
+{
+  "id": "S07_Reminders",
+  "story_number": 7,
+  "title": "Maintenance reminders",
+  "hook": "When was your last water change? Exactly.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "When was your last water change? Exactly. 🪣\n\nReefBuddy schedules your water changes, filter service and testing. Every 14 days or every Sunday at nine, your phone reminds you.\nAquarium maintenance reminders, so no more forgetting. No more guessing.\n\nFree on iOS. Link in bio.\n\nHow often do you change water? 👇",
+  "caption_with_hashtags": "When was your last water change? Exactly. 🪣\n\nReefBuddy schedules your water changes, filter service and testing. Every 14 days or every Sunday at nine, your phone reminds you.\nAquarium maintenance reminders, so no more forgetting. No more guessing.\n\nFree on iOS. Link in bio.\n\nHow often do you change water? 👇\n\n#reefmaintenance #waterchange #reeftank #marineaquarium #reefbuddyapp",
+  "hashtags": [
+    "#reefmaintenance",
+    "#waterchange",
+    "#reeftank",
+    "#marineaquarium",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy maintenance schedules list showing a fortnightly water change and a weekly testing reminder.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S07_Reminders_reel.mp4",
+    "reel_voice_only": "../../stories/social/S07_Reminders_reel_voice-only.mp4",
+    "script": "../../stories/social/S07_Reminders_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S07_Reminders/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 8.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S07_Reminders/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S07_Reminders/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S07_Reminders/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "MAINTENANCE\n*REMINDERS*",
+      "file": "posts/S07_Reminders/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S07_Reminders/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 13.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "WATER CHANGE · FILTER · TESTING",
+      "file": "posts/S07_Reminders/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S07_Reminders/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 27.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "OR EVERY *SUNDAY*",
+      "file": "posts/S07_Reminders/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S07_Reminders/images/post_4x5.png"
+}

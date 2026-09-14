@@ -1,0 +1,109 @@
+{
+  "id": "S11_Multiple_Tanks",
+  "story_number": 11,
+  "title": "Every tank, its own history",
+  "hook": "One tank is never enough.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "One tank is never enough. 🐠\n\nDisplay, frag tank, quarantine, nano. Seven tank types, because a fish-only tank and an SPS reef don't want the same numbers. Each gets its own history, livestock and reminders in one aquarium app.\n\nFree on iOS. Link in bio.\n\nHow many tanks are you running right now? 👇",
+  "caption_with_hashtags": "One tank is never enough. 🐠\n\nDisplay, frag tank, quarantine, nano. Seven tank types, because a fish-only tank and an SPS reef don't want the same numbers. Each gets its own history, livestock and reminders in one aquarium app.\n\nFree on iOS. Link in bio.\n\nHow many tanks are you running right now? 👇\n\n#nanoreef #mixedreef #saltwateraquarium #reefkeeping #reefbuddyapp",
+  "hashtags": [
+    "#nanoreef",
+    "#mixedreef",
+    "#saltwateraquarium",
+    "#reefkeeping",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy tank list showing a frag tank, a display tank and a new quarantine tank with gallons and age.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S11_Multiple_Tanks_reel.mp4",
+    "reel_voice_only": "../../stories/social/S11_Multiple_Tanks_reel_voice-only.mp4",
+    "script": "../../stories/social/S11_Multiple_Tanks_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S11_Multiple_Tanks/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 34.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S11_Multiple_Tanks/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S11_Multiple_Tanks/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S11_Multiple_Tanks/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "ITS OWN *HISTORY*",
+      "file": "posts/S11_Multiple_Tanks/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S11_Multiple_Tanks/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 22.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "*7* TANK TYPES",
+      "file": "posts/S11_Multiple_Tanks/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S11_Multiple_Tanks/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 15.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "ADD A *TANK*",
+      "file": "posts/S11_Multiple_Tanks/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S11_Multiple_Tanks/images/post_4x5.png"
+}

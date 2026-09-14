@@ -1,0 +1,109 @@
+{
+  "id": "S08_Water_Change",
+  "story_number": 8,
+  "title": "Log a water change",
+  "hook": "Water change done? Log it in two taps.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "Water change done? Log it in two taps. 💧\n\nTwo taps from the measure screen: percent or gallons, plus a note. It's saved against your tank's history, so next week when the numbers move you know exactly why.\n\nFree on iOS. Link in bio.\n\nPercent or gallons: how do you measure yours? 👇",
+  "caption_with_hashtags": "Water change done? Log it in two taps. 💧\n\nTwo taps from the measure screen: percent or gallons, plus a note. It's saved against your tank's history, so next week when the numbers move you know exactly why.\n\nFree on iOS. Link in bio.\n\nPercent or gallons: how do you measure yours? 👇\n\n#waterchange #saltmix #reefkeeping #coralreeftank #reefbuddyapp",
+  "hashtags": [
+    "#waterchange",
+    "#saltmix",
+    "#reefkeeping",
+    "#coralreeftank",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy log water change sheet with 20 percent and 18 gallons entered and a Save Water Change button.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S08_Water_Change_reel.mp4",
+    "reel_voice_only": "../../stories/social/S08_Water_Change_reel_voice-only.mp4",
+    "script": "../../stories/social/S08_Water_Change_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S08_Water_Change/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 24.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S08_Water_Change/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S08_Water_Change/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S08_Water_Change/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "PERCENT OR *GALLONS*",
+      "file": "posts/S08_Water_Change/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S08_Water_Change/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 13.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "TWO *TAPS*",
+      "file": "posts/S08_Water_Change/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S08_Water_Change/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 27.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "SAVED TO *HISTORY*",
+      "file": "posts/S08_Water_Change/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S08_Water_Change/images/post_4x5.png"
+}

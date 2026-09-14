@@ -1,0 +1,109 @@
+{
+  "id": "S13_Free_Credits",
+  "story_number": 13,
+  "title": "No subscription",
+  "hook": "No subscription. Three free analyses.",
+  "status": "draft",
+  "platforms": [
+    "instagram_reel",
+    "instagram_post",
+    "instagram_carousel",
+    "tiktok",
+    "facebook"
+  ],
+  "caption": "No subscription. 🙌\n\nLogging, charts, livestock and reminders are free forever. AI analysis: three free to start, then small credit packs, and credits never expire.\nA free reef tank app that doesn't nag you monthly.\n\nFree on iOS. Link in bio.\n\nWhat's the most you've paid for an aquarium app? 👇",
+  "caption_with_hashtags": "No subscription. 🙌\n\nLogging, charts, livestock and reminders are free forever. AI analysis: three free to start, then small credit packs, and credits never expire.\nA free reef tank app that doesn't nag you monthly.\n\nFree on iOS. Link in bio.\n\nWhat's the most you've paid for an aquarium app? 👇\n\n#nosubscription #freeapp #reeftank #aquariumhobby #reefbuddyapp",
+  "hashtags": [
+    "#nosubscription",
+    "#freeapp",
+    "#reeftank",
+    "#aquariumhobby",
+    "#reefbuddyapp"
+  ],
+  "alt_text": "ReefBuddy credits screen showing 3 free analyses left and two credit packs priced at $0.99 and $4.99.",
+  "cta": "Download Reef Buddy (link in bio) | Follow @reefbuddyapp for more tips",
+  "video": {
+    "reel": "../../stories/social/S13_Free_Credits_reel.mp4",
+    "reel_voice_only": "../../stories/social/S13_Free_Credits_reel_voice-only.mp4",
+    "script": "../../stories/social/S13_Free_Credits_reel_script.md",
+    "music_credit_required": true
+  },
+  "images": [
+    {
+      "kind": "still_raw",
+      "slide": 1,
+      "file": "posts/S13_Free_Credits/images/frame1_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 10.0
+    },
+    {
+      "kind": "post",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S13_Free_Credits/images/post_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "post",
+      "aspect": "1:1",
+      "slide": 1,
+      "file": "posts/S13_Free_Credits/images/post_1x1.png",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "kind": "still_clean",
+      "aspect": "4:5",
+      "slide": 1,
+      "file": "posts/S13_Free_Credits/images/still_clean_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 1,
+      "headline": "*3* FREE ANALYSES",
+      "file": "posts/S13_Free_Credits/images/carousel_1_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 2,
+      "file": "posts/S13_Free_Credits/images/frame2_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 12.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 2,
+      "headline": "CREDITS *NEVER EXPIRE*",
+      "file": "posts/S13_Free_Credits/images/carousel_2_4x5.png",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "kind": "still_raw",
+      "slide": 3,
+      "file": "posts/S13_Free_Credits/images/frame3_raw.png",
+      "width": 1206,
+      "height": 2622,
+      "source_time_s": 6.0
+    },
+    {
+      "kind": "carousel",
+      "aspect": "4:5",
+      "slide": 3,
+      "headline": "LOGGING · CHARTS\nREMINDERS · *FREE*",
+      "file": "posts/S13_Free_Credits/images/carousel_3_4x5.png",
+      "width": 1080,
+      "height": 1350
+    }
+  ],
+  "primary_image": "posts/S13_Free_Credits/images/post_4x5.png"
+}
