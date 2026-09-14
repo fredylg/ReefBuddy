@@ -105,8 +105,8 @@ notification UI. Build 8 did remove what the first rejection pointed at.
       `wrangler.toml`, is not a secret, and is no longer read by the code. Production vars and the five
       secrets are correct; `/health` reports 1.0.10.
 - [ ] **Fredy** — Release 1.0.10 if you chose manual release.
-- [ ] **Claude** — Merge `fix/app-review-5.6` into `main` once 1.0.10 is live, and refresh the docs that
-      still name build 8/9.
+- [x] **Claude** — Merge `fix/app-review-5.6` into `main` (fast-forward, 14 Sep). `fix/app-review-2.3.1` was
+      already contained in it. Gate green on main: verify script, 0 type errors, 199 tests. Not pushed.
 - [ ] **Later, not yet** — Turn off the `workers.dev` hostname (owner task 4). `reefbuddy.fredylg.workers.dev`
       still answers, and the App Store version before this release was **1.0.5**, which calls that host
       directly; the custom domain only arrived in 1.0.6. Turning it off now breaks every user who has not
@@ -213,6 +213,7 @@ Plain, factual, no argument. Apple reads hundreds of these; short and specific g
 | 11 Sep | Claude | Audit done; four causes identified; this plan written |
 | 11 Sep | Fredy | Phase 0 done: reply A posted, no new build uploaded |
 | 12 Sep | Apple | "We have determined that the App Review Guideline 5.6 issue that was previously identified is addressed. In order to proceed with the review, please resubmit a new binary." |
+| 14 Sep | Claude | `fix/app-review-5.6` merged into `main` (fast-forward, tip `ebc8f6b`); main is 8 commits ahead of `origin/main` and **not pushed**. |
 | 12 Sep | Apple | **1.0.10 approved.** |
 | 12 Sep | Claude | Post-approval check: no Cloudflare change outstanding. Flagged that workers.dev must stay on until 1.0.5 users update. |
 | 12 Sep | Fredy | App Review thread no longer accepts replies (case closed by Apple); reply F dropped. |
